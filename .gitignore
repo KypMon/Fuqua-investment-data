@@ -1,0 +1,17 @@
+# Editor config
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+
+# Global OS stuff
+.DS_Store
+Thumbs.db
+
+
+# Env
+.env
+
+# CSV
+.csv

@@ -1,0 +1,8 @@
+Flask
+pandas
+matplotlib
+numpy
+cvxpy
+cvxopt
+tabulate
+flask-cors

@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Flask and plot outputs
+instance/
+static/plot_*.png
+
+# Environment config
+*.env
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# pip/poetry/etc
+poetry.lock
+Pipfile.lock
+*.egg-info/
+
+# CSV
+*.csv
