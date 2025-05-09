@@ -6,3 +6,5 @@ cvxpy
 cvxopt
 tabulate
 flask-cors
+yfinance
+statsmodels

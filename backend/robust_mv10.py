@@ -414,15 +414,15 @@ def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'
         print("error")
         # mv(df, etflist, short, 0, normal, startdate, enddate)
 # %% 
-plt.rcParams['figure.figsize'] = [15, 5]
-ff_file = 'F-F_Research_Data_Factors.csv'
-etf_file = 'stocks_mf_ETF_data_final.csv'
-df = get_and_merge(ff_file, etf_file)
+# plt.rcParams['figure.figsize'] = [15, 5]
+# ff_file = 'F-F_Research_Data_Factors.csv'
+# etf_file = 'stocks_mf_ETF_data_final.csv'
+# df = get_and_merge(ff_file, etf_file)
 
-# %%
-etflist = ['FLCNX','JLGMX','VFTNX','VIIIX','VPMAX','MEIKX','VEIRX',
-           'MEFZX','VEMPX','AMDVX','FLKSX','MVCKX','FOCSX','FCPVX',
-           'RERGX','FISMX','VWILX','VTSNX','VEMIX','VGSNX','FTKFX','VBMPX','PIMIX']
+# # %%
+# etflist = ['FLCNX','JLGMX','VFTNX','VIIIX','VPMAX','MEIKX','VEIRX',
+#            'MEFZX','VEMPX','AMDVX','FLKSX','MVCKX','FOCSX','FCPVX',
+#            'RERGX','FISMX','VWILX','VTSNX','VEMIX','VGSNX','FTKFX','VBMPX','PIMIX']
 
 #etflist = ['VOO','VXUS','AVUV','AVDV','AVEM']
 
@@ -435,6 +435,6 @@ etflist = ['FLCNX','JLGMX','VFTNX','VIIIX','VPMAX','MEIKX','VEIRX',
 # maxuse = 0 (set to 0 for balanced sample)
 # normal = 0 (set to zero for resampling)
 
-mv(df, etflist, 0, 0, 0, 197012, 202312)
+# mv(df, etflist, 0, 0, 0, 197012, 202312)
 
 # %%
