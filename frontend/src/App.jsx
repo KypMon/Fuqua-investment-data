@@ -4,7 +4,8 @@ import FormSection from "./components/FormSection";
 import ResultSection from "./components/ResultSection";
 import BacktestForm from "./components/BacktestForm";
 import BacktestResult from "./components/BacktestResult";
-import { useNavigate, useLocation, Routes, Route, Navigate } from "react-router-dom";
+import RegressionPage from "./components/RegressionPage";
+import { useNavigate, useLocation, Routes, Route, Navigate, NavLink  } from "react-router-dom";
 
 function App() {
   const [result, setResult] = useState(null);
@@ -15,8 +16,12 @@ function App() {
 
   // Match the current path to tab value
   const currentPath = location.pathname;
-  const tabValue = currentPath.startsWith("/backtest") ? "backtest" : "mv"; // default to 'mv'
-
+  const tabValue = currentPath.startsWith("/backtest")
+    ? "backtest"
+    : currentPath.startsWith("/regression")
+    ? "regression"
+    : "mv";
+    
   const handleTabChange = (event, newValue) => {
     navigate(`/${newValue}`);
   };
@@ -25,9 +30,14 @@ function App() {
     <>
       <AppBar position="static" color="primary">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography
+            variant="h6"
+            sx={{ flexGrow: 1, cursor: "pointer" }}
+            onClick={() => navigate("/mv")}
+          >
             Fuqua Finance Analyzer
           </Typography>
+
           <Tabs
             value={tabValue}
             onChange={handleTabChange}
@@ -36,12 +46,14 @@ function App() {
           >
             <Tab label="MV Analysis" value="mv" />
             <Tab label="Backtest" value="backtest" />
+            <Tab label="Regression" value="regression" />
           </Tabs>
         </Toolbar>
       </AppBar>
 
       <Container maxWidth="lg" sx={{ paddingY: 4 }}>
         <Routes>
+          <Route path="/" element={<Navigate to="/mv" replace />} />
           <Route
             path="/mv"
             element={
@@ -57,6 +69,14 @@ function App() {
               <BacktestResult result={backtestResult} />
             </>
           }/>
+          <Route
+            path="/regression"
+            element={
+              <>
+                <RegressionPage />
+              </>
+            }
+          />
         </Routes>
       </Container>
     </>

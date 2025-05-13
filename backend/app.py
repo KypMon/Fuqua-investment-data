@@ -15,7 +15,8 @@ from datetime import datetime
 import random 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-
+from statsmodels.stats.stattools import durbin_watson, jarque_bera
+from scipy.stats import skew, kurtosis
 
 app = Flask(
     __name__,
@@ -39,6 +40,30 @@ from tabulate import tabulate
 plt.rcParams['figure.figsize'] = [15, 5]
 ff_file = 'F-F_Research_Data_Factors.csv'
 etf_file = 'stocks_mf_ETF_data_final.csv'
+
+
+# Import data from CSV file
+return_data = pd.read_csv("stocks_mf_ETF_data_final.csv", sep = ',')
+return_data['date'] = return_data['year'] * 100 + return_data['month']
+return_data.drop(columns=['month', 'year'], inplace=True)
+
+# Regression
+mom = pd.read_csv('F-F_Momentum_Factor.csv', sep=',')
+mom.columns = ['date', 'MOM']
+mom['MOM'] = mom['MOM'].astype('float64')/100
+
+ff5 = pd.read_csv('F-F_Research_Data_5_Factors_2x3.csv', sep=',')
+ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
+for cols in ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']:
+    ff5[cols] = ff5[cols].astype('float64')/100
+
+# %% 
+# Merge factors
+all_factors = pd.merge(mom, ff5, on='date', how='outer').sort_values(by='date')
+
+# %% 
+# Merge return data with factors
+final_data = pd.merge(return_data, all_factors, on='date', how='outer').sort_values(by=['ticker_new', 'date'])
 
 
 # %% 
@@ -310,7 +335,7 @@ def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'
             simwdf = np.zeros(gridsize)
             
             # Simulation Parameters Set Up
-            Nsim = 5000
+            Nsim = 100
             iter = 0
             random.seed(123)
             while iter < Nsim: 
@@ -884,6 +909,7 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
             print(f'Annualized alpha {annualized_alpha:.4f}')
 
 
+
 # %%
 # etflist = ['FLCNX','JLGMX','VFTNX','VIIIX','VPMAX','MEIKX','VEIRX',
 #            'MEFZX','VEMPX','AMDVX','FLKSX','MVCKX','FOCSX','FCPVX',
@@ -1002,6 +1028,275 @@ def run_backtest():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+
+# def extract_ols_summary(model, x_var, y_var, ticker):
+#     print(model.__dict__)
+
+#     """Extracts and structures OLS regression summary data."""
+#     n_obs = int(model.nobs)
+#     r_squared = model.rsquared
+#     adj_r_squared = model.rsquared_adj
+#     alpha_annualized = model.params[0] * 12
+#     f_statistic = model.fvalue
+#     p_value_f = model.f_pvalue
+#     aic = model.aic
+#     bic = model.bic
+#     df_resid = int(model.df_resid)
+#     df_model = int(model.df_model)
+#     log_likelihood = model.llf
+#     cov_type = model.cov_type
+
+#     # Confidence intervals
+#     ci = model.conf_int()
+#     ci.columns = ["ci_lower", "ci_upper"]
+
+#     coef_table = model.summary2().tables[1]
+#     coef_table = coef_table.reset_index().rename(columns={"index": "factor"})
+#     coef_table = coef_table.merge(ci, left_on="factor", right_index=True)
+
+#     coefficients = []
+#     for _, row in coef_table.iterrows():
+#         coefficients.append({
+#             "factor": row["factor"],
+#             "coef": round(row["Coef."], 4),
+#             "std_err": round(row["Std.Err."], 4),
+#             "t": round(row["t"], 4),
+#             "p_value": round(row["P>|t|"], 4),
+#             "ci_lower": round(row["ci_lower"], 4),
+#             "ci_upper": round(row["ci_upper"], 4)
+#         })
+
+#     diagnostics = {
+#         "omnibus": round(model.omni_normtest.statistic, 4),
+#         "durbin_watson": round(sm.stats.durbin_watson(model.resid), 4),
+#         "jb": round(model.jarque_bera[0], 4),
+#         "prob_jb": round(model.jarque_bera[1], 5),
+#         "skew": round(model.jarque_bera[2], 4),
+#         "kurtosis": round(model.jarque_bera[3], 4),
+#         "cond_no": round(np.linalg.cond(x_var), 2)
+#     }
+
+#     result = {
+#         "r_squared": round(r_squared, 4),
+#         "adj_r_squared": round(adj_r_squared, 4),
+#         "alpha_annualized": round(alpha_annualized, 4),
+#         "n_obs": n_obs,
+#         "f_statistic": round(f_statistic, 4),
+#         "p_value_f": round(p_value_f, 5),
+#         "aic": round(aic, 4),
+#         "bic": round(bic, 4),
+#         "df_resid": df_resid,
+#         "df_model": df_model,
+#         "log_likelihood": round(log_likelihood, 4),
+#         "cov_type": cov_type,
+#         "coefficients": coefficients,
+#         "diagnostics": diagnostics
+#     }
+
+#     return result
+
+def convert_numpy(obj):
+    """Helper function to convert numpy types to native Python."""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.float64, np.float32)):
+        return float(obj)
+    elif isinstance(obj, (np.int64, np.int32)):
+        return int(obj)
+    return obj
+
+def extract_ols_summary(model):
+    """Extract and structure OLS summary data in a JSON-serializable format."""
+
+        # 回归残差
+    resid = model.resid
+
+    # Durbin-Watson 统计量
+    dw_stat = durbin_watson(resid)
+
+    # JB 检验：返回 JB统计量、p值、偏度、峰度
+    jb_stat, jb_pval, jb_skew, jb_kurt = jarque_bera(resid)
+
+    # 其他常见指标
+    r2 = model.rsquared
+    r2_adj = model.rsquared_adj
+    n_obs = int(model.nobs)
+    annualized_alpha = float(model.params[0]) * 12  # 常数项 * 12
+
+    # 汇总为 dict
+    diagnostics = {
+        "r_squared": round(r2, 4),
+        "adj_r_squared": round(r2_adj, 4),
+        "n_observations": n_obs,
+        "alpha_annualized": round(annualized_alpha, 4),
+        "durbin_watson": round(dw_stat, 4),
+        "jarque_bera_stat": round(jb_stat, 4),
+        "jarque_bera_pval": round(jb_pval, 6),
+        "skewness": round(jb_skew, 4),
+        "kurtosis": round(jb_kurt, 4),
+    }
+
+
+    summary = {
+        "r_squared": round(model.rsquared, 4),
+        "adj_r_squared": round(model.rsquared_adj, 4),
+        "f_statistic": round(model.fvalue, 4) if model.fvalue is not None else None,
+        "prob_f_stat": round(model.f_pvalue, 4) if model.f_pvalue is not None else None,
+        "n_obs": int(model.nobs),
+        "aic": round(model.aic, 4),
+        "bic": round(model.bic, 4),
+        "df_resid": int(model.df_resid),
+        "df_model": int(model.df_model),
+        "log_likelihood": round(model.llf, 4),
+        "cov_type": model.cov_type,
+        "coefficients": [],
+        "diagnostics": diagnostics
+    }
+
+    conf_int_df = model.conf_int()
+
+    for i, name in enumerate(model.model.exog_names):
+        summary["coefficients"].append({
+            "factor": name,
+            "coef": round(model.params[i], 4),
+            "std_err": round(model.bse[i], 4),
+            "t": round(model.tvalues[i], 4),
+            "p_value": round(model.pvalues[i], 4),
+            "ci_lower": round(conf_int_df.iloc[i, 0], 4),
+            "ci_upper": round(conf_int_df.iloc[i, 1], 4)
+        })
+
+    return summary
+
+@app.route("/regression", methods=["POST"])
+def run_regression():
+    try:
+        global final_data
+
+        data = request.json
+        ticker = data.get("ticker")
+        start_date = int(data.get("start_date").replace("-", "")[:6])
+        end_date = int(data.get("end_date").replace("-", "")[:6])
+        model = data.get("model", "CAPM")
+        rolling_period = int(data.get("rolling_period", 36))
+
+        data_short = final_data[final_data["ticker_new"] == ticker]
+
+        # 日期边界修正
+        if (end_date is None) or (end_date > data_short["date"].max()):
+            end_date = data_short["date"].max()
+        if (start_date is None) or (start_date < data_short["date"].min()):
+            start_date = data_short["date"].min()
+
+        data_short = data_short[(data_short["date"] >= start_date) & (data_short["date"] <= end_date)]
+
+        y_var = data_short["ret"] - data_short["RF"]
+        nobs = y_var.shape[0]
+
+        # 模型选择
+        if model == "CAPM":
+            x_var = data_short[["Mkt-RF"]]
+            factor_names = ["Mkt-Rf"]
+        elif model == "FF3":
+            x_var = data_short[["Mkt-RF", "HML", "SMB"]]
+            factor_names = ["Mkt-Rf", "HML", "SMB"]
+        elif model == "FF4":
+            x_var = data_short[["Mkt-RF", "HML", "SMB", "MOM"]]
+            factor_names = ["Mkt-Rf", "HML", "SMB", "MOM"]
+        elif model == "FF5":
+            x_var = data_short[["Mkt-RF", "HML", "SMB", "CMA", "RMW"]]
+            factor_names = ["Mkt-Rf", "HML", "SMB", "CMA", "RMW"]
+        else:
+            return jsonify({"error": "Invalid model selected"}), 400
+
+        n_factors = len(factor_names)
+        x_var = sm.add_constant(x_var)
+        mdl = sm.OLS(y_var, x_var, missing='drop').fit()
+
+        # 回归指标
+        loadings = mdl.params.values
+        se = mdl.bse.values
+        tStat = mdl.tvalues.values
+        pvalue = mdl.pvalues.values
+        rsq = mdl.rsquared
+        adj_rsq = mdl.rsquared_adj
+        alpha_annualized = loadings[0] * 12
+        # regression_text = str(mdl.summary())
+        # regression_text = mdl.summary().as_text() 
+        # regression_text = extract_ols_summary(mdl)
+        regression_text = mdl.summary().as_html()
+
+        print(mdl.summary())
+
+        # return contribution
+        return_contribution = np.full((n_factors + 2, 2), np.nan)
+        return_contribution[0, 0] = np.nanmean(y_var) * 12
+        return_contribution[1, 0] = alpha_annualized
+
+        for k in range(n_factors):
+            return_contribution[k + 2, 0] = np.nanmean(x_var.iloc[:, k + 1]) * 12
+
+        return_contribution[1, 1] = return_contribution[1, 0] / return_contribution[0, 0] * 100
+        return_contribution[2:, 1] = loadings[1:] * np.nanmean(x_var.iloc[:, 1:], axis=0) * 12 / return_contribution[0, 0] * 100
+
+        return_contribution_df = pd.DataFrame(
+            return_contribution,
+            columns=["Av. Ann. Excess Return", "Return Contribution"],
+            index=[ticker, "alpha"] + factor_names
+        ).round(4).replace({np.nan: None}).reset_index().rename(columns={"index": "Factor"})
+
+        # 画图
+        image_urls = []
+        if nobs >= rolling_period + 10:
+            out_roll = np.full((nobs - rolling_period + 1, n_factors + 1), np.nan)
+            for k in range(rolling_period, nobs + 1):
+                x_roll = x_var.iloc[k - rolling_period:k]
+                y_roll = y_var.iloc[k - rolling_period:k]
+                mdl_roll = sm.OLS(y_roll, x_roll, missing='drop').fit()
+                out_roll[k - rolling_period, :] = mdl_roll.params.values
+
+            date_aux = data_short["date"].iloc[rolling_period - 1:].astype(str)
+            dates_aux = pd.to_datetime(date_aux, format="%Y%m")
+
+            fig, ax1 = plt.subplots(figsize=(14, 7))
+            ax1.set_xlabel("Date")
+            ax1.set_ylabel("Annualized Alpha", color="tab:red")
+            ax1.plot(dates_aux, out_roll[:, 0] * 12, color="tab:red")
+            ax1.tick_params(axis="y", labelcolor="tab:red")
+
+            linestyles = ['solid', 'dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
+            ax2 = ax1.twinx()
+            ax2.set_ylabel("Factor Loadings", color="tab:blue")
+            for i in range(n_factors):
+                ax2.plot(dates_aux, out_roll[:, i + 1], label=factor_names[i], linestyle=linestyles[i])
+            ax2.tick_params(axis="y", labelcolor="tab:blue")
+            fig.tight_layout()
+            fig.legend(["Alpha"] + factor_names, loc="lower right", ncol=n_factors + 1)
+
+            plot_path = os.path.join(STATIC_DIR, "regression_plot.png")
+            fig.savefig(plot_path)
+            plt.close(fig)
+            image_urls.append("/static/regression_plot.png")
+
+        return jsonify({
+            "summary_table": return_contribution_df.to_dict(orient="records"),
+            "image_urls": image_urls,
+            "regression_output": {
+                "r_squared": round(rsq, 4),
+                "adj_r_squared": round(adj_rsq, 4),
+                "alpha_annualized": round(alpha_annualized, 4),
+                "n_observations": int(nobs),
+                "se": se.tolist(),
+                "t-stat": tStat.tolist(),
+                "p-value": pvalue.tolist(),
+                "text_summary": regression_text
+            }
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/static/<path:filename>')
 def serve_image(filename):
