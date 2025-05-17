@@ -42,7 +42,7 @@ export default function RegressionResult({ result }) {
       <Grid container spacing={2}>
         {resultData.image_urls.map((url, idx) => (
           <Grid item xs={12} md={6} key={idx}>
-            <img src={`${process.env.REACT_APP_API_BASE_URL}${url}`} alt={`Regression Chart ${idx}`} width="100%" />
+            <img src={`${process.env.REACT_APP_API_BASE_URL}${url}?t=${Date.now()}`} alt={`Regression Chart ${idx}`} width="100%" />
           </Grid>
         ))}
       </Grid>

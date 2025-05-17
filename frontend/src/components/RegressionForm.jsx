@@ -67,6 +67,18 @@ export default function RegressionForm({ form, setForm, onSubmit, loading }) {
             />
 
       </Grid>
+      <Grid item xs={4}>
+        <TextField
+          label="Rolling Period (months)"
+          type="number"
+          value={form.rolling_period || 36}
+          onChange={(e) =>
+            setForm({ ...form, rolling_period: parseInt(e.target.value) })
+          }
+          fullWidth
+        />
+      </Grid>
+
       <Grid item xs={12} sm={4} md={3}>
         <Button
           variant="contained"

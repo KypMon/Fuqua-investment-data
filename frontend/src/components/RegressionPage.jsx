@@ -10,7 +10,7 @@ export default function RegressionPage() {
     model: "FF3",
     start_date: "2020-01-01",
     end_date: "2023-12-31",
-    rolling_period: 72
+    rolling_period: 36
   });
 
   const [result, setResult] = useState(null);
