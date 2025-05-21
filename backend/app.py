@@ -18,6 +18,9 @@ import matplotlib.dates as mdates
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from scipy.stats import skew, kurtosis
 
+from mv import mv
+
+
 app = Flask(
     __name__,
     static_url_path="/static",
@@ -42,7 +45,11 @@ ff_file = 'F-F_Research_Data_Factors.csv'
 etf_file = 'stocks_mf_ETF_data_final.csv'
 
 
-# Import data from CSV file
+# load the raw data once
+RAW_DF = pd.read_csv("stocks_mf_ETF_data_final.csv")
+RAW_DF["ym"] = RAW_DF["year"] * 100 + RAW_DF["month"]
+
+
 return_data = pd.read_csv("stocks_mf_ETF_data_final.csv", sep = ',')
 return_data['date'] = return_data['year'] * 100 + return_data['month']
 return_data.drop(columns=['month', 'year'], inplace=True)
@@ -121,14 +128,16 @@ def get_and_merge(ff_file, etf_file):
     return df
 
 # Global Data
-df = get_and_merge(ff_file, etf_file)
+# Import data from CSV file
+global_data = get_and_merge(ff_file, etf_file) 
+
 
 # Calculate sharpe ratio
 def sharpe_ratio(x, meandf, covdf, rf): 
     sp = (x@meandf-rf)/np.sqrt(x.T@covdf@x)
     return sp
 
-def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'], short = 0, maxuse = 1, normal = 1, startdate = 199302, enddate = 202312):
+def mv123(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'], short = 0, maxuse = 1, normal = 1, startdate = 199302, enddate = 202312):
 
     gridsize = 100
 
@@ -415,9 +424,9 @@ def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'
             for i in range(len(etflist)): 
                 perct = robw[i] * 100
                 print(f"Asset {i+1} - {etflist[i]}: {perct.round(2)}%")
-            fig, ax = plt.subplots()
-            fig.patch.set_facecolor('white')
-            ax.set_facecolor('white')
+            # fig, ax = plt.subplots()
+            # fig.patch.set_facecolor('white')
+            # ax.set_facecolor('white')
 
             # Create the pie chart
             wedges, texts, autotexts = ax.pie(robw, autopct='%1.1f%%',
@@ -427,7 +436,7 @@ def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'
             # Equal aspect ratio ensures that pie is drawn as a circle
             ax.axis('equal')
             plt.title(f'Robust Max Sharpe Ratio Portfolio Weights, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
-            plt.show()
+            # plt.show()
 
             stddf = stddf * np.sqrt(12)
             meandf = meandf * 12 
@@ -935,49 +944,79 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
 def home():
     return 'home'
 
-@app.route('/run', methods=['POST'])
-def run_mv():
+# @app.route('/run', methods=['POST'])
+# def run_mv():
+#     try:
+#         short    = int(request.form.get('short', 0))
+#         maxuse   = int(request.form.get('maxuse', 0))
+#         normal   = int(request.form.get('normal', 0))
+#         start    = int(request.form.get('startdate', 197001))
+#         end      = int(request.form.get('enddate', 202312))
+#         etf_str  = request.form.get('etflist','VOO,VXUS,AVUV,AVDV,AVEM')
+#         etflist  = etf_str.split(',')
 
-    try:
-        global df
+#         # 保留原有 mv() 打印输出
+#         buf = io.StringIO()
+#         with redirect_stdout(buf):
+#             mv(df.copy(), etflist, short, maxuse, normal, start, end)
 
-        short = int(request.form.get('short', 0))
-        maxuse = int(request.form.get('maxuse', 0))
-        normal = int(request.form.get('normal', 0))
-        startdate = int(request.form.get('startdate', 197001))
-        enddate = int(request.form.get('enddate', 202312))
+#         # 额外生成 JSON 图表数据
+#         chart_data = run_mv_core(df.copy(), etflist, short, maxuse, normal, start, end)
 
-        etflist_str = request.form.get('etflist')
-        etflist = etflist_str.split(',') if etflist_str else ['VOO', 'VXUS', 'AVUV', 'AVDV', 'AVEM']
+#         return jsonify({
+#             "output_text": buf.getvalue(),
+#             **chart_data
+#         })
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
-        df = df[(df["ym"] >= startdate) & (df["ym"] <= enddate)]
 
-        plt.switch_backend('Agg')
-        f = io.StringIO()
-        with redirect_stdout(f):
-            mv(df, etflist, short, maxuse, normal, startdate, enddate)
-        output_text = f.getvalue()
 
-        image_paths = []
-        for idx, fig_num in enumerate(plt.get_fignums()):
-            fig = plt.figure(fig_num)
-            path = os.path.join(STATIC_DIR, f"plot_{idx}.png")
-            fig.savefig(path)
-            image_paths.append(f"/static/plot_{idx}.png")
-        plt.close('all')
 
-        return jsonify({
-            "output_text": output_text,
-            "image_urls": image_paths
-        })
+# @app.route('/run', methods=['POST'])
+# def run_mv_route():
+#     try:
+#         short   = int(request.form.get('short', 0))
+#         maxuse  = int(request.form.get('maxuse', 0))
+#         normal  = int(request.form.get('normal', 0))
+#         start   = int(request.form.get('startdate', 197001))
+#         end     = int(request.form.get('enddate',   202312))
+#         etf_str = request.form.get('etflist', "VOO,VXUS,AVUV,AVDV,AVEM")
+#         etflist = etf_str.split(",")
+
+#         # 1) 捕获 mv() 的 stdout
+#         buf = io.StringIO()
+#         with redirect_stdout(buf):
+#             mv(global_data.copy(), etflist, short, maxuse, normal, start, end)
+#         output_text = buf.getvalue()
+
+#         # 2) 生成交互图数据
+#         chart_data = extract_mv_charts(global_data.copy(), etflist, short, maxuse, normal, start, end)
+
+#         return jsonify({
+#             'output_text': output_text,
+#             **chart_data
+#         })
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
     
-    except Exception as e:
-        import traceback
-        traceback.print_exc() 
-        return jsonify({
-            "output_text": f"error: {str(e)}",
-            "image_urls": []
-        })
+@app.route("/run", methods=["POST"])
+def run_mv():
+    data = request.json or request.form
+    etfl = data.get("etflist", "").split(",") if data.get("etflist") else ["VOO","VXUS","AVUV","AVDV","AVEM"]
+    short  = int(data.get("short", 0))
+    maxuse = int(data.get("maxuse", 0))
+    normal = int(data.get("normal", 1))
+    sd = int(data.get("startdate", 199302))
+    ed = int(data.get("enddate",   202312))
+
+    result = mv(
+        global_data.copy(), etfl,
+        short, maxuse, normal,
+        sd, ed
+    )
+    return jsonify(result)
+    
 
 
 @app.route("/backtest", methods=["POST"])
