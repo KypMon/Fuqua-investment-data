@@ -1,83 +1,102 @@
-import React from "react";
+import React, { useEffect } from 'react';
 import {
   Typography,
   Box,
   Paper,
-  Table, TableHead, TableRow, TableBody, TableCell,
-  Grid
+  Grid,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody
 } from "@mui/material";
-import Plot from "react-plotly.js";
+import Plot from 'react-plotly.js';
 
 export default function ResultSection({ result }) {
   if (!result) return null;
 
-  const {
-    descriptive_stats,
-    correlation_matrix,
-    efficient_frontier,
-    etf_points,
-    max_sr_point,
-    allocation_stack,
-    robust_weights,
-    pie_chart,
-    short
-  } = result;
+  // Pick helpers
+  const pick = (s, c, fb = null) =>
+    result[s] != null
+      ? result[s]
+      : result[c] != null
+      ? result[c]
+      : fb;
 
-  // convert raw pie_chart.values (e.g. [0.587,0.327,0.086]) to percentages
-  const pct = pie_chart ? pie_chart.values.map(v => {
-    const asPct = v > 1 ? v : v * 100;  
-    return `${asPct.toFixed(1)}%`;
-  }) : null;
+  // Top‐level flags
+  const short  = pick("short", "short", 0);
+  const normal = pick("normal", "normal", 1);
 
+  // Which block to render
+  const standardMv = pick("standard_mv", "standardMv", {});
+  const robustMv   = pick("robust_mv",   "robustMv",   {});
+  const block      = normal ? standardMv : robustMv;
+
+  // Stats & correlation
+  const descriptiveStats = pick("descriptive_stats", "descriptiveStats", []);
+  const corrMatrix       = pick("correlation_matrix", "correlationMatrix", {
+    columns: [],
+    data: []
+  });
+
+  // Portfolio data
+  const ef       = block.efficient_frontier    || [];
+  const etfPts   = block.etf_points             || [];
+  const maxSR    = block.max_sr_point           || { x:0,y:0 };
+  const allocStk = block.allocation_stack       || [];
+  const weights  = block.weights                || [];
+  const pieChart = block.pie_chart              || { labels: [], values: [] };
+
+  // Unique assets & x‐axis for allocation
+  const assets = weights.map((w) => w.asset);
+  const allocX = allocStk.map((p) => p.x);
 
   return (
     <Box mt={4}>
-      <Typography variant="h5">Portfolio Results</Typography>
-
-      {/* 1) Descriptive Statistics */}
-      <Typography variant="h6" sx={{ mt: 3 }}>Asset Descriptive Statistics</Typography>
-      <Paper sx={{ overflowX: "auto", mb: 3 }}>
+      {/* Descriptive stats */}
+      <Typography variant="h6">Asset Descriptive Statistics</Typography>
+      <Paper sx={{ p:2, mb:3 }}>
         <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell>Asset</TableCell>
               <TableCell align="right">Mean</TableCell>
               <TableCell align="right">Std</TableCell>
-              <TableCell align="right">Sharpe</TableCell>
+              <TableCell align="right">SR</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {descriptive_stats.map(row => (
-              <TableRow key={row.asset}>
-                <TableCell>{row.asset}</TableCell>
-                <TableCell align="right">{row.mean.toFixed(4)}</TableCell>
-                <TableCell align="right">{row.std.toFixed(4)}</TableCell>
-                <TableCell align="right">{row.sr.toFixed(4)}</TableCell>
+            {descriptiveStats.map((r) => (
+              <TableRow key={r.asset}>
+                <TableCell>{r.asset}</TableCell>
+                <TableCell align="right">{r.mean.toFixed(4)}</TableCell>
+                <TableCell align="right">{r.std .toFixed(4)}</TableCell>
+                <TableCell align="right">{r.sr  .toFixed(4)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Paper>
 
-      {/* 2) Correlation Matrix */}
+      {/* Correlation matrix */}
       <Typography variant="h6">Asset Correlation Matrix</Typography>
-      <Paper sx={{ overflowX: "auto", mb: 3 }}>
+      <Paper sx={{ p:2, mb:3 }}>
         <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell></TableCell>
-              {correlation_matrix.columns.map(col => (
-                <TableCell key={col} align="right">{col}</TableCell>
+              {corrMatrix.columns.map((c) => (
+                <TableCell key={c} align="right">{c}</TableCell>
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
-            {correlation_matrix.data.map((row, i) => (
+            {corrMatrix.data.map((row,i) => (
               <TableRow key={i}>
-                <TableCell>{correlation_matrix.columns[i]}</TableCell>
-                {correlation_matrix.columns.map(col => (
-                  <TableCell key={col} align="right">
-                    {row[col].toFixed(4)}
+                <TableCell>{corrMatrix.columns[i]}</TableCell>
+                {corrMatrix.columns.map((c) => (
+                  <TableCell key={c} align="right">
+                    {row[c].toFixed(4)}
                   </TableCell>
                 ))}
               </TableRow>
@@ -86,95 +105,121 @@ export default function ResultSection({ result }) {
         </Table>
       </Paper>
 
-      {/* 3) Efficient Frontier */}
-      <Typography variant="h6" sx={{ mt: 3 }}>Efficient Frontier</Typography>
-      <Plot
-        data={[
-          {
-            x: efficient_frontier.map(p => p.x),
-            y: efficient_frontier.map(p => p.y),
-            mode: "lines",
-            name: "Frontier"
-          },
-          {
-            x: etf_points.map(p => p.x),
-            y: etf_points.map(p => p.y),
-            mode: "markers+text",
-            text: etf_points.map(p => p.label),
-            textposition: "top center",
-            name: "ETFs"
-          },
-          {
-            x: [max_sr_point.x],
-            y: [max_sr_point.y],
-            mode: "markers+text",
-            text: ["Max SR"],
-            marker: { color: "red", size: 12, symbol: "star" },
-            name: "Max SR"
-          }
-        ]}
-        layout={{
-          width: 700,
-          height: 400,
-          xaxis: { title: "Std Dev" },
-          yaxis: { title: "Annual Return" }
-        }}
-      />
-
-      {/* 4) Allocation Transition */}
-      <Typography variant="h6" sx={{ mt: 3 }}>Allocation Transition</Typography>
-      <Plot
-        data={Object.keys(allocation_stack[0].allocations).map((asset, i) => ({
-          x: allocation_stack.map(p => p.x),
-          y: allocation_stack.map(p => p.allocations[asset]),
-          stackgroup: "one",
-          name: asset
-        }))}
-        layout={{
-          width: 700,
-          height: 350,
-          xaxis: { title: "Std Dev" },
-          yaxis: { title: "Weight" }
-        }}
-      />
-
-      {/* 5) Robust Max‐Sharpe Weights + Pie */}
-      <Typography variant="h6" sx={{mt:4}}>Max Sharpe Ratio Weights</Typography>
-      <Paper sx={{p:2, mb:4}}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Asset</TableCell>
-              <TableCell align="right">Weight (%)</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {robust_weights.map((lbl,i) => (
-              <TableRow key={lbl}>
-                <TableCell>{lbl.asset}</TableCell>
-                <TableCell align="right">{lbl.weight}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
-
-      {short === 0 && pie_chart && (
-        <>
-          <Typography variant="h6" sx={{mb:2}}>Weight Pie Chart</Typography>
+      {/* Frontier */}
+      <Typography variant="h6" gutterBottom>
+        {normal ? "Standard MV Portfolio" : "Robust MV Portfolio"}
+      </Typography>
+      <Grid container spacing={3} sx={{ mb:4 }}>
+        <Grid item xs={12}>
           <Plot
-            data={[{
-              type: 'pie',
-              labels: pie_chart.labels,
-              values: pie_chart.values,
-              textinfo: 'label+percent',
-              hole: 0.4
-            }]}
+            data={[
+              {
+                x: ef.map((p) => p.x),
+                y: ef.map((p) => p.y),
+                mode: 'lines+markers',
+                name: 'Eff. Frontier'
+              },
+              ...(normal
+                ? [{
+                    x: etfPts.map((p) => p.x),
+                    y: etfPts.map((p) => p.y),
+                    text: etfPts.map((p) => p.label),
+                    mode: 'markers+text',
+                    name: 'ETFs',
+                    textposition: 'top center'
+                  }]
+                : []),
+              {
+                x: [maxSR.x],
+                y: [maxSR.y],
+                mode: 'markers+text',
+                name: 'Max SR',
+                text: ['Max SR'],
+                marker: { color:'red', size:12, symbol:'star' }
+              }
+            ]}
             layout={{
-              margin: { t: 30, b: 30 },
-              showlegend: true
+              title: normal
+                ? 'Standard Efficient Frontier'
+                : 'Robust Efficient Frontier',
+              xaxis: { title:'Std Dev' },
+              yaxis: { title:'Ann. Return' },
+              margin: { t:40, b:40, l:40, r:20 }
             }}
             style={{ width:'100%', height:400 }}
+          />
+        </Grid>
+      </Grid>
+
+      {/* Pie + Table row */}
+      <Grid container spacing={3} sx={{ mb:4 }}>
+        {/* weight table */}
+        <Grid item xs={12} md={6}>
+          <Typography variant="subtitle1" gutterBottom>
+            Max Sharpe Ratio Weights
+          </Typography>
+          <Paper>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Asset</TableCell>
+                  <TableCell align="right">Weight&nbsp;(%)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {weights.map((w) => (
+                  <TableRow key={w.asset}>
+                    <TableCell>{w.asset}</TableCell>
+                    <TableCell align="right">
+                      {w.weight.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        </Grid>
+
+        {/* only show pie when no‐short */}
+        {short === 0 && pieChart.labels.length > 0 && (
+          <Grid item xs={12} md={6}>
+            <Plot
+              data={[{
+                labels: pieChart.labels,
+                values: pieChart.values,
+                type: 'pie',
+                hole: 0.4
+              }]}
+              layout={{
+                title: 'Max SR Weights (Pie)',
+                showlegend: true,
+                margin: { t:30, b:30, l:20, r:20 }
+              }}
+              style={{ width:'100%', height:300 }}
+            />
+          </Grid>
+        )}
+      </Grid>
+
+      {/* Allocation Transition (standard only) */}
+      {normal && allocStk.length > 0 && (
+        <>
+          <Typography variant="subtitle1" gutterBottom>
+            Allocation Transition
+          </Typography>
+          <Plot
+            data={assets.map((asset) => ({
+              x: allocX,
+              y: allocStk.map((p) => p.allocations[asset] || 0),
+              stackgroup: 'one',
+              name: asset
+            }))}
+            layout={{
+              xaxis: { title:'Std Dev' },
+              yaxis: { title:'Weight' },
+              margin: { t:20, b:40, l:40, r:20 }
+            }}
+            style={{ width:'100%', height:300 }}
           />
         </>
       )}
