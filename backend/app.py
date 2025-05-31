@@ -886,132 +886,355 @@ def extract_ols_summary(model):
 @app.route("/regression", methods=["POST"])
 def run_regression():
     try:
-        global final_data
+        global final_data # Ensure final_data is accessible if it's a global variable
 
         data = request.json
         ticker = data.get("ticker")
-        start_date = int(data.get("start_date").replace("-", "")[:6])
-        end_date = int(data.get("end_date").replace("-", "")[:6])
-        model = data.get("model", "CAPM")
+        start_date_str = data.get("start_date", "1970-01-01") 
+        end_date_str = data.get("end_date", "2023-12-31")   
+        
+        start_date = int(start_date_str.replace("-", "")[:6])
+        end_date = int(end_date_str.replace("-", "")[:6])
+        
+        model_name_req = data.get("model", "CAPM") 
         rolling_period = int(data.get("rolling_period", 36))
 
-        data_short = final_data[final_data["ticker_new"] == ticker]
+        if not ticker:
+            return jsonify({"error": "Ticker not provided"}), 400
 
-        # 日期边界修正
-        if (end_date is None) or (end_date > data_short["date"].max()):
-            end_date = data_short["date"].max()
-        if (start_date is None) or (start_date < data_short["date"].min()):
-            start_date = data_short["date"].min()
+        data_short = final_data[final_data["ticker_new"] == ticker].copy()
+
+        if data_short.empty:
+            return jsonify({"error": f"No data found for ticker: {ticker}"}), 400
+            
+        max_available_date = data_short["date"].max()
+        min_available_date = data_short["date"].min()
+
+        if end_date > max_available_date:
+            end_date = max_available_date
+        if start_date < min_available_date:
+            start_date = min_available_date
+        
+        if start_date > end_date:
+             return jsonify({"error": "Start date cannot be after end date for the selected ticker's available range."}), 400
 
         data_short = data_short[(data_short["date"] >= start_date) & (data_short["date"] <= end_date)]
+        
+        if data_short.empty:
+            return jsonify({"error": f"No data for ticker {ticker} in the specified date range {start_date} - {end_date}"}), 400
 
-        y_var = data_short["ret"] - data_short["RF"]
-        nobs = y_var.shape[0]
+        # Prepare y_var (dependent variable: excess returns)
+        # Ensure 'RF' (risk-free rate) is present and numeric
+        if 'RF' not in data_short.columns:
+            return jsonify({"error": "RF (Risk-Free rate) column missing in data_short."}), 500
+        data_short['RF'] = pd.to_numeric(data_short['RF'], errors='coerce')
+        data_short['ret'] = pd.to_numeric(data_short['ret'], errors='coerce')
+        
+        y_var_series = (data_short["ret"] - data_short["RF"]).rename('y_excess_return') # Rename for clarity
 
-        # 模型选择
-        if model == "CAPM":
-            x_var = data_short[["Mkt-RF"]]
-            factor_names = ["Mkt-Rf"]
-        elif model == "FF3":
-            x_var = data_short[["Mkt-RF", "HML", "SMB"]]
-            factor_names = ["Mkt-Rf", "HML", "SMB"]
-        elif model == "FF4":
-            x_var = data_short[["Mkt-RF", "HML", "SMB", "MOM"]]
-            factor_names = ["Mkt-Rf", "HML", "SMB", "MOM"]
-        elif model == "FF5":
-            x_var = data_short[["Mkt-RF", "HML", "SMB", "CMA", "RMW"]]
-            factor_names = ["Mkt-Rf", "HML", "SMB", "CMA", "RMW"]
-        else:
+        nobs_initial = y_var_series.shape[0]
+        if nobs_initial == 0:
+            return jsonify({"error": "No observations found for y_var after date filtering."}), 400
+
+        # Select factors based on model_name_req
+        factor_columns_map = {
+            "CAPM": ["Mkt-RF"],
+            "FF3": ["Mkt-RF", "HML", "SMB"],
+            "FF4": ["Mkt-RF", "HML", "SMB", "MOM"],
+            "FF5": ["Mkt-RF", "HML", "SMB", "CMA", "RMW"]
+        }
+        if model_name_req not in factor_columns_map:
             return jsonify({"error": "Invalid model selected"}), 400
+        
+        factor_names = factor_columns_map[model_name_req]
+        
+        # Ensure factor columns exist and are numeric
+        for factor in factor_names:
+            if factor not in data_short.columns:
+                return jsonify({"error": f"Factor column '{factor}' missing in data_short."}), 500
+            data_short[factor] = pd.to_numeric(data_short[factor], errors='coerce')
 
-        n_factors = len(factor_names)
-        x_var = sm.add_constant(x_var)
-        mdl = sm.OLS(y_var, x_var, missing='drop').fit()
+        x_var_df_factors_only = data_short[factor_names].copy()
+        
+        # Add constant and align data by dropping NaNs from the combined DataFrame
+        x_var_with_constant_df = sm.add_constant(x_var_df_factors_only, has_constant='add', prepend=True)
+        
+        # Align y_var with x_var_with_constant_df using their common index from data_short
+        # The index of data_short is used by y_var_series and x_var_df_factors_only
+        combined_for_regression = pd.concat([y_var_series, x_var_with_constant_df], axis=1)
+        combined_for_regression.dropna(inplace=True) # Drop rows with NaNs in y or any x
 
-        # 回归指标
-        loadings = mdl.params.values
-        se = mdl.bse.values
-        tStat = mdl.tvalues.values
-        pvalue = mdl.pvalues.values
-        rsq = mdl.rsquared
-        adj_rsq = mdl.rsquared_adj
-        alpha_annualized = loadings[0] * 12
-        # regression_text = str(mdl.summary())
-        # regression_text = mdl.summary().as_text() 
-        # regression_text = extract_ols_summary(mdl)
-        regression_text = mdl.summary().as_html()
+        if combined_for_regression.shape[0] < x_var_with_constant_df.shape[1] + 1:
+            return jsonify({"error": "Not enough data points for regression after handling NaNs in combined y and X."}), 400
 
-        print(mdl.summary())
+        y_var_final = combined_for_regression['y_excess_return']
+        x_var_final_with_const = combined_for_regression.drop(columns=['y_excess_return'])
+        
+        # Ensure column order for exog_names matches params order (sm.OLS should handle this if df passed)
+        mdl = sm.OLS(y_var_final, x_var_final_with_const).fit()
+        
+        regression_text_html = mdl.summary().as_html()
 
-        # return contribution
-        return_contribution = np.full((n_factors + 2, 2), np.nan)
-        return_contribution[0, 0] = np.nanmean(y_var) * 12
-        return_contribution[1, 0] = alpha_annualized
-
-        for k in range(n_factors):
-            return_contribution[k + 2, 0] = np.nanmean(x_var.iloc[:, k + 1]) * 12
-
-        return_contribution[1, 1] = return_contribution[1, 0] / return_contribution[0, 0] * 100
-        return_contribution[2:, 1] = loadings[1:] * np.nanmean(x_var.iloc[:, 1:], axis=0) * 12 / return_contribution[0, 0] * 100
-
-        return_contribution_df = pd.DataFrame(
-            return_contribution,
-            columns=["Av. Ann. Excess Return", "Return Contribution"],
-            index=[ticker, "alpha"] + factor_names
-        ).round(4).replace({np.nan: None}).reset_index().rename(columns={"index": "Factor"})
-
-        # 画图
-        image_urls = []
-        if nobs >= rolling_period + 10:
-            out_roll = np.full((nobs - rolling_period + 1, n_factors + 1), np.nan)
-            for k in range(rolling_period, nobs + 1):
-                x_roll = x_var.iloc[k - rolling_period:k]
-                y_roll = y_var.iloc[k - rolling_period:k]
-                mdl_roll = sm.OLS(y_roll, x_roll, missing='drop').fit()
-                out_roll[k - rolling_period, :] = mdl_roll.params.values
-
-            date_aux = data_short["date"].iloc[rolling_period - 1:].astype(str)
-            dates_aux = pd.to_datetime(date_aux, format="%Y%m")
-
-            fig, ax1 = plt.subplots(figsize=(14, 7))
-            ax1.set_xlabel("Date")
-            ax1.set_ylabel("Annualized Alpha", color="tab:red")
-            ax1.plot(dates_aux, out_roll[:, 0] * 12, color="tab:red")
-            ax1.tick_params(axis="y", labelcolor="tab:red")
-
-            linestyles = ['solid', 'dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
-            ax2 = ax1.twinx()
-            ax2.set_ylabel("Factor Loadings", color="tab:blue")
-            for i in range(n_factors):
-                ax2.plot(dates_aux, out_roll[:, i + 1], label=factor_names[i], linestyle=linestyles[i])
-            ax2.tick_params(axis="y", labelcolor="tab:blue")
-            fig.tight_layout()
-            fig.legend(["Alpha"] + factor_names, loc="lower right", ncol=n_factors + 1)
-
-            plot_path = os.path.join(STATIC_DIR, "regression_plot.png")
-            fig.savefig(plot_path)
-            plt.close(fig)
-            image_urls.append("/static/regression_plot.png")
-
-        return jsonify({
-            "summary_table": return_contribution_df.to_dict(orient="records"),
-            "image_urls": image_urls,
-            "regression_output": {
-                "r_squared": round(rsq, 4),
-                "adj_r_squared": round(adj_rsq, 4),
-                "alpha_annualized": round(alpha_annualized, 4),
-                "n_observations": int(nobs),
-                "se": se.tolist(),
-                "t-stat": tStat.tolist(),
-                "p-value": pvalue.tolist(),
-                "text_summary": regression_text
-            }
+        # Calculate Return Contribution
+        return_contribution_list = []
+        # Overall excess return for the ticker
+        avg_ann_ticker_excess_ret = np.nanmean(y_var_final) * 12
+        return_contribution_list.append({
+            "Factor": ticker,
+            "Av. Ann. Excess Return": avg_ann_ticker_excess_ret,
+            "Return Contribution": 100.0 # By definition for itself
         })
+
+        # Alpha contribution
+        alpha_coeff = mdl.params.get('const', 0.0) # Default to 0 if 'const' not found
+        alpha_annualized_val = alpha_coeff * 12
+        alpha_contribution_pct = (alpha_annualized_val / avg_ann_ticker_excess_ret * 100) if avg_ann_ticker_excess_ret else None
+        return_contribution_list.append({
+            "Factor": "alpha",
+            "Av. Ann. Excess Return": alpha_annualized_val,
+            "Return Contribution": alpha_contribution_pct
+        })
+        
+        # Factor contributions
+        # x_var_df_factors_only_aligned ensures means are from the same sample used in regression
+        x_var_df_factors_only_aligned = x_var_df_factors_only.loc[y_var_final.index]
+
+        for factor_name in factor_names:
+            if factor_name in mdl.params.index: # Check if factor was included (not dropped due to collinearity etc.)
+                factor_loading = mdl.params[factor_name]
+                avg_factor_return = np.nanmean(x_var_df_factors_only_aligned[factor_name]) * 12
+                contribution_value = factor_loading * avg_factor_return
+                contribution_pct = (contribution_value / avg_ann_ticker_excess_ret * 100) if avg_ann_ticker_excess_ret else None
+                return_contribution_list.append({
+                    "Factor": factor_name,
+                    "Av. Ann. Excess Return": avg_factor_return,
+                    "Return Contribution": contribution_pct
+                })
+
+
+        # Rolling Regression Plot Data
+        image_urls = [] # Keep this empty if the frontend fully handles plotting
+        rolling_plot_data_for_json = None
+        
+        nobs_final = len(y_var_final) # Number of observations after NaN handling for overall regression
+        if nobs_final >= rolling_period + 10:
+            # Ensure rolling regression uses the same cleaned/aligned data
+            out_roll = np.full((nobs_final - rolling_period + 1, x_var_final_with_const.shape[1]), np.nan)
+            
+            # Align data_short for date indexing with the cleaned data for rolling period
+            aligned_dates_for_rolling_idx = y_var_final.index 
+            date_series_for_rolling = data_short.loc[aligned_dates_for_rolling_idx, "date"]
+
+            for k_loop_idx in range(rolling_period -1, nobs_final): # Iterate using index positions
+                start_idx_rolling = k_loop_idx - (rolling_period -1)
+                end_idx_rolling = k_loop_idx + 1
+
+                y_roll_s = y_var_final.iloc[start_idx_rolling:end_idx_rolling]
+                x_roll_df = x_var_final_with_const.iloc[start_idx_rolling:end_idx_rolling]
+                
+                if not x_roll_df.empty and not y_roll_s.empty and len(y_roll_s) >= x_roll_df.shape[1]:
+                    try:
+                        mdl_roll = sm.OLS(y_roll_s, x_roll_df, missing='drop').fit()
+                        out_roll[k_loop_idx - (rolling_period - 1), :] = mdl_roll.params.values
+                    except Exception as e_roll:
+                        print(f"Error in rolling regression for window ending at index {k_loop_idx}: {e_roll}")
+                        out_roll[k_loop_idx - (rolling_period - 1), :] = np.nan
+                else:
+                    out_roll[k_loop_idx - (rolling_period - 1), :] = np.nan
+
+            # Dates for the rolling plot (end of each window)
+            date_aux_series_rolling = date_series_for_rolling.iloc[rolling_period - 1:].astype(str)
+            dates_aux_dt_rolling = pd.to_datetime(date_aux_series_rolling, format="%Y%m")
+            plot_dates_str = [date_obj.strftime('%Y-%m-%d') for date_obj in dates_aux_dt_rolling]
+
+            # Alpha series (constant term is the first column in x_var_final_with_const)
+            alpha_values_rolling = (out_roll[:, 0] * 12).tolist() # Assuming 'const' is always first
+
+            # Factor loadings series
+            factor_loadings_series_list = []
+            # exog_names_rolling should be consistent, taken from x_var_final_with_const.columns
+            # factor_names are ['Mkt-RF', 'HML', ...]
+            # x_var_final_with_const.columns are ['const', 'Mkt-RF', 'HML', ...]
+            for i, factor_name_plot in enumerate(factor_names):
+                # Find the index of this factor in the full exog list (including const)
+                if factor_name_plot in x_var_final_with_const.columns:
+                    factor_col_idx_in_out_roll = x_var_final_with_const.columns.get_loc(factor_name_plot)
+                    factor_loadings_series_list.append({
+                        "name": factor_name_plot,
+                        "values": out_roll[:, factor_col_idx_in_out_roll].tolist()
+                    })
+            
+            rolling_plot_data_for_json = {
+                "dates": plot_dates_str,
+                "alpha_series": alpha_values_rolling,
+                "factor_series": factor_loadings_series_list,
+                "factor_names": factor_names # Original factor names for legend
+            }
+
+        response_payload = {
+            "summary_table": return_contribution_list, # Use the list of dicts
+            "image_urls": image_urls, 
+            "regression_output": {
+                "r_squared": round(mdl.rsquared, 4),
+                "adj_r_squared": round(mdl.rsquared_adj, 4),
+                "alpha_annualized": round(alpha_annualized_val, 4), # Use the correctly calculated alpha
+                "n_observations": int(mdl.nobs),
+                "text_summary": regression_text_html
+            },
+            "rolling_plot_data": rolling_plot_data_for_json 
+        }
+        
+        def sanitize_for_json(data_to_sanitize): # Renamed variable to avoid conflict
+            if isinstance(data_to_sanitize, dict):
+                return {k: sanitize_for_json(v) for k, v in data_to_sanitize.items()}
+            elif isinstance(data_to_sanitize, list):
+                return [sanitize_for_json(i) for i in data_to_sanitize]
+            elif isinstance(data_to_sanitize, (np.float64, np.float32, float)):
+                return None if np.isnan(data_to_sanitize) else float(data_to_sanitize)
+            elif isinstance(data_to_sanitize, (np.int64, np.int32, np.int_, int)):
+                return int(data_to_sanitize)
+            elif isinstance(data_to_sanitize, (np.bool_, np.bool8, bool)):
+                return bool(data_to_sanitize)
+            elif pd.isna(data_to_sanitize): 
+                 return None
+            return data_to_sanitize
+
+        return jsonify(sanitize_for_json(response_payload))
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        current_traceback = traceback.format_exc() # Capture traceback string
+        print(current_traceback) # Print to server logs
+        return jsonify({"error": str(e), "trace": current_traceback}), 500
+
+
+
+# @app.route("/regression", methods=["POST"])
+# def run_regression():
+#     try:
+#         global final_data
+
+#         data = request.json
+#         ticker = data.get("ticker")
+#         start_date = int(data.get("start_date").replace("-", "")[:6])
+#         end_date = int(data.get("end_date").replace("-", "")[:6])
+#         model = data.get("model", "CAPM")
+#         rolling_period = int(data.get("rolling_period", 36))
+
+#         data_short = final_data[final_data["ticker_new"] == ticker]
+
+#         # 日期边界修正
+#         if (end_date is None) or (end_date > data_short["date"].max()):
+#             end_date = data_short["date"].max()
+#         if (start_date is None) or (start_date < data_short["date"].min()):
+#             start_date = data_short["date"].min()
+
+#         data_short = data_short[(data_short["date"] >= start_date) & (data_short["date"] <= end_date)]
+
+#         y_var = data_short["ret"] - data_short["RF"]
+#         nobs = y_var.shape[0]
+
+#         # 模型选择
+#         if model == "CAPM":
+#             x_var = data_short[["Mkt-RF"]]
+#             factor_names = ["Mkt-Rf"]
+#         elif model == "FF3":
+#             x_var = data_short[["Mkt-RF", "HML", "SMB"]]
+#             factor_names = ["Mkt-Rf", "HML", "SMB"]
+#         elif model == "FF4":
+#             x_var = data_short[["Mkt-RF", "HML", "SMB", "MOM"]]
+#             factor_names = ["Mkt-Rf", "HML", "SMB", "MOM"]
+#         elif model == "FF5":
+#             x_var = data_short[["Mkt-RF", "HML", "SMB", "CMA", "RMW"]]
+#             factor_names = ["Mkt-Rf", "HML", "SMB", "CMA", "RMW"]
+#         else:
+#             return jsonify({"error": "Invalid model selected"}), 400
+
+#         n_factors = len(factor_names)
+#         x_var = sm.add_constant(x_var)
+#         mdl = sm.OLS(y_var, x_var, missing='drop').fit()
+
+#         # 回归指标
+#         loadings = mdl.params.values
+#         se = mdl.bse.values
+#         tStat = mdl.tvalues.values
+#         pvalue = mdl.pvalues.values
+#         rsq = mdl.rsquared
+#         adj_rsq = mdl.rsquared_adj
+#         alpha_annualized = loadings[0] * 12
+#         regression_text = mdl.summary().as_html()
+
+#         print(mdl.summary())
+
+#         # return contribution
+#         return_contribution = np.full((n_factors + 2, 2), np.nan)
+#         return_contribution[0, 0] = np.nanmean(y_var) * 12
+#         return_contribution[1, 0] = alpha_annualized
+
+#         for k in range(n_factors):
+#             return_contribution[k + 2, 0] = np.nanmean(x_var.iloc[:, k + 1]) * 12
+
+#         return_contribution[1, 1] = return_contribution[1, 0] / return_contribution[0, 0] * 100
+#         return_contribution[2:, 1] = loadings[1:] * np.nanmean(x_var.iloc[:, 1:], axis=0) * 12 / return_contribution[0, 0] * 100
+
+#         return_contribution_df = pd.DataFrame(
+#             return_contribution,
+#             columns=["Av. Ann. Excess Return", "Return Contribution"],
+#             index=[ticker, "alpha"] + factor_names
+#         ).round(4).replace({np.nan: None}).reset_index().rename(columns={"index": "Factor"})
+
+#         # 画图
+#         image_urls = []
+#         if nobs >= rolling_period + 10:
+#             out_roll = np.full((nobs - rolling_period + 1, n_factors + 1), np.nan)
+#             for k in range(rolling_period, nobs + 1):
+#                 x_roll = x_var.iloc[k - rolling_period:k]
+#                 y_roll = y_var.iloc[k - rolling_period:k]
+#                 mdl_roll = sm.OLS(y_roll, x_roll, missing='drop').fit()
+#                 out_roll[k - rolling_period, :] = mdl_roll.params.values
+
+#             date_aux = data_short["date"].iloc[rolling_period - 1:].astype(str)
+#             dates_aux = pd.to_datetime(date_aux, format="%Y%m")
+
+#             fig, ax1 = plt.subplots(figsize=(14, 7))
+#             ax1.set_xlabel("Date")
+#             ax1.set_ylabel("Annualized Alpha", color="tab:red")
+#             ax1.plot(dates_aux, out_roll[:, 0] * 12, color="tab:red")
+#             ax1.tick_params(axis="y", labelcolor="tab:red")
+
+#             linestyles = ['solid', 'dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
+#             ax2 = ax1.twinx()
+#             ax2.set_ylabel("Factor Loadings", color="tab:blue")
+#             for i in range(n_factors):
+#                 ax2.plot(dates_aux, out_roll[:, i + 1], label=factor_names[i], linestyle=linestyles[i])
+#             ax2.tick_params(axis="y", labelcolor="tab:blue")
+#             fig.tight_layout()
+#             fig.legend(["Alpha"] + factor_names, loc="lower right", ncol=n_factors + 1)
+
+#             plot_path = os.path.join(STATIC_DIR, "regression_plot.png")
+#             fig.savefig(plot_path)
+#             plt.close(fig)
+#             image_urls.append("/static/regression_plot.png")
+
+#         return jsonify({
+#             "summary_table": return_contribution_df.to_dict(orient="records"),
+#             "image_urls": image_urls,
+#             "regression_output": {
+#                 "r_squared": round(rsq, 4),
+#                 "adj_r_squared": round(adj_rsq, 4),
+#                 "alpha_annualized": round(alpha_annualized, 4),
+#                 "n_observations": int(nobs),
+#                 "se": se.tolist(),
+#                 "t-stat": tStat.tolist(),
+#                 "p-value": pvalue.tolist(),
+#                 "text_summary": regression_text
+#             }
+#         })
+
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         return jsonify({"error": str(e)}), 500
 
 @app.route('/static/<path:filename>')
 def serve_image(filename):
