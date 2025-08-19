@@ -50,7 +50,9 @@ export default function FormSection({ setResult }) {
       formData.append("startdate", dayjs(form.startdate).format("YYYYMM"));
       formData.append("enddate", dayjs(form.enddate).format("YYYYMM"));
   
-      const res = await axios.post(`${apiBaseUrl}/run`, formData);
+      const res = await axios.post(`${apiBaseUrl}/run`, formData, {
+        headers: { "Content-Type": "application/json" }
+      });
       setResult(res.data);
     } catch (err) {
       console.error("Submission error:", err);

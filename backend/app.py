@@ -18,6 +18,10 @@ import matplotlib.dates as mdates
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from scipy.stats import skew, kurtosis
 
+from mv import mv
+from backtest import backtesting, backtesting_aux
+
+
 app = Flask(
     __name__,
     static_url_path="/static",
@@ -42,7 +46,11 @@ ff_file = 'F-F_Research_Data_Factors.csv'
 etf_file = 'stocks_mf_ETF_data_final.csv'
 
 
-# Import data from CSV file
+# load the raw data once
+RAW_DF = pd.read_csv("stocks_mf_ETF_data_final.csv")
+RAW_DF["ym"] = RAW_DF["year"] * 100 + RAW_DF["month"]
+
+
 return_data = pd.read_csv("stocks_mf_ETF_data_final.csv", sep = ',')
 return_data['date'] = return_data['year'] * 100 + return_data['month']
 return_data.drop(columns=['month', 'year'], inplace=True)
@@ -121,14 +129,16 @@ def get_and_merge(ff_file, etf_file):
     return df
 
 # Global Data
-df = get_and_merge(ff_file, etf_file)
+# Import data from CSV file
+global_data = get_and_merge(ff_file, etf_file) 
+
 
 # Calculate sharpe ratio
 def sharpe_ratio(x, meandf, covdf, rf): 
     sp = (x@meandf-rf)/np.sqrt(x.T@covdf@x)
     return sp
 
-def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'], short = 0, maxuse = 1, normal = 1, startdate = 199302, enddate = 202312):
+def mv123(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'], short = 0, maxuse = 1, normal = 1, startdate = 199302, enddate = 202312):
 
     gridsize = 100
 
@@ -415,9 +425,9 @@ def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'
             for i in range(len(etflist)): 
                 perct = robw[i] * 100
                 print(f"Asset {i+1} - {etflist[i]}: {perct.round(2)}%")
-            fig, ax = plt.subplots()
-            fig.patch.set_facecolor('white')
-            ax.set_facecolor('white')
+            # fig, ax = plt.subplots()
+            # fig.patch.set_facecolor('white')
+            # ax.set_facecolor('white')
 
             # Create the pie chart
             wedges, texts, autotexts = ax.pie(robw, autopct='%1.1f%%',
@@ -427,7 +437,7 @@ def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'
             # Equal aspect ratio ensures that pie is drawn as a circle
             ax.axis('equal')
             plt.title(f'Robust Max Sharpe Ratio Portfolio Weights, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
-            plt.show()
+            # plt.show()
 
             stddf = stddf * np.sqrt(12)
             meandf = meandf * 12 
@@ -485,430 +495,6 @@ def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'
         print(e)
         # mv(df, etflist, short, 0, normal, startdate, enddate)
 
-def backtesting_aux(start_date, end_date, tickers, allocation, rebalancing, data_short, ff5, start_balance):
-
-    # Start prepping for backtesting
-    t = data_short.pivot(index='date', columns='ticker_new', values='ret')
-    t_dates = t.index  
-
-    if isinstance(tickers, str):
-        tickers = [tickers]
-    
-    if isinstance(tickers, np.ndarray) and tickers.ndim == 0:
-        tickers = [tickers.item()]
-
-
-    # find the missing ticker
-    for ticker in tickers:
-        if ticker not in t.columns:
-            
-            if ticker == "None":
-                continue
-
-            # format date (YYYY-MM-DD)
-            start_str = datetime.strptime(str(start_date), "%Y%m").strftime("%Y-%m-%d")
-            end_str = datetime.strptime(str(end_date), "%Y%m").strftime("%Y-%m-%d")
-
-
-            try:
-                df_yf = yf.download(ticker, start=start_str, end=end_str, interval="1mo", progress=False)
-
-                if df_yf.empty:
-                    raise ValueError("yfinance returned empty DataFrame")
-
-                df_yf = df_yf[["Close"]].dropna()
-                df_yf["ret"] = df_yf["Close"].pct_change()
-                df_yf.dropna(inplace=True)
-
-                df_yf["date"] = df_yf.index.to_period("M").astype(str).str.replace("-", "").astype(int)
-                df_yf.set_index("date", inplace=True)
-
-                t[ticker] = df_yf["ret"]
-
-            except Exception as e:
-                print(f"❌ Failed to fetch {ticker} from yfinance: {e}")
-
-
-
-    t_returns = t[tickers] 
-
-    n_months = len(t_dates)
-    n_assets = len(tickers)
-
-    y_aux = np.floor(t_dates / 100).astype(int)  # extract year
-    m_aux = (t_dates % 100).astype(int)  # extract month
-    d_aux = [calendar.monthrange(y, m)[1] for y, m in zip(y_aux, m_aux)]  # get end of month day
-    dates_aux = pd.to_datetime(dict(year=y_aux, month=m_aux, day=d_aux))
-
-    if not n_months == len(ff5):
-        print('Error: Number of months for tickers different than rf number of months')
-        return
-
-    dollar_amt = np.zeros((n_months, n_assets))
-    
-    allocation = np.array(allocation, dtype=float)  # Ensure allocation is a numpy array
-    
-    if rebalancing == 'monthly':
-        for t in range(n_months):
-            if t == 0:
-                dollar_amt[t, :] = start_balance * np.nan_to_num(allocation / 100) * (1 + t_returns.iloc[t].values)
-            else:
-                dollar_amt[t, :] = np.sum(dollar_amt[t - 1, :]) * np.nan_to_num(allocation / 100)
-                dollar_amt[t, :] *= (1 + t_returns.iloc[t].values)
-
-    elif rebalancing == 'None':
-        dollar_amt_start = start_balance * np.nan_to_num(allocation / 100)
-        cum_returns = (1 + t_returns).cumprod()
-        dollar_amt = np.tile(dollar_amt_start, (n_months, 1)) * cum_returns.values
-
-    elif rebalancing == 'yearly':
-        for t in range(n_months):
-            if t == 0:
-                dollar_amt[t, :] = start_balance * np.nan_to_num(allocation / 100) * (1 + t_returns.iloc[t].values)
-            elif t % 12 != 0:  # Rebalance yearly 
-                dollar_amt[t, :] = dollar_amt[t - 1, :] * (1 + t_returns.iloc[t].values)
-            else:
-                dollar_amt[t, :] = np.sum(dollar_amt[t - 1, :]) * np.nan_to_num(allocation / 100)
-                dollar_amt[t, :] *= (1 + t_returns.iloc[t].values)
-
-    # Portfolio value
-    pv = np.sum(dollar_amt, axis=1)
-    pv2 = np.concatenate(([start_balance], pv))
-
-    # Annual returns
-    ann_return_cagr = (pv2[-1] / start_balance) ** (12 / n_months) - 1
-    ann_return_average = np.nanmean(np.diff(pv2) / pv2[:-1]) * 12
-    ann_std = np.nanstd(np.diff(pv2) / pv2[:-1]) * np.sqrt(12)
-    sharpe_ratio = (ann_return_average - np.nanmean(ff5['RF'])*12) / ann_std
-    p_returns = np.diff(pv2) / pv2[:-1]
-
-    num = p_returns - ff5['RF'].values
-    den = np.where(num > 0, 0, num)
-    sortino_ratio = np.nanmean(num) * 12 / (np.sqrt(12) * np.nanstd(den))
-
-    # Annual returns by year
-    unique_years = np.unique(y_aux)
-    ann_ret = []
-    for y in unique_years:
-        returns_aux = p_returns
-        indicator = y_aux == y
-        returns_y = returns_aux[indicator]
-        aux_ret = np.cumprod(returns_y + 1)
-
-        ann_ret.append([y, aux_ret[-1] - 1, len(returns_y), np.min(m_aux[indicator]), np.max(m_aux[indicator])])
-
-    # Compute drawdowns
-    cumulative_max = np.maximum.accumulate(pv)
-    drawdowns = (pv - cumulative_max) / cumulative_max
-
-    # Group drawdowns
-    drawdown_group = np.full_like(drawdowns, np.nan)
-    non_zero_mask = drawdowns != 0
-    start_of_group = np.concatenate(([False], np.diff(non_zero_mask.astype(int)) > 0))
-    group_ids = np.cumsum(start_of_group)
-    drawdown_group[non_zero_mask] = group_ids[non_zero_mask]
-
-    # Get worst 3 drawdowns
-    min_values = pd.Series(drawdowns[non_zero_mask]).groupby(drawdown_group[non_zero_mask]).min()
-    min_values_result = min_values.sort_values().head(3)
-
-    # Prepare drawdown table
-    drawdowns_tab = []
-    for j, (group_id, min_val) in enumerate(min_values_result.items()):
-        indicator = drawdown_group == group_id
-        drawdowns_short = drawdowns[indicator]
-        dates_short = dates_aux[indicator]
-        start_date = dates_short.min()
-        end_date = dates_short.iloc[np.argmin(drawdowns_short)]
-        no_months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
-        recovery_date = dates_short.max()
-        recovery_time = (recovery_date.year - end_date.year) * 12 + (recovery_date.month - end_date.month)
-        underwater_period = (recovery_date.year - start_date.year) * 12 + (recovery_date.month - start_date.month)
-
-        drawdowns_tab.append([j + 1, start_date, end_date, no_months, recovery_date, recovery_time, underwater_period, min_val])
-
-    # Format drawdowns table into a DataFrame
-    drawdowns_tab2 = pd.DataFrame(drawdowns_tab, columns=[
-        'Rank', 'Start date', 'End date', 'Length', 'Recovered by', 'Recovery time', 'Underwater period', 'Drawdown'
-    ])
-    drawdowns_tab2['Start date'] = drawdowns_tab2['Start date'].dt.strftime('%b-%Y')
-    drawdowns_tab2['End date'] = drawdowns_tab2['End date'].dt.strftime('%b-%Y')
-    drawdowns_tab2['Recovered by'] = drawdowns_tab2['Recovered by'].dt.strftime('%b-%Y')
-
-    return allocation, tickers, dates_aux, drawdowns, ann_ret, sortino_ratio, sharpe_ratio, pv, ann_return_cagr, ann_return_average, ann_std, p_returns, drawdowns_tab2
-
-def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocation3, rebalancing, benchmark, start_balance):
-
-    # Ensure allocations are properly handled as numeric arrays
-    allocation1 = np.array(allocation1, dtype=float)
-    allocation2 = np.array(allocation2, dtype=float)
-    allocation3 = np.array(allocation3, dtype=float)
-
-    # Ensure NaN handling in allocations
-    allocation1 = np.where(allocation1 == None, np.nan, allocation1)
-    allocation2 = np.where(allocation2 == None, np.nan, allocation2)
-    allocation3 = np.where(allocation3 == None, np.nan, allocation3)
-    
-    # Load Data
-    return_data = pd.read_csv("stocks_mf_ETF_data_final.csv")
-    return_data['date'] = return_data['year'] * 100 + return_data['month']
-    return_data = return_data.drop(columns=['month', 'year'])
-
-    final_data = return_data.sort_values(by=['ticker_new', 'date'])
-
-    # Cross-check allocations
-    ind_alloc = [0, 0, 0, 0]  # This vector stores which of the 3 allocations and benchmark should be used
-    portfolio_name = ['Portfolio 1', 'Portfolio 2', 'Portfolio 3', 'Benchmark']
-
-    if not np.isnan(allocation1).all():
-        ind_alloc[0] = 1
-    if not np.isnan(allocation2).all():
-        ind_alloc[1] = 1
-    if not np.isnan(allocation3).all():
-        ind_alloc[2] = 1
-    if benchmark != 'None':
-        ind_alloc[3] = 1
-
-    # Some cross-checks
-    for p in range(3):
-        if ind_alloc[p] == 1:
-            if p == 0:
-                alloc = allocation1
-            elif p == 1:
-                alloc = allocation2
-            elif p == 2:
-                alloc = allocation3
-
-            # Check that each positive weight has a ticker
-            indicator = alloc > 0
-            n_alloc = sum(indicator)
-            tickers_aux = [tickers[i] for i, x in enumerate(indicator) if x]
-            n_tickers = sum([1 for t in tickers_aux if t])
-
-            if n_tickers != n_alloc:
-                print(f"Error: The number of weights needs to be the same as the number of tickers in {portfolio_name[p]}")
-                return
-
-            # Check that every element of allocation is between zero and 100
-            indicator = (alloc >= 0) & (alloc <= 100)
-            if n_alloc != sum(indicator):
-                print(f"Error: Weights need to be between zero and 100 in {portfolio_name[p]}")
-                return
-
-            # Check allocation adds up to 100
-            if not np.nansum(alloc) == 100:
-                print(f"Error: Weights need to add up to 100 in {portfolio_name[p]}")
-                return
-
-    # Filter data for the tickers in the allocation
-    data_short = final_data[final_data['ticker_new'].isin(tickers)]
-
-    # Remove NaNs in returns
-    data_short = data_short.dropna(subset=['ret'])
-
-    # Get the minimum and maximum date for each ticker
-    non_empty_idx = [t for t in tickers if t]
-    min_date = data_short.groupby('ticker_new')['date'].min()
-    max_date = data_short.groupby('ticker_new')['date'].max()
-
-    max_min_date = min_date.max()
-    min_max_date = max_date.min()
-
-    if not start_date:
-        start_date = max_min_date
-
-    if max_min_date > start_date:
-        print(f"Data range will start from {max_min_date} because that is the first available date for ticker {non_empty_idx[min_date.argmax()]}")
-        start_date = max_min_date
-
-    if not end_date:
-        end_date = min_max_date
-
-    if start_date >= end_date:
-        print("Error: Start date cannot be after end date")
-        return
-
-    # Filter data based on date range
-    data_short = data_short[(data_short['date'] >= start_date) & (data_short['date'] <= end_date)]
-
-    # Get risk-free rate data (Fama-French factors)
-    # ff5 = pd.read_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=r'\s+', skiprows=1)
-    ff5 = pd.read_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=",", skiprows=1)
-
-    ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
-    ff5 = ff5[(ff5['date'] >= start_date) & (ff5['date'] <= end_date)]
-
-    # Append benchmark returns to the dataset
-    ff5['ret'] = ff5['Mkt-RF'] + ff5['RF']
-    benchmark_data = pd.DataFrame({
-        'date': ff5['date'],
-        'ret': ff5['ret']/100,
-        'ticker_new': benchmark
-    })
-    # benchmark_data = pd.DataFrame({
-    #     'date': ff5['date'],
-    #     'ret': ff5['ret']/100,
-    #     'ticker_new': 'CRSPVW'
-    # })
-    data_short = pd.concat([data_short, benchmark_data])
-
-    # Keep only risk-free rate for sharpe ratio calculation
-    ff5 = ff5[['date', 'RF']]
-    ff5['RF'] = ff5['RF']/100
-    
-    # Process each portfolio allocation
-    output = {}
-    for p in range(3):
-        if ind_alloc[p] == 1:
-            if p == 0:
-                alloc = allocation1
-                tickers2 = [t for i, t in enumerate(tickers) if not np.isnan(alloc[i])]
-            elif p == 1:
-                alloc = allocation2
-                tickers2 = [t for i, t in enumerate(tickers) if not np.isnan(alloc[i])]
-            elif p == 2:
-                alloc = allocation3
-                tickers2 = [t for i, t in enumerate(tickers) if not np.isnan(alloc[i])]
-
-            alloc = [a for a in alloc if not np.isnan(a)]
-
-            results = backtesting_aux(start_date, end_date, tickers2, alloc, rebalancing, data_short, ff5, start_balance)
-            output[p] = {key: value for key, value in zip(['allocation', 'tickers', 'dates_aux', 'drawdowns', 'ann_ret', 'sortino_ratio', 'sharpe_ratio', 'pv', 'ann_return_cagr', 'ann_return_average', 'ann_std', 'p_returns', 'drawdowns_tab2'], results)}
-
-    # Benchmark
-    p = 3
-    alloc = np.array([100])
-    tickers2 = np.array(benchmark)
-    print(tickers2)
-    results = backtesting_aux(start_date, end_date, tickers2, alloc, rebalancing, data_short, ff5, start_balance)
-    output[p] = {key: value for key, value in zip(['allocation', 'tickers', 'dates_aux', 'drawdowns', 'ann_ret', 'sortino_ratio', 'sharpe_ratio', 'pv', 'ann_return_cagr', 'ann_return_average', 'ann_std', 'p_returns', 'drawdowns_tab2'], results)}
-
-    # Output results and generate plots
-    print(f'Portfolio Backtesting {start_date} - {end_date}')
-
-    for p in range(3):
-        if ind_alloc[p] == 1:
-            print(f"{portfolio_name[p]} allocation:")
-            print(pd.DataFrame(output[p]['allocation'], index=output[p]['tickers'], columns=["Allocation"]))
-
-    # Performance summary
-    ps_table = pd.DataFrame(index=[
-        'Start Balance', 'End Balance', 'Annualized Return (CAGR)', 'Annualized Standard Deviation', 
-        'Best Year', 'Worst Year', 'Maximum drawdown', 'Sharpe Ratio', 'Sortino Ratio', 'Correlation with Benchmark'
-    ])
-    
-    for p in range(4):
-        if ind_alloc[p] == 1:
-            col_data = [
-                start_balance,
-                output[p]['pv'][-1],
-                output[p]['ann_return_cagr'],
-                output[p]['ann_std'],
-                max([row[1] for row in output[p]['ann_ret']]),
-                min([row[1] for row in output[p]['ann_ret']]),
-                min(output[p]['drawdowns']),
-                output[p]['sharpe_ratio'],
-                output[p]['sortino_ratio'],
-                np.corrcoef(output[p]['p_returns'], output[3]['p_returns'])[0, 1]
-            ]
-            ps_table[portfolio_name[p]] = col_data
-    
-    print("Performance Summary")
-    print(ps_table)
-
-    # Portfolio Growth Plot
-    plt.figure(figsize=(12, 4))
-    for p in range(4):
-        if ind_alloc[p] == 1:
-            plt.plot(output[p]['dates_aux'], output[p]['pv'], label=portfolio_name[p], linewidth=2.5)
-    plt.legend(loc='upper left')
-    plt.title('Portfolio Growth')
-    plt.show()
-
-    # Annual Returns Plot
-    
-    # x values represent the years on the benchmark portfolio
-    
-    t = next((i for i, x in enumerate(ind_alloc) if x), None)
-    x = [row[0] for row in output[t]['ann_ret']]  
-
-    # Filter y_values based on ind_alloc[p] == 1 and only process portfolios that are active
-    y_values = np.column_stack([
-        [row[1] for row in output[p]['ann_ret']] if ind_alloc[p] == 1 and output[p]['ann_ret'] else [np.nan] * len(x)
-        for p in range(4) if ind_alloc[p] == 1
-    ])
-
-    # Create a list of portfolio labels for the active portfolios
-    active_portfolio_names = [portfolio_name[p] for p in range(4) if ind_alloc[p] == 1]
-
-    # Plotting the annual returns for each active portfolio
-    width = 0.2  # Width of each bar
-    n_portfolios = y_values.shape[1]  # Number of active portfolios
-
-    plt.figure(figsize=(12, 6))
-
-    # Loop through active portfolios and plot with an offset
-    for i in range(n_portfolios):
-        plt.bar(np.array(x) + i * width, y_values[:, i] * 100, width, label=active_portfolio_names[i])
-    
-    plt.xticks(x)
-    plt.xlabel('Year')
-    plt.ylabel('Annual Returns (%)')
-    plt.legend(loc='best')
-    plt.title('Annual Returns by Portfolio')
-    plt.show()
-
-    # Drawdown Plot
-    plt.figure(figsize=(12, 4))
-    for p in range(4):
-        if ind_alloc[p] == 1:
-            plt.plot(output[p]['dates_aux'], output[p]['drawdowns'] * 100, label=portfolio_name[p], linewidth=1.5)
-    plt.title('Drawdowns')
-    plt.legend()
-    plt.show()
-
-    # Get top 3 drawdowns for each portfolio
-    for p in range(3):
-        if ind_alloc[p] == 1:
-            print(f"Top 3 drawdowns {portfolio_name[p]}")
-            print(output[p]['drawdowns_tab2']) 
-
-
-    # Regression analysis
-    for p in range(3):
-        if ind_alloc[p] == 1:
-            print(f"Regression analysis {portfolio_name[p]}")
-
-            # Independent and dependent variables
-            x_var = output[p]['p_returns'] - ff5['RF']  # Portfolio returns minus risk-free rate
-            y_var = output[3]['p_returns'] - ff5['RF']  # Benchmark returns minus risk-free rate
-
-            # Add a constant to x_var for the intercept in the regression model
-            x_var_with_constant = sm.add_constant(x_var)
-
-            # Fit the linear model
-            model = sm.OLS(y_var, x_var_with_constant).fit()
-
-            # Print R-squared and Adjusted R-squared
-            print(f"R square {model.rsquared:.2f}")
-            print(f"Adjusted R square {model.rsquared_adj:.2f}")
-            print(f"Observations {int(model.nobs)}")
-
-            # Combine the regression results into a DataFrame for easy display
-            aux = pd.DataFrame({
-                'Loadings': model.params,
-                'Standard Errors': model.bse,
-                't-stat': model.tvalues,
-                'p-value': model.pvalues
-            })
-            aux.index = ['alpha', 'beta']
-            print(aux)
-
-            # Calculate and print annualized alpha
-            annualized_alpha = model.params['const'] * 12 
-            print(f'Annualized alpha {annualized_alpha:.4f}')
-
-
 
 # %%
 # etflist = ['FLCNX','JLGMX','VFTNX','VIIIX','VPMAX','MEIKX','VEIRX',
@@ -935,50 +521,128 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
 def home():
     return 'home'
 
-@app.route('/run', methods=['POST'])
-def run_mv():
+# @app.route('/run', methods=['POST'])
+# def run_mv():
+#     try:
+#         short    = int(request.form.get('short', 0))
+#         maxuse   = int(request.form.get('maxuse', 0))
+#         normal   = int(request.form.get('normal', 0))
+#         start    = int(request.form.get('startdate', 197001))
+#         end      = int(request.form.get('enddate', 202312))
+#         etf_str  = request.form.get('etflist','VOO,VXUS,AVUV,AVDV,AVEM')
+#         etflist  = etf_str.split(',')
 
-    try:
-        global df
+#         # 保留原有 mv() 打印输出
+#         buf = io.StringIO()
+#         with redirect_stdout(buf):
+#             mv(df.copy(), etflist, short, maxuse, normal, start, end)
 
-        short = int(request.form.get('short', 0))
-        maxuse = int(request.form.get('maxuse', 0))
-        normal = int(request.form.get('normal', 0))
-        startdate = int(request.form.get('startdate', 197001))
-        enddate = int(request.form.get('enddate', 202312))
+#         # 额外生成 JSON 图表数据
+#         chart_data = run_mv_core(df.copy(), etflist, short, maxuse, normal, start, end)
 
-        etflist_str = request.form.get('etflist')
-        etflist = etflist_str.split(',') if etflist_str else ['VOO', 'VXUS', 'AVUV', 'AVDV', 'AVEM']
+#         return jsonify({
+#             "output_text": buf.getvalue(),
+#             **chart_data
+#         })
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
-        df = df[(df["ym"] >= startdate) & (df["ym"] <= enddate)]
 
-        plt.switch_backend('Agg')
-        f = io.StringIO()
-        with redirect_stdout(f):
-            mv(df, etflist, short, maxuse, normal, startdate, enddate)
-        output_text = f.getvalue()
 
-        image_paths = []
-        for idx, fig_num in enumerate(plt.get_fignums()):
-            fig = plt.figure(fig_num)
-            path = os.path.join(STATIC_DIR, f"plot_{idx}.png")
-            fig.savefig(path)
-            image_paths.append(f"/static/plot_{idx}.png")
-        plt.close('all')
 
-        return jsonify({
-            "output_text": output_text,
-            "image_urls": image_paths
-        })
+# @app.route('/run', methods=['POST'])
+# def run_mv_route():
+#     try:
+#         short   = int(request.form.get('short', 0))
+#         maxuse  = int(request.form.get('maxuse', 0))
+#         normal  = int(request.form.get('normal', 0))
+#         start   = int(request.form.get('startdate', 197001))
+#         end     = int(request.form.get('enddate',   202312))
+#         etf_str = request.form.get('etflist', "VOO,VXUS,AVUV,AVDV,AVEM")
+#         etflist = etf_str.split(",")
+
+#         # 1) 捕获 mv() 的 stdout
+#         buf = io.StringIO()
+#         with redirect_stdout(buf):
+#             mv(global_data.copy(), etflist, short, maxuse, normal, start, end)
+#         output_text = buf.getvalue()
+
+#         # 2) 生成交互图数据
+#         chart_data = extract_mv_charts(global_data.copy(), etflist, short, maxuse, normal, start, end)
+
+#         return jsonify({
+#             'output_text': output_text,
+#             **chart_data
+#         })
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
     
-    except Exception as e:
-        import traceback
-        traceback.print_exc() 
-        return jsonify({
-            "output_text": f"error: {str(e)}",
-            "image_urls": []
-        })
+@app.route("/run", methods=["POST"])
+def run_mv():
+    data = request.json or request.form
+    etfl = data.get("etflist", "").split(",") if data.get("etflist") else ["VOO","VXUS","AVUV","AVDV","AVEM"]
+    short  = int(data.get("short", 0))
+    maxuse = int(data.get("maxuse", 0))
+    normal = int(data.get("normal", 1))
+    sd = int(data.get("startdate", 199302))
+    ed = int(data.get("enddate",   202312))
 
+    result = mv(
+        global_data.copy(), etfl,
+        short, maxuse, normal,
+        sd, ed
+    )
+    return jsonify(result)
+    
+
+
+# @app.route("/backtest", methods=["POST"])
+# def run_backtest():
+#     try:
+#         data = request.json
+
+#         start_date_str = data.get("start_date", "1970-01-01")
+#         end_date_str = data.get("end_date", "2023-12-31")
+
+#         start_date = int(start_date_str.replace("-", "")[:6])
+#         end_date = int(end_date_str.replace("-", "")[:6])
+#         tickers = data.get("tickers", [])
+#         allocation1 = [float(x) if x not in [None, ""] else None for x in data.get("allocation1", [])]
+#         allocation2 = [float(x) if x not in [None, ""] else None for x in data.get("allocation2", [])]
+#         allocation3 = [float(x) if x not in [None, ""] else None for x in data.get("allocation3", [])]
+#         rebalancing = data.get("rebalance", "monthly")
+#         benchmark = data.get("benchmark", ["CRSPVW"])[0]
+#         start_balance = float(data.get("start_balance", 10000))
+
+#         # Catch print() output
+#         f = io.StringIO()
+#         plt.switch_backend("Agg")
+#         with redirect_stdout(f):
+#             backtesting(start_date, end_date, tickers, allocation1, allocation2, allocation3, rebalancing, benchmark, start_balance)
+#         # backtesting(start_date, end_date, tickers, allocation1, allocation2, allocation3, rebalancing, benchmark, start_balance)
+
+#         output_text = f.getvalue()
+
+#         # save image as static file
+#         image_paths = []
+#         for i, fig_num in enumerate(plt.get_fignums()):
+#             fig = plt.figure(fig_num)
+#             path = os.path.join(STATIC_DIR, f"backtest_plot_{i}.png")
+#             fig.savefig(path)
+#             image_paths.append(f"/static/backtest_plot_{i}.png")
+#         plt.close("all")
+
+#         return jsonify({
+#             "output_text": output_text,
+#             "image_urls": image_paths,
+#             "summary_table": [],
+#             "regression_table": []
+#         })
+
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         return jsonify({"error": str(e)}), 500
 
 @app.route("/backtest", methods=["POST"])
 def run_backtest():
@@ -987,46 +651,97 @@ def run_backtest():
 
         start_date_str = data.get("start_date", "1970-01-01")
         end_date_str = data.get("end_date", "2023-12-31")
-
         start_date = int(start_date_str.replace("-", "")[:6])
         end_date = int(end_date_str.replace("-", "")[:6])
+        
         tickers = data.get("tickers", [])
-        allocation1 = [float(x) if x not in [None, ""] else None for x in data.get("allocation1", [])]
-        allocation2 = [float(x) if x not in [None, ""] else None for x in data.get("allocation2", [])]
-        allocation3 = [float(x) if x not in [None, ""] else None for x in data.get("allocation3", [])]
+        
+        allocation1_raw = data.get("allocation1", [])
+        allocation2_raw = data.get("allocation2", [])
+        allocation3_raw = data.get("allocation3", [])
+
+        num_tickers = len(tickers)
+        
+        def process_allocation(raw_alloc, length):
+            processed = [np.nan] * length
+            for i, x_val_str in enumerate(raw_alloc):
+                if i < length:
+                    if x_val_str is not None and x_val_str != "":
+                        try:
+                            processed[i] = float(x_val_str)
+                        except ValueError:
+                            processed[i] = np.nan
+                    else:
+                        processed[i] = np.nan
+            return processed
+
+        allocation1 = np.array(process_allocation(allocation1_raw, num_tickers), dtype=float)
+        allocation2 = np.array(process_allocation(allocation2_raw, num_tickers), dtype=float)
+        allocation3 = np.array(process_allocation(allocation3_raw, num_tickers), dtype=float)
+        
         rebalancing = data.get("rebalance", "monthly")
-        benchmark = data.get("benchmark", ["CRSPVW"])[0]
+        benchmark_input = data.get("benchmark", ["CRSPVW"])
+        benchmark = benchmark_input[0] if isinstance(benchmark_input, list) and benchmark_input else "CRSPVW"
         start_balance = float(data.get("start_balance", 10000))
 
-        # Catch print() output
         f = io.StringIO()
         plt.switch_backend("Agg")
-        with redirect_stdout(f):
-            backtesting(start_date, end_date, tickers, allocation1, allocation2, allocation3, rebalancing, benchmark, start_balance)
-        # backtesting(start_date, end_date, tickers, allocation1, allocation2, allocation3, rebalancing, benchmark, start_balance)
+        
+        structured_results_from_backtesting = {} 
 
+        with redirect_stdout(f):
+            structured_results_from_backtesting = backtesting(
+                start_date, end_date, tickers,
+                allocation1, allocation2, allocation3,
+                rebalancing, benchmark, start_balance
+            )
+        
         output_text = f.getvalue()
 
-        # save image as static file
-        image_paths = []
-        for i, fig_num in enumerate(plt.get_fignums()):
+        image_urls = []
+        timestamp = datetime.now().timestamp()
+        for i, fig_num in enumerate(plt.get_fignums()): # If plt.show() was indeed removed, this loop might not find figures.
             fig = plt.figure(fig_num)
-            path = os.path.join(STATIC_DIR, f"backtest_plot_{i}.png")
+            img_filename = f"backtest_plot_{timestamp}_{i}.png"
+            path = os.path.join(STATIC_DIR, img_filename)
             fig.savefig(path)
-            image_paths.append(f"/static/backtest_plot_{i}.png")
+            image_urls.append(f"/static/{img_filename}")
         plt.close("all")
 
-        return jsonify({
+        response_data = {
             "output_text": output_text,
-            "image_urls": image_paths,
-            "summary_table": [],
-            "regression_table": []
-        })
+            "image_urls": image_urls, # Can be empty if all plots are now frontend-rendered
+            "portfolio_allocations": structured_results_from_backtesting.get("portfolio_allocations", []),
+            "summary_table": structured_results_from_backtesting.get("performance_summary_table", []),
+            "drawdown_tables": structured_results_from_backtesting.get("drawdown_tables", []),
+            "regression_table": structured_results_from_backtesting.get("regression_summary_tables", []),
+            "portfolio_growth_plot_data": structured_results_from_backtesting.get("portfolio_growth_plot_data", []),
+            "annual_returns_plot_data": structured_results_from_backtesting.get("annual_returns_plot_data", {}),
+            "drawdown_plot_data": structured_results_from_backtesting.get("drawdown_plot_data", [])
+        }
+        
+        def sanitize_for_json(data):
+            if isinstance(data, dict):
+                return {k: sanitize_for_json(v) for k, v in data.items()}
+            elif isinstance(data, list):
+                return [sanitize_for_json(i) for i in data]
+            elif isinstance(data, (np.float64, np.float32, float)): # Added float here
+                return None if np.isnan(data) else float(data)
+            elif isinstance(data, (np.int64, np.int32, np.int_, int)): # Added int here
+                return int(data)
+            elif isinstance(data, (np.bool_, np.bool8, bool)): # Added bool here
+                return bool(data)
+            elif pd.isna(data):
+                 return None
+            return data
+
+        sanitized_response_data = sanitize_for_json(response_data)
+        return jsonify(sanitized_response_data)
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
 
 # def extract_ols_summary(model, x_var, y_var, ticker):
@@ -1171,132 +886,355 @@ def extract_ols_summary(model):
 @app.route("/regression", methods=["POST"])
 def run_regression():
     try:
-        global final_data
+        global final_data # Ensure final_data is accessible if it's a global variable
 
         data = request.json
         ticker = data.get("ticker")
-        start_date = int(data.get("start_date").replace("-", "")[:6])
-        end_date = int(data.get("end_date").replace("-", "")[:6])
-        model = data.get("model", "CAPM")
+        start_date_str = data.get("start_date", "1970-01-01") 
+        end_date_str = data.get("end_date", "2023-12-31")   
+        
+        start_date = int(start_date_str.replace("-", "")[:6])
+        end_date = int(end_date_str.replace("-", "")[:6])
+        
+        model_name_req = data.get("model", "CAPM") 
         rolling_period = int(data.get("rolling_period", 36))
 
-        data_short = final_data[final_data["ticker_new"] == ticker]
+        if not ticker:
+            return jsonify({"error": "Ticker not provided"}), 400
 
-        # 日期边界修正
-        if (end_date is None) or (end_date > data_short["date"].max()):
-            end_date = data_short["date"].max()
-        if (start_date is None) or (start_date < data_short["date"].min()):
-            start_date = data_short["date"].min()
+        data_short = final_data[final_data["ticker_new"] == ticker].copy()
+
+        if data_short.empty:
+            return jsonify({"error": f"No data found for ticker: {ticker}"}), 400
+            
+        max_available_date = data_short["date"].max()
+        min_available_date = data_short["date"].min()
+
+        if end_date > max_available_date:
+            end_date = max_available_date
+        if start_date < min_available_date:
+            start_date = min_available_date
+        
+        if start_date > end_date:
+             return jsonify({"error": "Start date cannot be after end date for the selected ticker's available range."}), 400
 
         data_short = data_short[(data_short["date"] >= start_date) & (data_short["date"] <= end_date)]
+        
+        if data_short.empty:
+            return jsonify({"error": f"No data for ticker {ticker} in the specified date range {start_date} - {end_date}"}), 400
 
-        y_var = data_short["ret"] - data_short["RF"]
-        nobs = y_var.shape[0]
+        # Prepare y_var (dependent variable: excess returns)
+        # Ensure 'RF' (risk-free rate) is present and numeric
+        if 'RF' not in data_short.columns:
+            return jsonify({"error": "RF (Risk-Free rate) column missing in data_short."}), 500
+        data_short['RF'] = pd.to_numeric(data_short['RF'], errors='coerce')
+        data_short['ret'] = pd.to_numeric(data_short['ret'], errors='coerce')
+        
+        y_var_series = (data_short["ret"] - data_short["RF"]).rename('y_excess_return') # Rename for clarity
 
-        # 模型选择
-        if model == "CAPM":
-            x_var = data_short[["Mkt-RF"]]
-            factor_names = ["Mkt-Rf"]
-        elif model == "FF3":
-            x_var = data_short[["Mkt-RF", "HML", "SMB"]]
-            factor_names = ["Mkt-Rf", "HML", "SMB"]
-        elif model == "FF4":
-            x_var = data_short[["Mkt-RF", "HML", "SMB", "MOM"]]
-            factor_names = ["Mkt-Rf", "HML", "SMB", "MOM"]
-        elif model == "FF5":
-            x_var = data_short[["Mkt-RF", "HML", "SMB", "CMA", "RMW"]]
-            factor_names = ["Mkt-Rf", "HML", "SMB", "CMA", "RMW"]
-        else:
+        nobs_initial = y_var_series.shape[0]
+        if nobs_initial == 0:
+            return jsonify({"error": "No observations found for y_var after date filtering."}), 400
+
+        # Select factors based on model_name_req
+        factor_columns_map = {
+            "CAPM": ["Mkt-RF"],
+            "FF3": ["Mkt-RF", "HML", "SMB"],
+            "FF4": ["Mkt-RF", "HML", "SMB", "MOM"],
+            "FF5": ["Mkt-RF", "HML", "SMB", "CMA", "RMW"]
+        }
+        if model_name_req not in factor_columns_map:
             return jsonify({"error": "Invalid model selected"}), 400
+        
+        factor_names = factor_columns_map[model_name_req]
+        
+        # Ensure factor columns exist and are numeric
+        for factor in factor_names:
+            if factor not in data_short.columns:
+                return jsonify({"error": f"Factor column '{factor}' missing in data_short."}), 500
+            data_short[factor] = pd.to_numeric(data_short[factor], errors='coerce')
 
-        n_factors = len(factor_names)
-        x_var = sm.add_constant(x_var)
-        mdl = sm.OLS(y_var, x_var, missing='drop').fit()
+        x_var_df_factors_only = data_short[factor_names].copy()
+        
+        # Add constant and align data by dropping NaNs from the combined DataFrame
+        x_var_with_constant_df = sm.add_constant(x_var_df_factors_only, has_constant='add', prepend=True)
+        
+        # Align y_var with x_var_with_constant_df using their common index from data_short
+        # The index of data_short is used by y_var_series and x_var_df_factors_only
+        combined_for_regression = pd.concat([y_var_series, x_var_with_constant_df], axis=1)
+        combined_for_regression.dropna(inplace=True) # Drop rows with NaNs in y or any x
 
-        # 回归指标
-        loadings = mdl.params.values
-        se = mdl.bse.values
-        tStat = mdl.tvalues.values
-        pvalue = mdl.pvalues.values
-        rsq = mdl.rsquared
-        adj_rsq = mdl.rsquared_adj
-        alpha_annualized = loadings[0] * 12
-        # regression_text = str(mdl.summary())
-        # regression_text = mdl.summary().as_text() 
-        # regression_text = extract_ols_summary(mdl)
-        regression_text = mdl.summary().as_html()
+        if combined_for_regression.shape[0] < x_var_with_constant_df.shape[1] + 1:
+            return jsonify({"error": "Not enough data points for regression after handling NaNs in combined y and X."}), 400
 
-        print(mdl.summary())
+        y_var_final = combined_for_regression['y_excess_return']
+        x_var_final_with_const = combined_for_regression.drop(columns=['y_excess_return'])
+        
+        # Ensure column order for exog_names matches params order (sm.OLS should handle this if df passed)
+        mdl = sm.OLS(y_var_final, x_var_final_with_const).fit()
+        
+        regression_text_html = mdl.summary().as_html()
 
-        # return contribution
-        return_contribution = np.full((n_factors + 2, 2), np.nan)
-        return_contribution[0, 0] = np.nanmean(y_var) * 12
-        return_contribution[1, 0] = alpha_annualized
-
-        for k in range(n_factors):
-            return_contribution[k + 2, 0] = np.nanmean(x_var.iloc[:, k + 1]) * 12
-
-        return_contribution[1, 1] = return_contribution[1, 0] / return_contribution[0, 0] * 100
-        return_contribution[2:, 1] = loadings[1:] * np.nanmean(x_var.iloc[:, 1:], axis=0) * 12 / return_contribution[0, 0] * 100
-
-        return_contribution_df = pd.DataFrame(
-            return_contribution,
-            columns=["Av. Ann. Excess Return", "Return Contribution"],
-            index=[ticker, "alpha"] + factor_names
-        ).round(4).replace({np.nan: None}).reset_index().rename(columns={"index": "Factor"})
-
-        # 画图
-        image_urls = []
-        if nobs >= rolling_period + 10:
-            out_roll = np.full((nobs - rolling_period + 1, n_factors + 1), np.nan)
-            for k in range(rolling_period, nobs + 1):
-                x_roll = x_var.iloc[k - rolling_period:k]
-                y_roll = y_var.iloc[k - rolling_period:k]
-                mdl_roll = sm.OLS(y_roll, x_roll, missing='drop').fit()
-                out_roll[k - rolling_period, :] = mdl_roll.params.values
-
-            date_aux = data_short["date"].iloc[rolling_period - 1:].astype(str)
-            dates_aux = pd.to_datetime(date_aux, format="%Y%m")
-
-            fig, ax1 = plt.subplots(figsize=(14, 7))
-            ax1.set_xlabel("Date")
-            ax1.set_ylabel("Annualized Alpha", color="tab:red")
-            ax1.plot(dates_aux, out_roll[:, 0] * 12, color="tab:red")
-            ax1.tick_params(axis="y", labelcolor="tab:red")
-
-            linestyles = ['solid', 'dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
-            ax2 = ax1.twinx()
-            ax2.set_ylabel("Factor Loadings", color="tab:blue")
-            for i in range(n_factors):
-                ax2.plot(dates_aux, out_roll[:, i + 1], label=factor_names[i], linestyle=linestyles[i])
-            ax2.tick_params(axis="y", labelcolor="tab:blue")
-            fig.tight_layout()
-            fig.legend(["Alpha"] + factor_names, loc="lower right", ncol=n_factors + 1)
-
-            plot_path = os.path.join(STATIC_DIR, "regression_plot.png")
-            fig.savefig(plot_path)
-            plt.close(fig)
-            image_urls.append("/static/regression_plot.png")
-
-        return jsonify({
-            "summary_table": return_contribution_df.to_dict(orient="records"),
-            "image_urls": image_urls,
-            "regression_output": {
-                "r_squared": round(rsq, 4),
-                "adj_r_squared": round(adj_rsq, 4),
-                "alpha_annualized": round(alpha_annualized, 4),
-                "n_observations": int(nobs),
-                "se": se.tolist(),
-                "t-stat": tStat.tolist(),
-                "p-value": pvalue.tolist(),
-                "text_summary": regression_text
-            }
+        # Calculate Return Contribution
+        return_contribution_list = []
+        # Overall excess return for the ticker
+        avg_ann_ticker_excess_ret = np.nanmean(y_var_final) * 12
+        return_contribution_list.append({
+            "Factor": ticker,
+            "Av. Ann. Excess Return": avg_ann_ticker_excess_ret,
+            "Return Contribution": 100.0 # By definition for itself
         })
+
+        # Alpha contribution
+        alpha_coeff = mdl.params.get('const', 0.0) # Default to 0 if 'const' not found
+        alpha_annualized_val = alpha_coeff * 12
+        alpha_contribution_pct = (alpha_annualized_val / avg_ann_ticker_excess_ret * 100) if avg_ann_ticker_excess_ret else None
+        return_contribution_list.append({
+            "Factor": "alpha",
+            "Av. Ann. Excess Return": alpha_annualized_val,
+            "Return Contribution": alpha_contribution_pct
+        })
+        
+        # Factor contributions
+        # x_var_df_factors_only_aligned ensures means are from the same sample used in regression
+        x_var_df_factors_only_aligned = x_var_df_factors_only.loc[y_var_final.index]
+
+        for factor_name in factor_names:
+            if factor_name in mdl.params.index: # Check if factor was included (not dropped due to collinearity etc.)
+                factor_loading = mdl.params[factor_name]
+                avg_factor_return = np.nanmean(x_var_df_factors_only_aligned[factor_name]) * 12
+                contribution_value = factor_loading * avg_factor_return
+                contribution_pct = (contribution_value / avg_ann_ticker_excess_ret * 100) if avg_ann_ticker_excess_ret else None
+                return_contribution_list.append({
+                    "Factor": factor_name,
+                    "Av. Ann. Excess Return": avg_factor_return,
+                    "Return Contribution": contribution_pct
+                })
+
+
+        # Rolling Regression Plot Data
+        image_urls = [] # Keep this empty if the frontend fully handles plotting
+        rolling_plot_data_for_json = None
+        
+        nobs_final = len(y_var_final) # Number of observations after NaN handling for overall regression
+        if nobs_final >= rolling_period + 10:
+            # Ensure rolling regression uses the same cleaned/aligned data
+            out_roll = np.full((nobs_final - rolling_period + 1, x_var_final_with_const.shape[1]), np.nan)
+            
+            # Align data_short for date indexing with the cleaned data for rolling period
+            aligned_dates_for_rolling_idx = y_var_final.index 
+            date_series_for_rolling = data_short.loc[aligned_dates_for_rolling_idx, "date"]
+
+            for k_loop_idx in range(rolling_period -1, nobs_final): # Iterate using index positions
+                start_idx_rolling = k_loop_idx - (rolling_period -1)
+                end_idx_rolling = k_loop_idx + 1
+
+                y_roll_s = y_var_final.iloc[start_idx_rolling:end_idx_rolling]
+                x_roll_df = x_var_final_with_const.iloc[start_idx_rolling:end_idx_rolling]
+                
+                if not x_roll_df.empty and not y_roll_s.empty and len(y_roll_s) >= x_roll_df.shape[1]:
+                    try:
+                        mdl_roll = sm.OLS(y_roll_s, x_roll_df, missing='drop').fit()
+                        out_roll[k_loop_idx - (rolling_period - 1), :] = mdl_roll.params.values
+                    except Exception as e_roll:
+                        print(f"Error in rolling regression for window ending at index {k_loop_idx}: {e_roll}")
+                        out_roll[k_loop_idx - (rolling_period - 1), :] = np.nan
+                else:
+                    out_roll[k_loop_idx - (rolling_period - 1), :] = np.nan
+
+            # Dates for the rolling plot (end of each window)
+            date_aux_series_rolling = date_series_for_rolling.iloc[rolling_period - 1:].astype(str)
+            dates_aux_dt_rolling = pd.to_datetime(date_aux_series_rolling, format="%Y%m")
+            plot_dates_str = [date_obj.strftime('%Y-%m-%d') for date_obj in dates_aux_dt_rolling]
+
+            # Alpha series (constant term is the first column in x_var_final_with_const)
+            alpha_values_rolling = (out_roll[:, 0] * 12).tolist() # Assuming 'const' is always first
+
+            # Factor loadings series
+            factor_loadings_series_list = []
+            # exog_names_rolling should be consistent, taken from x_var_final_with_const.columns
+            # factor_names are ['Mkt-RF', 'HML', ...]
+            # x_var_final_with_const.columns are ['const', 'Mkt-RF', 'HML', ...]
+            for i, factor_name_plot in enumerate(factor_names):
+                # Find the index of this factor in the full exog list (including const)
+                if factor_name_plot in x_var_final_with_const.columns:
+                    factor_col_idx_in_out_roll = x_var_final_with_const.columns.get_loc(factor_name_plot)
+                    factor_loadings_series_list.append({
+                        "name": factor_name_plot,
+                        "values": out_roll[:, factor_col_idx_in_out_roll].tolist()
+                    })
+            
+            rolling_plot_data_for_json = {
+                "dates": plot_dates_str,
+                "alpha_series": alpha_values_rolling,
+                "factor_series": factor_loadings_series_list,
+                "factor_names": factor_names # Original factor names for legend
+            }
+
+        response_payload = {
+            "summary_table": return_contribution_list, # Use the list of dicts
+            "image_urls": image_urls, 
+            "regression_output": {
+                "r_squared": round(mdl.rsquared, 4),
+                "adj_r_squared": round(mdl.rsquared_adj, 4),
+                "alpha_annualized": round(alpha_annualized_val, 4), # Use the correctly calculated alpha
+                "n_observations": int(mdl.nobs),
+                "text_summary": regression_text_html
+            },
+            "rolling_plot_data": rolling_plot_data_for_json 
+        }
+        
+        def sanitize_for_json(data_to_sanitize): # Renamed variable to avoid conflict
+            if isinstance(data_to_sanitize, dict):
+                return {k: sanitize_for_json(v) for k, v in data_to_sanitize.items()}
+            elif isinstance(data_to_sanitize, list):
+                return [sanitize_for_json(i) for i in data_to_sanitize]
+            elif isinstance(data_to_sanitize, (np.float64, np.float32, float)):
+                return None if np.isnan(data_to_sanitize) else float(data_to_sanitize)
+            elif isinstance(data_to_sanitize, (np.int64, np.int32, np.int_, int)):
+                return int(data_to_sanitize)
+            elif isinstance(data_to_sanitize, (np.bool_, np.bool8, bool)):
+                return bool(data_to_sanitize)
+            elif pd.isna(data_to_sanitize): 
+                 return None
+            return data_to_sanitize
+
+        return jsonify(sanitize_for_json(response_payload))
 
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        current_traceback = traceback.format_exc() # Capture traceback string
+        print(current_traceback) # Print to server logs
+        return jsonify({"error": str(e), "trace": current_traceback}), 500
+
+
+
+# @app.route("/regression", methods=["POST"])
+# def run_regression():
+#     try:
+#         global final_data
+
+#         data = request.json
+#         ticker = data.get("ticker")
+#         start_date = int(data.get("start_date").replace("-", "")[:6])
+#         end_date = int(data.get("end_date").replace("-", "")[:6])
+#         model = data.get("model", "CAPM")
+#         rolling_period = int(data.get("rolling_period", 36))
+
+#         data_short = final_data[final_data["ticker_new"] == ticker]
+
+#         # 日期边界修正
+#         if (end_date is None) or (end_date > data_short["date"].max()):
+#             end_date = data_short["date"].max()
+#         if (start_date is None) or (start_date < data_short["date"].min()):
+#             start_date = data_short["date"].min()
+
+#         data_short = data_short[(data_short["date"] >= start_date) & (data_short["date"] <= end_date)]
+
+#         y_var = data_short["ret"] - data_short["RF"]
+#         nobs = y_var.shape[0]
+
+#         # 模型选择
+#         if model == "CAPM":
+#             x_var = data_short[["Mkt-RF"]]
+#             factor_names = ["Mkt-Rf"]
+#         elif model == "FF3":
+#             x_var = data_short[["Mkt-RF", "HML", "SMB"]]
+#             factor_names = ["Mkt-Rf", "HML", "SMB"]
+#         elif model == "FF4":
+#             x_var = data_short[["Mkt-RF", "HML", "SMB", "MOM"]]
+#             factor_names = ["Mkt-Rf", "HML", "SMB", "MOM"]
+#         elif model == "FF5":
+#             x_var = data_short[["Mkt-RF", "HML", "SMB", "CMA", "RMW"]]
+#             factor_names = ["Mkt-Rf", "HML", "SMB", "CMA", "RMW"]
+#         else:
+#             return jsonify({"error": "Invalid model selected"}), 400
+
+#         n_factors = len(factor_names)
+#         x_var = sm.add_constant(x_var)
+#         mdl = sm.OLS(y_var, x_var, missing='drop').fit()
+
+#         # 回归指标
+#         loadings = mdl.params.values
+#         se = mdl.bse.values
+#         tStat = mdl.tvalues.values
+#         pvalue = mdl.pvalues.values
+#         rsq = mdl.rsquared
+#         adj_rsq = mdl.rsquared_adj
+#         alpha_annualized = loadings[0] * 12
+#         regression_text = mdl.summary().as_html()
+
+#         print(mdl.summary())
+
+#         # return contribution
+#         return_contribution = np.full((n_factors + 2, 2), np.nan)
+#         return_contribution[0, 0] = np.nanmean(y_var) * 12
+#         return_contribution[1, 0] = alpha_annualized
+
+#         for k in range(n_factors):
+#             return_contribution[k + 2, 0] = np.nanmean(x_var.iloc[:, k + 1]) * 12
+
+#         return_contribution[1, 1] = return_contribution[1, 0] / return_contribution[0, 0] * 100
+#         return_contribution[2:, 1] = loadings[1:] * np.nanmean(x_var.iloc[:, 1:], axis=0) * 12 / return_contribution[0, 0] * 100
+
+#         return_contribution_df = pd.DataFrame(
+#             return_contribution,
+#             columns=["Av. Ann. Excess Return", "Return Contribution"],
+#             index=[ticker, "alpha"] + factor_names
+#         ).round(4).replace({np.nan: None}).reset_index().rename(columns={"index": "Factor"})
+
+#         # 画图
+#         image_urls = []
+#         if nobs >= rolling_period + 10:
+#             out_roll = np.full((nobs - rolling_period + 1, n_factors + 1), np.nan)
+#             for k in range(rolling_period, nobs + 1):
+#                 x_roll = x_var.iloc[k - rolling_period:k]
+#                 y_roll = y_var.iloc[k - rolling_period:k]
+#                 mdl_roll = sm.OLS(y_roll, x_roll, missing='drop').fit()
+#                 out_roll[k - rolling_period, :] = mdl_roll.params.values
+
+#             date_aux = data_short["date"].iloc[rolling_period - 1:].astype(str)
+#             dates_aux = pd.to_datetime(date_aux, format="%Y%m")
+
+#             fig, ax1 = plt.subplots(figsize=(14, 7))
+#             ax1.set_xlabel("Date")
+#             ax1.set_ylabel("Annualized Alpha", color="tab:red")
+#             ax1.plot(dates_aux, out_roll[:, 0] * 12, color="tab:red")
+#             ax1.tick_params(axis="y", labelcolor="tab:red")
+
+#             linestyles = ['solid', 'dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
+#             ax2 = ax1.twinx()
+#             ax2.set_ylabel("Factor Loadings", color="tab:blue")
+#             for i in range(n_factors):
+#                 ax2.plot(dates_aux, out_roll[:, i + 1], label=factor_names[i], linestyle=linestyles[i])
+#             ax2.tick_params(axis="y", labelcolor="tab:blue")
+#             fig.tight_layout()
+#             fig.legend(["Alpha"] + factor_names, loc="lower right", ncol=n_factors + 1)
+
+#             plot_path = os.path.join(STATIC_DIR, "regression_plot.png")
+#             fig.savefig(plot_path)
+#             plt.close(fig)
+#             image_urls.append("/static/regression_plot.png")
+
+#         return jsonify({
+#             "summary_table": return_contribution_df.to_dict(orient="records"),
+#             "image_urls": image_urls,
+#             "regression_output": {
+#                 "r_squared": round(rsq, 4),
+#                 "adj_r_squared": round(adj_rsq, 4),
+#                 "alpha_annualized": round(alpha_annualized, 4),
+#                 "n_observations": int(nobs),
+#                 "se": se.tolist(),
+#                 "t-stat": tStat.tolist(),
+#                 "p-value": pvalue.tolist(),
+#                 "text_summary": regression_text
+#             }
+#         })
+
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         return jsonify({"error": str(e)}), 500
 
 @app.route('/static/<path:filename>')
 def serve_image(filename):
