@@ -11,7 +11,7 @@ Thumbs.db
 
 
 # Env
-.env
+# .env
 
 # CSV
 *.csv
