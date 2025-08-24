@@ -1,7 +1,7 @@
 Flask
 pandas
 matplotlib
-numpy
+numpy==1.23.5
 cvxpy
 cvxopt
 tabulate
