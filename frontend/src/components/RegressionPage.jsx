@@ -6,11 +6,11 @@ import RegressionResult from "./RegressionResult";
 
 export default function RegressionPage() {
   const [form, setForm] = useState({
-    ticker: "AAPL",
+    etflist: ["AAPL"],
     model: "FF3",
     start_date: "2020-01-01",
     end_date: "2023-12-31",
-    rolling_period: 36
+    rolling_period: 36,
   });
 
   const [result, setResult] = useState(null);
@@ -20,7 +20,12 @@ export default function RegressionPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/regression`, form);
+      const { etflist, ...rest } = form;
+      const payload = { ...rest, ticker: etflist[0] };
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_BASE_URL}/regression`,
+        payload
+      );
       setResult(res.data);
     } catch (err) {
       console.error("Regression error:", err);
