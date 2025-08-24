@@ -28,7 +28,7 @@ app = Flask(
     static_url_path="/static",
     static_folder=os.path.join(os.path.dirname(__file__), "static")
 )
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 STATIC_DIR = "static"
 os.makedirs(STATIC_DIR, exist_ok=True)
 
