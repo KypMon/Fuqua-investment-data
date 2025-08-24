@@ -3,7 +3,6 @@
 # %%
 import pandas as pd
 import numpy as np
-import os 
 import random 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -12,17 +11,17 @@ plt.rcParams['figure.figsize'] = [15, 5]
 from cvxopt import matrix, solvers
 import cvxpy as cp
 from tabulate import tabulate
+from data_loader import load_csv
 
 # %% 
 def get_data(file_name):
-    path = os.path.join(os.getcwd(), file_name)
     try:
-        df = pd.read_csv(path)
+        df = load_csv(file_name)
         df = df.pivot_table(index=['year', 'month'], columns = 'ticker_new', values='ret')
         df.reset_index(inplace=True)
         return df
-    except pd.errors.ParserError as e:
-        df = pd.read_csv(path, skiprows=3)
+    except pd.errors.ParserError:
+        df = load_csv(file_name, skiprows=3)
         first_non_numeric_index = None
         for index, value in df['Unnamed: 0'].items():
             if not is_numeric(value):
