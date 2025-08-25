@@ -15,12 +15,14 @@ export default function RegressionForm({ form, setForm, onSubmit, loading }) {
       <Typography variant="subtitle1" gutterBottom>
         ETF List
       </Typography>
-      <EtfListInput
-        etflist={form.etflist}
-        setEtflist={(newList) => setForm({ ...form, etflist: newList })}
-      />
-      
+
       <Grid container spacing={2}>
+        <EtfListInput
+          etflist={form.etflist}
+          setEtflist={(newList) => setForm({ ...form, etflist: newList })}
+          size={4}
+        />
+      
         <Grid item xs={6} sm={4} md={3}>
           <TextField
             name="model"

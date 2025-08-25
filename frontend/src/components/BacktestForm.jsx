@@ -48,14 +48,18 @@ export default function BacktestForm({ setBacktestResult }) {
   };
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2}>
       <Typography variant="subtitle1" gutterBottom>
         ETF List
       </Typography>
-      <EtfListInput
-        etflist={form.etflist}
-        setEtflist={(list) => setForm({ ...form, etflist: list })}
-      />
+      <Grid container spacing={0.5}>
+          <EtfListInput
+            etflist={form.etflist}
+            setEtflist={(list) => setForm({ ...form, etflist: list })}
+            size={2.3}
+          />
+      </Grid>
+
 
       <Button
         variant="outlined"
@@ -65,6 +69,8 @@ export default function BacktestForm({ setBacktestResult }) {
       >
         Add ETF
       </Button>
+
+      <line></line>
 
       {[1, 2, 3].map((i) => (
         <Grid container spacing={2} key={i}>

@@ -71,6 +71,7 @@ export default function FormSection({ setResult }) {
       <EtfListInput
         etflist={form.etflist}
         setEtflist={(newList) => setForm({ ...form, etflist: newList })}
+        size={4}
       />
 
       <Button

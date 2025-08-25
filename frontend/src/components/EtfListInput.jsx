@@ -7,7 +7,7 @@ const CACHE_KEY = "etfOptions";
 let cachedOptions = null;
 const filterOptions = createFilterOptions({ limit: 10 });
 
-export default function EtfListInput({ etflist, setEtflist }) {
+export default function EtfListInput({ etflist, setEtflist, size }) {
   const [options, setOptions] = useState([]);
 
   useEffect(() => {
@@ -59,11 +59,13 @@ export default function EtfListInput({ etflist, setEtflist }) {
     }
   };
 
+  console.log(size)
+
   return (
     <>
       <Grid container spacing={4} sx={{ width: "100%" }}>
         {etflist.map((etf, idx) => (
-          <Grid item key={idx} sx={{ width: "30%" }}>
+          <Grid item key={idx} size={size}>
             <Box sx={{ position: "relative", width: "100%" }}>
               <Autocomplete
                 freeSolo
