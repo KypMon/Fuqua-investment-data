@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 import { LoadingButton } from "@mui/lab";
 
 import EtfListInput from "./EtfListInput";
+import AddIcon from "@mui/icons-material/Add";
 
 export default function FormSection({ setResult }) {
 
@@ -66,7 +67,15 @@ export default function FormSection({ setResult }) {
       <EtfListInput
         etflist={form.etflist}
         setEtflist={(newList) => setForm({ ...form, etflist: newList })}
-        />
+      />
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => setForm({ ...form, etflist: [...form.etflist, ""] })}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Add ETF
+      </Button>
 
         <Stack direction="row" spacing={2}>
             <TextField

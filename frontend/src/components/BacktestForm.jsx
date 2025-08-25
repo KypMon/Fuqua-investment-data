@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Button, Stack, TextField, Grid, MenuItem } from "@mui/material";
 import EtfListInput from "./EtfListInput";
+import AddIcon from "@mui/icons-material/Add";
 import dayjs from "dayjs";
 import axios from "axios";
 
@@ -52,6 +53,15 @@ export default function BacktestForm({ setBacktestResult }) {
         etflist={form.etflist}
         setEtflist={(list) => setForm({ ...form, etflist: list })}
       />
+
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => setForm({ ...form, etflist: [...form.etflist, ""] })}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Add ETF
+      </Button>
 
       {[1, 2, 3].map((i) => (
         <Grid container spacing={2} key={i}>
