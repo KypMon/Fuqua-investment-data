@@ -78,11 +78,18 @@ export default function EtfListInput({ etflist, setEtflist }) {
       </Typography>
       <Grid container spacing={12}>
         {etflist.map((etf, idx) => (
-          <Grid item xs={12} sm={6} md={4} key={idx}>
+          <Grid item xs={12} md={6} key={idx}>
             <Box position="relative">
               <Autocomplete
                 freeSolo
                 options={options}
+                filterOptions={(opts, { inputValue }) =>
+                  opts
+                    .filter((opt) =>
+                      opt.toLowerCase().includes(inputValue.toLowerCase())
+                    )
+                    .slice(0, 10)
+                }
                 inputValue={etf}
                 onInputChange={(e, value) => handleEtfChange(idx, value)}
                 onChange={(e, value) => {
@@ -113,7 +120,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
             </Box>
           </Grid>
         ))}
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid item xs={12} md={6}>
           <Button
             variant="outlined"
             startIcon={<AddIcon />}
