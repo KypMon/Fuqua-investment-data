@@ -1,18 +1,12 @@
 import React, { useEffect, useState } from "react";
-import {
-  Grid,
-  TextField,
-  Button,
-  Typography,
-  Box,
-  IconButton,
-  Autocomplete,
-} from "@mui/material";
+import { Grid, TextField, Button, Typography, Box, IconButton } from "@mui/material";
+import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 
 const CACHE_KEY = "etfOptions";
 let cachedOptions = null;
+const filterOptions = createFilterOptions({ limit: 10 });
 
 export default function EtfListInput({ etflist, setEtflist }) {
   const [options, setOptions] = useState([]);
@@ -75,13 +69,14 @@ export default function EtfListInput({ etflist, setEtflist }) {
       <Typography variant="subtitle1" gutterBottom>
         ETF List
       </Typography>
-      <Grid container spacing={12}>
+      <Grid container spacing={2}>
         {etflist.map((etf, idx) => (
-          <Grid item xs={12} sm={4} md={3} key={idx}>
+          <Grid item xs={12} key={idx}>
             <Box position="relative">
               <Autocomplete
                 freeSolo
                 options={options}
+                filterOptions={filterOptions}
                 inputValue={etf}
                 onInputChange={(e, value) => handleEtfChange(idx, value)}
                 onChange={(e, value) => {
@@ -112,7 +107,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
             </Box>
           </Grid>
         ))}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12}>
           <Button
             variant="outlined"
             startIcon={<AddIcon />}
