@@ -20,6 +20,7 @@ from scipy.stats import skew, kurtosis
 
 from mv import mv
 from backtest import backtesting, backtesting_aux
+from data_loader import load_csv
 
 
 app = Flask(
@@ -27,7 +28,7 @@ app = Flask(
     static_url_path="/static",
     static_folder=os.path.join(os.path.dirname(__file__), "static")
 )
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 STATIC_DIR = "static"
 os.makedirs(STATIC_DIR, exist_ok=True)
 
@@ -46,21 +47,21 @@ ff_file = 'F-F_Research_Data_Factors.csv'
 etf_file = 'stocks_mf_ETF_data_final.csv'
 
 
-# load the raw data once
-RAW_DF = pd.read_csv("stocks_mf_ETF_data_final.csv")
+### Load CSV data once using the shared loader
+RAW_DF = load_csv("stocks_mf_ETF_data_final.csv")
 RAW_DF["ym"] = RAW_DF["year"] * 100 + RAW_DF["month"]
 
 
-return_data = pd.read_csv("stocks_mf_ETF_data_final.csv", sep = ',')
+return_data = load_csv("stocks_mf_ETF_data_final.csv")
 return_data['date'] = return_data['year'] * 100 + return_data['month']
 return_data.drop(columns=['month', 'year'], inplace=True)
 
 # Regression
-mom = pd.read_csv('F-F_Momentum_Factor.csv', sep=',')
+mom = load_csv('F-F_Momentum_Factor.csv', sep=',')
 mom.columns = ['date', 'MOM']
 mom['MOM'] = mom['MOM'].astype('float64')/100
 
-ff5 = pd.read_csv('F-F_Research_Data_5_Factors_2x3.csv', sep=',')
+ff5 = load_csv('F-F_Research_Data_5_Factors_2x3.csv', sep=',', skiprows=1)
 ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
 for cols in ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']:
     ff5[cols] = ff5[cols].astype('float64')/100
@@ -76,18 +77,17 @@ final_data = pd.merge(return_data, all_factors, on='date', how='outer').sort_val
 
 # %% 
 def get_data(file_name):
-    path = os.path.join(os.getcwd(), file_name)
     # ETF
     try:
-        df = pd.read_csv(path)
+        df = load_csv(file_name)
         df = df.pivot_table(index=['year', 'month'], columns = 'ticker_new', values='ret')
         df.reset_index(inplace=True)
 
         df.drop(columns={'RF'}, inplace = True)
         return df
     # FF
-    except pd.errors.ParserError as e:
-        df = pd.read_csv(path, skiprows=3)
+    except pd.errors.ParserError:
+        df = load_csv(file_name, skiprows=3)
         first_non_numeric_index = None
         for index, value in df['Unnamed: 0'].items():
             if not is_numeric(value):
@@ -1240,5 +1240,5 @@ def run_regression():
 def serve_image(filename):
     return send_from_directory(STATIC_DIR, filename)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5001, debug=True)

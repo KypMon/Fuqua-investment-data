@@ -36,7 +36,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
       }
 
       try {
-        const res = await fetch(`${process.env.PUBLIC_URL}/etf-tickers.csv`);
+        const res = await fetch(`${process.env.PUBLIC_URL}/ticker_and_names.csv`);
         const text = await res.text();
         const lines = text.trim().split("\n").slice(1);
         cachedOptions = lines.map((line) => {
@@ -112,7 +112,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
             </Box>
           </Grid>
         ))}
-        <Grid item xs={6} sm={4} md={3}>
+        <Grid item xs={12} md={6}>
           <Button
             variant="outlined"
             startIcon={<AddIcon />}
