@@ -38,7 +38,6 @@ export default function EtfListInput({ etflist, setEtflist }) {
       try {
         const res = await fetch(`${process.env.PUBLIC_URL}/ticker_and_names.csv`);
         const text = await res.text();
-        console.log(text)
         const lines = text.trim().split("\n").slice(1);
         cachedOptions = lines.map((line) => {
           const [ticker, name] = line.split(",");
@@ -78,18 +77,11 @@ export default function EtfListInput({ etflist, setEtflist }) {
       </Typography>
       <Grid container spacing={12}>
         {etflist.map((etf, idx) => (
-          <Grid item xs={12} md={6} key={idx}>
+          <Grid item xs={12} sm={4} md={3} key={idx}>
             <Box position="relative">
               <Autocomplete
                 freeSolo
                 options={options}
-                filterOptions={(opts, { inputValue }) =>
-                  opts
-                    .filter((opt) =>
-                      opt.toLowerCase().includes(inputValue.toLowerCase())
-                    )
-                    .slice(0, 10)
-                }
                 inputValue={etf}
                 onInputChange={(e, value) => handleEtfChange(idx, value)}
                 onChange={(e, value) => {
