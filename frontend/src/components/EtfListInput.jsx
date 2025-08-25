@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Grid, TextField, Typography, Box, IconButton } from "@mui/material";
+import { Grid, TextField, Box, IconButton } from "@mui/material";
 import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -61,10 +61,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
 
   return (
     <>
-      <Typography variant="subtitle1" gutterBottom>
-        ETF List
-      </Typography>
-      <Grid container spacing={2}>
+      <Grid container spacing={2} sx={{ width: "100%" }}>
         {etflist.map((etf, idx) => (
           <Grid item xs={12} key={idx}>
             <Box sx={{ position: "relative", width: "100%" }}>

@@ -1,6 +1,6 @@
 // src/components/BacktestForm.jsx
 import React, { useState } from "react";
-import { Button, Stack, TextField, Grid, MenuItem } from "@mui/material";
+import { Button, Stack, TextField, Grid, MenuItem, Typography } from "@mui/material";
 import EtfListInput from "./EtfListInput";
 import AddIcon from "@mui/icons-material/Add";
 import dayjs from "dayjs";
@@ -49,6 +49,9 @@ export default function BacktestForm({ setBacktestResult }) {
 
   return (
     <Stack spacing={3}>
+      <Typography variant="subtitle1" gutterBottom>
+        ETF List
+      </Typography>
       <EtfListInput
         etflist={form.etflist}
         setEtflist={(list) => setForm({ ...form, etflist: list })}

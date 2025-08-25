@@ -64,6 +64,9 @@ export default function FormSection({ setResult }) {
       </Typography>
       <Stack spacing={2}>
 
+      <Typography variant="subtitle1" gutterBottom>
+        ETF List
+      </Typography>
       <EtfListInput
         etflist={form.etflist}
         setEtflist={(newList) => setForm({ ...form, etflist: newList })}
