@@ -36,8 +36,9 @@ export default function EtfListInput({ etflist, setEtflist }) {
       }
 
       try {
-        const res = await fetch(`${process.env.PUBLIC_URL}/etf-tickers.csv`);
+        const res = await fetch(`${process.env.PUBLIC_URL}/ticker_and_names.csv`);
         const text = await res.text();
+        console.log(text)
         const lines = text.trim().split("\n").slice(1);
         cachedOptions = lines.map((line) => {
           const [ticker, name] = line.split(",");
