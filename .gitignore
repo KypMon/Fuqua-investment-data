@@ -15,7 +15,7 @@ Thumbs.db
 
 # CSV
 *.csv
-!frontend/public/etf-tickers.csv
+!frontend/public/ticker_and_names.csv
 
 # image
 *.png

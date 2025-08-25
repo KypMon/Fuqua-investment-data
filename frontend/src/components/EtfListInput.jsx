@@ -75,9 +75,9 @@ export default function EtfListInput({ etflist, setEtflist }) {
       <Typography variant="subtitle1" gutterBottom>
         ETF List
       </Typography>
-      <Grid container spacing={2}>
+      <Grid container spacing={12}>
         {etflist.map((etf, idx) => (
-          <Grid item xs={6} sm={4} md={3} key={idx}>
+          <Grid item xs={12} sm={4} md={3} key={idx}>
             <Box position="relative">
               <Autocomplete
                 freeSolo
