@@ -78,6 +78,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
                 options={options}
                 filterOptions={filterOptions}
                 inputValue={etf}
+                fullWidth
                 onInputChange={(e, value) => handleEtfChange(idx, value)}
                 onChange={(e, value) => {
                   if (value) {
@@ -107,18 +108,12 @@ export default function EtfListInput({ etflist, setEtflist }) {
             </Box>
           </Grid>
         ))}
-        <Grid item xs={12}>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={addEtfField}
-            fullWidth
-            sx={{ height: "100%" }}
-          >
-            Add ETF
-          </Button>
-        </Grid>
       </Grid>
+      <Box mt={2}>
+        <Button variant="outlined" startIcon={<AddIcon />} onClick={addEtfField}>
+          Add ETF
+        </Button>
+      </Box>
     </>
   );
 }
