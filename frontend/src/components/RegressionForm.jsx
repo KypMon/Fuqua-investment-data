@@ -1,7 +1,6 @@
 import React from "react";
 import { Grid, TextField, MenuItem, Button } from "@mui/material";
 import EtfListInput from "./EtfListInput";
-import AddIcon from "@mui/icons-material/Add";
 
 const modelOptions = ["CAPM", "FF3", "FF4", "FF5"];
 
@@ -17,14 +16,7 @@ export default function RegressionForm({ form, setForm, onSubmit, loading }) {
         etflist={form.etflist}
         setEtflist={(newList) => setForm({ ...form, etflist: newList })}
       />
-      <Button
-        variant="outlined"
-        startIcon={<AddIcon />}
-        onClick={() => setForm({ ...form, etflist: [...form.etflist, ""] })}
-        sx={{ mb: 2, alignSelf: "flex-start" }}
-      >
-        Add ETF
-      </Button>
+      
       <Grid container spacing={2}>
         <Grid item xs={6} sm={4} md={3}>
           <TextField
