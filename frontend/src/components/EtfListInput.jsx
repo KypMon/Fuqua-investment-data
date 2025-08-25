@@ -36,7 +36,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
       </Typography>
       <Grid container spacing={2}>
         {etflist.map((etf, idx) => (
-          <Grid item xs={6} sm={4} md={3} key={idx}>
+          <Grid item xs={12} sm={6} md={4} key={idx}>
             <Box position="relative">
               <TextField
                 label={`ETF ${idx + 1}`}
@@ -62,7 +62,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
             </Box>
           </Grid>
         ))}
-        <Grid item xs={6} sm={4} md={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <Button
             variant="outlined"
             startIcon={<AddIcon />}
