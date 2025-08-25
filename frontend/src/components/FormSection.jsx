@@ -67,10 +67,12 @@ export default function FormSection({ setResult }) {
       <Typography variant="subtitle1" gutterBottom>
         ETF List
       </Typography>
+      
       <EtfListInput
         etflist={form.etflist}
         setEtflist={(newList) => setForm({ ...form, etflist: newList })}
       />
+
       <Button
         variant="outlined"
         startIcon={<AddIcon />}

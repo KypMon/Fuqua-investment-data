@@ -47,7 +47,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
   }, []);
   const handleEtfChange = (index, value) => {
     const updated = [...etflist];
-    updated[index] = value;
+    updated[index] = value.split(" - ")[0];
     setEtflist(updated);
   };
 
@@ -61,9 +61,9 @@ export default function EtfListInput({ etflist, setEtflist }) {
 
   return (
     <>
-      <Grid container spacing={2} sx={{ width: "100%" }}>
+      <Grid container spacing={4} sx={{ width: "100%" }}>
         {etflist.map((etf, idx) => (
-          <Grid item xs={12} key={idx}>
+          <Grid item key={idx} sx={{ width: "30%" }}>
             <Box sx={{ position: "relative", width: "100%" }}>
               <Autocomplete
                 freeSolo
