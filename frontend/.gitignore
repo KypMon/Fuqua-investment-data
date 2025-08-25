@@ -25,3 +25,4 @@ yarn-error.log*
 # CSV
 *.csv
 !public/ticker_and_names.csv
+

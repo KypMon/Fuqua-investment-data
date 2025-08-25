@@ -11,11 +11,13 @@ Thumbs.db
 
 
 # Env
-.env
+# .env
 
 # CSV
 *.csv
+
 !frontend/public/ticker_and_names.csv
+!public/ticker_and_names.csv
 
 # image
 *.png

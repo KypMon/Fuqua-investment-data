@@ -1,20 +1,13 @@
 import React, { useEffect, useState } from "react";
-import {
-  Grid,
-  TextField,
-  Button,
-  Typography,
-  Box,
-  IconButton,
-  Autocomplete,
-} from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
+import { Grid, TextField, Box, IconButton } from "@mui/material";
+import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import CloseIcon from "@mui/icons-material/Close";
 
 const CACHE_KEY = "etfOptions";
 let cachedOptions = null;
+const filterOptions = createFilterOptions({ limit: 10 });
 
-export default function EtfListInput({ etflist, setEtflist }) {
+export default function EtfListInput({ etflist, setEtflist, size }) {
   const [options, setOptions] = useState([]);
 
   useEffect(() => {
@@ -36,7 +29,7 @@ export default function EtfListInput({ etflist, setEtflist }) {
       }
 
       try {
-        const res = await fetch(`${process.env.PUBLIC_URL}/etf-tickers.csv`);
+        const res = await fetch(`${process.env.PUBLIC_URL}/ticker_and_names.csv`);
         const text = await res.text();
         const lines = text.trim().split("\n").slice(1);
         cachedOptions = lines.map((line) => {
@@ -54,12 +47,8 @@ export default function EtfListInput({ etflist, setEtflist }) {
   }, []);
   const handleEtfChange = (index, value) => {
     const updated = [...etflist];
-    updated[index] = value;
+    updated[index] = value.split(" - ")[0];
     setEtflist(updated);
-  };
-
-  const addEtfField = () => {
-    setEtflist([...etflist, ""]);
   };
 
   const removeEtfField = (index) => {
@@ -70,19 +59,20 @@ export default function EtfListInput({ etflist, setEtflist }) {
     }
   };
 
+  console.log(size)
+
   return (
     <>
-      <Typography variant="subtitle1" gutterBottom>
-        ETF List
-      </Typography>
-      <Grid container spacing={12}>
+      <Grid container spacing={4} sx={{ width: "100%" }}>
         {etflist.map((etf, idx) => (
-          <Grid item xs={12} sm={4} md={3} key={idx}>
-            <Box position="relative">
+          <Grid item key={idx} size={size}>
+            <Box sx={{ position: "relative", width: "100%" }}>
               <Autocomplete
                 freeSolo
                 options={options}
+                filterOptions={filterOptions}
                 inputValue={etf}
+                fullWidth
                 onInputChange={(e, value) => handleEtfChange(idx, value)}
                 onChange={(e, value) => {
                   if (value) {
@@ -112,17 +102,6 @@ export default function EtfListInput({ etflist, setEtflist }) {
             </Box>
           </Grid>
         ))}
-        <Grid item xs={6} sm={4} md={3}>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={addEtfField}
-            fullWidth
-            sx={{ height: "100%" }}
-          >
-            Add ETF
-          </Button>
-        </Grid>
       </Grid>
     </>
   );

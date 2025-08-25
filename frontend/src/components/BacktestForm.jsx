@@ -1,7 +1,8 @@
 // src/components/BacktestForm.jsx
 import React, { useState } from "react";
-import { Button, Stack, TextField, Grid, MenuItem } from "@mui/material";
+import { Button, Stack, TextField, Grid, MenuItem, Typography } from "@mui/material";
 import EtfListInput from "./EtfListInput";
+import AddIcon from "@mui/icons-material/Add";
 import dayjs from "dayjs";
 import axios from "axios";
 
@@ -47,11 +48,29 @@ export default function BacktestForm({ setBacktestResult }) {
   };
 
   return (
-    <Stack spacing={3}>
-      <EtfListInput
-        etflist={form.etflist}
-        setEtflist={(list) => setForm({ ...form, etflist: list })}
-      />
+    <Stack spacing={2}>
+      <Typography variant="subtitle1" gutterBottom>
+        ETF List
+      </Typography>
+      <Grid container spacing={0.5}>
+          <EtfListInput
+            etflist={form.etflist}
+            setEtflist={(list) => setForm({ ...form, etflist: list })}
+            size={2.3}
+          />
+      </Grid>
+
+
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => setForm({ ...form, etflist: [...form.etflist, ""] })}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Add ETF
+      </Button>
+
+      <line></line>
 
       {[1, 2, 3].map((i) => (
         <Grid container spacing={2} key={i}>

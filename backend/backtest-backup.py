@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from scipy.stats import skew, kurtosis
+from data_loader import load_csv
 
 def backtesting_aux(start_date, end_date, tickers, allocation, rebalancing, data_short, ff5, start_balance):
 
@@ -183,7 +184,7 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
     allocation3 = np.where(allocation3 == None, np.nan, allocation3)
     
     # Load Data
-    return_data = pd.read_csv("stocks_mf_ETF_data_final.csv")
+    return_data = load_csv("stocks_mf_ETF_data_final.csv")
     return_data['date'] = return_data['year'] * 100 + return_data['month']
     return_data = return_data.drop(columns=['month', 'year'])
 
@@ -265,8 +266,8 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
     data_short = data_short[(data_short['date'] >= start_date) & (data_short['date'] <= end_date)]
 
     # Get risk-free rate data (Fama-French factors)
-    # ff5 = pd.read_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=r'\s+', skiprows=1)
-    ff5 = pd.read_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=",", skiprows=1)
+    # ff5 = load_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=r'\s+', skiprows=1)
+    ff5 = load_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=",", skiprows=1)
 
     ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
     ff5 = ff5[(ff5['date'] >= start_date) & (ff5['date'] <= end_date)]
