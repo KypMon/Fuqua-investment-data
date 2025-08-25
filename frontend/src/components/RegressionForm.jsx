@@ -1,5 +1,5 @@
 import React from "react";
-import { Grid, TextField, MenuItem, Button } from "@mui/material";
+import { Grid, TextField, MenuItem, Button, Typography } from "@mui/material";
 import EtfListInput from "./EtfListInput";
 
 const modelOptions = ["CAPM", "FF3", "FF4", "FF5"];
@@ -12,11 +12,17 @@ export default function RegressionForm({ form, setForm, onSubmit, loading }) {
 
   return (
     <>
-      <EtfListInput
-        etflist={form.etflist}
-        setEtflist={(newList) => setForm({ ...form, etflist: newList })}
-      />
+      <Typography variant="subtitle1" gutterBottom>
+        ETF List
+      </Typography>
+
       <Grid container spacing={2}>
+        <EtfListInput
+          etflist={form.etflist}
+          setEtflist={(newList) => setForm({ ...form, etflist: newList })}
+          size={4}
+        />
+      
         <Grid item xs={6} sm={4} md={3}>
           <TextField
             name="model"
