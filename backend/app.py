@@ -8,15 +8,10 @@ import io
 from contextlib import redirect_stdout
 from flask_cors import CORS
 import yfinance as yf
-import calendar
-import numpy as np
 import statsmodels.api as sm
 from datetime import datetime
-import random 
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+import random
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
-from scipy.stats import skew, kurtosis
 
 from mv import mv
 from backtest import backtesting, backtesting_aux
@@ -35,14 +30,10 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 # -------- Portfolio Logic (from robust_mv10.py) --------
 ## This code is for the MV playground 3 ## 
 
-# %%
+# Set global figure size for matplotlib
 plt.rcParams['figure.figsize'] = [15, 5]
 from cvxopt import matrix, solvers
-import cvxpy as cp
 from tabulate import tabulate
-
-# Global Setup
-plt.rcParams['figure.figsize'] = [15, 5]
 ff_file = 'F-F_Research_Data_Factors.csv'
 etf_file = 'stocks_mf_ETF_data_final.csv'
 
@@ -65,17 +56,12 @@ ff5 = load_csv('F-F_Research_Data_5_Factors_2x3.csv', sep=',', skiprows=1)
 ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
 for cols in ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']:
     ff5[cols] = ff5[cols].astype('float64')/100
-
-# %% 
 # Merge factors
 all_factors = pd.merge(mom, ff5, on='date', how='outer').sort_values(by='date')
 
-# %% 
 # Merge return data with factors
 final_data = pd.merge(return_data, all_factors, on='date', how='outer').sort_values(by=['ticker_new', 'date'])
 
-
-# %% 
 def get_data(file_name):
     # ETF
     try:
@@ -490,93 +476,10 @@ def mv123(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'E
             
     except Exception as e:
         import traceback
-        traceback.print_exc() 
-
-        print(e)
-        # mv(df, etflist, short, 0, normal, startdate, enddate)
-
-
-# %%
-# etflist = ['FLCNX','JLGMX','VFTNX','VIIIX','VPMAX','MEIKX','VEIRX',
-#            'MEFZX','VEMPX','AMDVX','FLKSX','MVCKX','FOCSX','FCPVX',
-#            'RERGX','FISMX','VWILX','VTSNX','VEMIX','VGSNX','FTKFX','VBMPX','PIMIX']
-
-#
-# etflist = ['VOO','VXUS','AVUV','AVDV','AVEM']
-
-
-# %% 
-# mv(df)
-
-# %%
-# short = 0 (set to zero for not allowing short-sale constraints)
-# maxuse = 0 (set to 0 for balanced sample)
-# normal = 0 (set to zero for resampling)
-
-# mv(df, etflist, 0, 0, 0, 197012, 202312)
-
-# %%
-
 @app.route('/', methods=['GET'])
 def home():
     return 'home'
 
-# @app.route('/run', methods=['POST'])
-# def run_mv():
-#     try:
-#         short    = int(request.form.get('short', 0))
-#         maxuse   = int(request.form.get('maxuse', 0))
-#         normal   = int(request.form.get('normal', 0))
-#         start    = int(request.form.get('startdate', 197001))
-#         end      = int(request.form.get('enddate', 202312))
-#         etf_str  = request.form.get('etflist','VOO,VXUS,AVUV,AVDV,AVEM')
-#         etflist  = etf_str.split(',')
-
-#         # 保留原有 mv() 打印输出
-#         buf = io.StringIO()
-#         with redirect_stdout(buf):
-#             mv(df.copy(), etflist, short, maxuse, normal, start, end)
-
-#         # 额外生成 JSON 图表数据
-#         chart_data = run_mv_core(df.copy(), etflist, short, maxuse, normal, start, end)
-
-#         return jsonify({
-#             "output_text": buf.getvalue(),
-#             **chart_data
-#         })
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-
-
-
-
-# @app.route('/run', methods=['POST'])
-# def run_mv_route():
-#     try:
-#         short   = int(request.form.get('short', 0))
-#         maxuse  = int(request.form.get('maxuse', 0))
-#         normal  = int(request.form.get('normal', 0))
-#         start   = int(request.form.get('startdate', 197001))
-#         end     = int(request.form.get('enddate',   202312))
-#         etf_str = request.form.get('etflist', "VOO,VXUS,AVUV,AVDV,AVEM")
-#         etflist = etf_str.split(",")
-
-#         # 1) 捕获 mv() 的 stdout
-#         buf = io.StringIO()
-#         with redirect_stdout(buf):
-#             mv(global_data.copy(), etflist, short, maxuse, normal, start, end)
-#         output_text = buf.getvalue()
-
-#         # 2) 生成交互图数据
-#         chart_data = extract_mv_charts(global_data.copy(), etflist, short, maxuse, normal, start, end)
-
-#         return jsonify({
-#             'output_text': output_text,
-#             **chart_data
-#         })
-#     except Exception as e:
-#         return jsonify({'error': str(e)}), 500
-    
 @app.route("/run", methods=["POST"])
 def run_mv():
     data = request.json or request.form
@@ -594,55 +497,6 @@ def run_mv():
     )
     return jsonify(result)
     
-
-
-# @app.route("/backtest", methods=["POST"])
-# def run_backtest():
-#     try:
-#         data = request.json
-
-#         start_date_str = data.get("start_date", "1970-01-01")
-#         end_date_str = data.get("end_date", "2023-12-31")
-
-#         start_date = int(start_date_str.replace("-", "")[:6])
-#         end_date = int(end_date_str.replace("-", "")[:6])
-#         tickers = data.get("tickers", [])
-#         allocation1 = [float(x) if x not in [None, ""] else None for x in data.get("allocation1", [])]
-#         allocation2 = [float(x) if x not in [None, ""] else None for x in data.get("allocation2", [])]
-#         allocation3 = [float(x) if x not in [None, ""] else None for x in data.get("allocation3", [])]
-#         rebalancing = data.get("rebalance", "monthly")
-#         benchmark = data.get("benchmark", ["CRSPVW"])[0]
-#         start_balance = float(data.get("start_balance", 10000))
-
-#         # Catch print() output
-#         f = io.StringIO()
-#         plt.switch_backend("Agg")
-#         with redirect_stdout(f):
-#             backtesting(start_date, end_date, tickers, allocation1, allocation2, allocation3, rebalancing, benchmark, start_balance)
-#         # backtesting(start_date, end_date, tickers, allocation1, allocation2, allocation3, rebalancing, benchmark, start_balance)
-
-#         output_text = f.getvalue()
-
-#         # save image as static file
-#         image_paths = []
-#         for i, fig_num in enumerate(plt.get_fignums()):
-#             fig = plt.figure(fig_num)
-#             path = os.path.join(STATIC_DIR, f"backtest_plot_{i}.png")
-#             fig.savefig(path)
-#             image_paths.append(f"/static/backtest_plot_{i}.png")
-#         plt.close("all")
-
-#         return jsonify({
-#             "output_text": output_text,
-#             "image_urls": image_paths,
-#             "summary_table": [],
-#             "regression_table": []
-#         })
-
-#     except Exception as e:
-#         import traceback
-#         traceback.print_exc()
-#         return jsonify({"error": str(e)}), 500
 
 @app.route("/backtest", methods=["POST"])
 def run_backtest():
@@ -823,22 +677,22 @@ def convert_numpy(obj):
 def extract_ols_summary(model):
     """Extract and structure OLS summary data in a JSON-serializable format."""
 
-        # 回归残差
+        # Regression residuals
     resid = model.resid
 
-    # Durbin-Watson 统计量
+    # Durbin-Watson statistic
     dw_stat = durbin_watson(resid)
 
-    # JB 检验：返回 JB统计量、p值、偏度、峰度
+    # Jarque-Bera test: returns JB statistic, p-value, skewness, kurtosis
     jb_stat, jb_pval, jb_skew, jb_kurt = jarque_bera(resid)
 
-    # 其他常见指标
+    # Other common metrics
     r2 = model.rsquared
     r2_adj = model.rsquared_adj
     n_obs = int(model.nobs)
-    annualized_alpha = float(model.params[0]) * 12  # 常数项 * 12
+    annualized_alpha = float(model.params[0]) * 12  # constant term * 12
 
-    # 汇总为 dict
+    # Aggregate into dict
     diagnostics = {
         "r_squared": round(r2, 4),
         "adj_r_squared": round(r2_adj, 4),
@@ -1109,132 +963,6 @@ def run_regression():
 
 
 
-# @app.route("/regression", methods=["POST"])
-# def run_regression():
-#     try:
-#         global final_data
-
-#         data = request.json
-#         ticker = data.get("ticker")
-#         start_date = int(data.get("start_date").replace("-", "")[:6])
-#         end_date = int(data.get("end_date").replace("-", "")[:6])
-#         model = data.get("model", "CAPM")
-#         rolling_period = int(data.get("rolling_period", 36))
-
-#         data_short = final_data[final_data["ticker_new"] == ticker]
-
-#         # 日期边界修正
-#         if (end_date is None) or (end_date > data_short["date"].max()):
-#             end_date = data_short["date"].max()
-#         if (start_date is None) or (start_date < data_short["date"].min()):
-#             start_date = data_short["date"].min()
-
-#         data_short = data_short[(data_short["date"] >= start_date) & (data_short["date"] <= end_date)]
-
-#         y_var = data_short["ret"] - data_short["RF"]
-#         nobs = y_var.shape[0]
-
-#         # 模型选择
-#         if model == "CAPM":
-#             x_var = data_short[["Mkt-RF"]]
-#             factor_names = ["Mkt-Rf"]
-#         elif model == "FF3":
-#             x_var = data_short[["Mkt-RF", "HML", "SMB"]]
-#             factor_names = ["Mkt-Rf", "HML", "SMB"]
-#         elif model == "FF4":
-#             x_var = data_short[["Mkt-RF", "HML", "SMB", "MOM"]]
-#             factor_names = ["Mkt-Rf", "HML", "SMB", "MOM"]
-#         elif model == "FF5":
-#             x_var = data_short[["Mkt-RF", "HML", "SMB", "CMA", "RMW"]]
-#             factor_names = ["Mkt-Rf", "HML", "SMB", "CMA", "RMW"]
-#         else:
-#             return jsonify({"error": "Invalid model selected"}), 400
-
-#         n_factors = len(factor_names)
-#         x_var = sm.add_constant(x_var)
-#         mdl = sm.OLS(y_var, x_var, missing='drop').fit()
-
-#         # 回归指标
-#         loadings = mdl.params.values
-#         se = mdl.bse.values
-#         tStat = mdl.tvalues.values
-#         pvalue = mdl.pvalues.values
-#         rsq = mdl.rsquared
-#         adj_rsq = mdl.rsquared_adj
-#         alpha_annualized = loadings[0] * 12
-#         regression_text = mdl.summary().as_html()
-
-#         print(mdl.summary())
-
-#         # return contribution
-#         return_contribution = np.full((n_factors + 2, 2), np.nan)
-#         return_contribution[0, 0] = np.nanmean(y_var) * 12
-#         return_contribution[1, 0] = alpha_annualized
-
-#         for k in range(n_factors):
-#             return_contribution[k + 2, 0] = np.nanmean(x_var.iloc[:, k + 1]) * 12
-
-#         return_contribution[1, 1] = return_contribution[1, 0] / return_contribution[0, 0] * 100
-#         return_contribution[2:, 1] = loadings[1:] * np.nanmean(x_var.iloc[:, 1:], axis=0) * 12 / return_contribution[0, 0] * 100
-
-#         return_contribution_df = pd.DataFrame(
-#             return_contribution,
-#             columns=["Av. Ann. Excess Return", "Return Contribution"],
-#             index=[ticker, "alpha"] + factor_names
-#         ).round(4).replace({np.nan: None}).reset_index().rename(columns={"index": "Factor"})
-
-#         # 画图
-#         image_urls = []
-#         if nobs >= rolling_period + 10:
-#             out_roll = np.full((nobs - rolling_period + 1, n_factors + 1), np.nan)
-#             for k in range(rolling_period, nobs + 1):
-#                 x_roll = x_var.iloc[k - rolling_period:k]
-#                 y_roll = y_var.iloc[k - rolling_period:k]
-#                 mdl_roll = sm.OLS(y_roll, x_roll, missing='drop').fit()
-#                 out_roll[k - rolling_period, :] = mdl_roll.params.values
-
-#             date_aux = data_short["date"].iloc[rolling_period - 1:].astype(str)
-#             dates_aux = pd.to_datetime(date_aux, format="%Y%m")
-
-#             fig, ax1 = plt.subplots(figsize=(14, 7))
-#             ax1.set_xlabel("Date")
-#             ax1.set_ylabel("Annualized Alpha", color="tab:red")
-#             ax1.plot(dates_aux, out_roll[:, 0] * 12, color="tab:red")
-#             ax1.tick_params(axis="y", labelcolor="tab:red")
-
-#             linestyles = ['solid', 'dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
-#             ax2 = ax1.twinx()
-#             ax2.set_ylabel("Factor Loadings", color="tab:blue")
-#             for i in range(n_factors):
-#                 ax2.plot(dates_aux, out_roll[:, i + 1], label=factor_names[i], linestyle=linestyles[i])
-#             ax2.tick_params(axis="y", labelcolor="tab:blue")
-#             fig.tight_layout()
-#             fig.legend(["Alpha"] + factor_names, loc="lower right", ncol=n_factors + 1)
-
-#             plot_path = os.path.join(STATIC_DIR, "regression_plot.png")
-#             fig.savefig(plot_path)
-#             plt.close(fig)
-#             image_urls.append("/static/regression_plot.png")
-
-#         return jsonify({
-#             "summary_table": return_contribution_df.to_dict(orient="records"),
-#             "image_urls": image_urls,
-#             "regression_output": {
-#                 "r_squared": round(rsq, 4),
-#                 "adj_r_squared": round(adj_rsq, 4),
-#                 "alpha_annualized": round(alpha_annualized, 4),
-#                 "n_observations": int(nobs),
-#                 "se": se.tolist(),
-#                 "t-stat": tStat.tolist(),
-#                 "p-value": pvalue.tolist(),
-#                 "text_summary": regression_text
-#             }
-#         })
-
-#     except Exception as e:
-#         import traceback
-#         traceback.print_exc()
-#         return jsonify({"error": str(e)}), 500
 
 @app.route('/static/<path:filename>')
 def serve_image(filename):

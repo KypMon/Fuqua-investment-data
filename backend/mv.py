@@ -16,7 +16,7 @@ def mv(df,
        enddate=202312):
     gridsize = 100
 
-    # 1) 筛选时间 & 列
+    # 1) Filter by time and columns
     cdf = df[(df['ym'] >= startdate) & (df['ym'] <= enddate)].copy()
     cols = etflist + ['Mkt-RF','RF','year','month','ym']
     cdf = cdf[cols]
@@ -24,7 +24,7 @@ def mv(df,
         cdf.dropna(inplace=True)
     cdf.reset_index(drop=True, inplace=True)
 
-    # 2) 描述性统计
+    # 2) Descriptive statistics
     meandf = cdf[etflist].mean()
     stddf = cdf[etflist].std()
     srdf   = meandf / stddf
@@ -33,17 +33,17 @@ def mv(df,
         for a in etflist
     ]
 
-    # 3) 相关矩阵
+    # 3) Correlation matrix
     corr = cdf[etflist].corr().round(4)
     correlation_matrix = {
         'columns': list(corr.columns),
         'data': corr.to_dict(orient='records')
     }
 
-    # 4) 无风险利率
+    # 4) Risk-free rate
     rf = float(cdf['RF'].mean())
 
-    # 5) 构造 CVXOPT 求解器
+    # 5) Build CVXOPT solver
     def make_solvers(short_flag):
         if not short_flag:
             def solv_x(r, covdf, mu):
@@ -148,7 +148,7 @@ def mv(df,
         'values': [w['weight'] for w in standard_weights]
     }
 
-    # 7) Robust MV Portfolio (if normal==0 做 Monte‐Carlo，否则直接复用 standard)
+    # 7) Robust MV Portfolio (if normal==0 perform Monte-Carlo, otherwise reuse standard)
     if not normal:
         simw = np.zeros((gridsize, len(etflist)))
         Nsim = 100
@@ -165,7 +165,7 @@ def mv(df,
         idx_rob = int(np.argmax(sr_sim))
         robw = simw[idx_rob]
 
-        # Robust frontier for consistency（可选渲染）
+        # Robust frontier for consistency (optional rendering)
         robust_efficient_frontier = [
             {'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j]))*np.sqrt(12)),
              'y': float(retspace_m[j]*12)}
@@ -177,7 +177,7 @@ def mv(df,
             for j in range(gridsize)
         ]
     else:
-        # 如果 normal==1，就把 robust 直接设为 standard
+        # If normal==1, set robust equal to standard
         idx_rob = maxSRW
         robw = weightlist[maxSRW]
         robust_efficient_frontier = standard_efficient_frontier
