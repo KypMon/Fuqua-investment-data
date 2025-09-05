@@ -7,6 +7,10 @@ import {
   Typography,
   FormControlLabel,
   Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -21,8 +25,7 @@ export default function FormSection({ setResult }) {
 
   const [form, setForm] = useState({
     short: false,
-    maxuse: false,
-    normal: false,
+    mvType: "standard",
     startdate: "2020-01-01",
     enddate: "2023-12-31",
     etflist: [],
@@ -32,7 +35,12 @@ export default function FormSection({ setResult }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm({ ...form, [name]: type === "checkbox" ? checked : value });
+    const newValue = type === "checkbox" ? checked : value;
+    setForm((prev) => ({
+      ...prev,
+      [name]: newValue,
+      ...(name === "mvType" && newValue === "robust" ? { short: false } : {}),
+    }));
   };
 
   const handleSubmit = async () => {
@@ -41,8 +49,8 @@ export default function FormSection({ setResult }) {
       const payload = {
         etflist: form.etflist.filter((e) => e.trim() !== "").join(","),
         short: form.short ? 1 : 0,
-        maxuse: form.maxuse ? 1 : 0,
-        normal: form.normal ? 1 : 0,
+        maxuse: 0,
+        normal: form.mvType === "standard" ? 1 : 0,
         startdate: dayjs(form.startdate).format("YYYYMM"),
         enddate: dayjs(form.enddate).format("YYYYMM"),
       };
@@ -105,24 +113,27 @@ export default function FormSection({ setResult }) {
             </Stack>
 
 
-        <FormControlLabel
-          control={
-            <Checkbox name="short" checked={form.short} onChange={handleChange} />
-          }
-          label="Allow Short"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox name="maxuse" checked={form.maxuse} onChange={handleChange} />
-          }
-          label="Max Use Constraint"
-        />
-        <FormControlLabel
-          control={
-            <Checkbox name="normal" checked={form.normal} onChange={handleChange} />
-          }
-          label="Use Normal Distribution"
-        />
+        <FormControl fullWidth>
+          <InputLabel id="mvType-label">Mean-Variance Type</InputLabel>
+          <Select
+            labelId="mvType-label"
+            name="mvType"
+            value={form.mvType}
+            label="Mean-Variance Type"
+            onChange={handleChange}
+          >
+            <MenuItem value="standard">Standard Mean-Variance</MenuItem>
+            <MenuItem value="robust">Robust Mean-Variance</MenuItem>
+          </Select>
+        </FormControl>
+        {form.mvType === "standard" && (
+          <FormControlLabel
+            control={
+              <Checkbox name="short" checked={form.short} onChange={handleChange} />
+            }
+            label="Allow Short"
+          />
+        )}
 
         <LoadingButton
             variant="contained"
