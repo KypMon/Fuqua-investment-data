@@ -151,15 +151,25 @@ def mv(df,
     # 7) Robust MV Portfolio (if normal==0 perform Monte-Carlo, otherwise reuse standard)
     if not normal:
         simw = np.zeros((gridsize, len(etflist)))
-        Nsim = 100
+        Nsim = 200
         random.seed(123)
         for _ in range(Nsim):
+            # draw sample returns and compute its moments
             sample = np.random.multivariate_normal(meandf.values, covdf.values, size=len(cdf))
             simdf  = pd.DataFrame(sample, columns=etflist)
             mu_s   = simdf.mean()
             cov_s  = simdf.cov()
-            for j, r in enumerate(retspace_m):
+
+            # for each simulation the feasible return range changes; use
+            # simulation-specific min/max to avoid infeasible targets that can
+            # cause the optimizer to allocate everything to a single asset
+            minv_s = solv_minvar(cov_s, etflist)
+            maxv_s = solv_maxret(mu_s, etflist)
+            retspace_s = np.linspace(mu_s.dot(minv_s), mu_s.dot(maxv_s), gridsize)
+
+            for j, r in enumerate(retspace_s):
                 simw[j] += solv_x(r, cov_s, mu_s)
+
         simw /= Nsim
         sr_sim = [sharpe_ratio(simw[j], meandf, covdf, rf) for j in range(gridsize)]
         idx_rob = int(np.argmax(sr_sim))
@@ -167,13 +177,17 @@ def mv(df,
 
         # Robust frontier for consistency (optional rendering)
         robust_efficient_frontier = [
-            {'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j]))*np.sqrt(12)),
-             'y': float(retspace_m[j]*12)}
+            {
+                'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j])) * np.sqrt(12)),
+                'y': float(meandf.dot(simw[j]) * 12),
+            }
             for j in range(gridsize)
         ]
         robust_allocation_stack = [
-            {'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j]))*np.sqrt(12)),
-             'allocations': {etflist[i]: float(simw[j][i]) for i in range(len(etflist))}}
+            {
+                'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j])) * np.sqrt(12)),
+                'allocations': {etflist[i]: float(simw[j][i]) for i in range(len(etflist))},
+            }
             for j in range(gridsize)
         ]
     else:
@@ -184,8 +198,8 @@ def mv(df,
         robust_allocation_stack    = standard_allocation_stack
 
     robust_max_sr = {
-        'x': float(np.sqrt(robw.dot(covdf.values).dot(robw))*np.sqrt(12)),
-        'y': float(retspace_m[idx_rob]*12)
+        'x': float(np.sqrt(robw.dot(covdf.values).dot(robw)) * np.sqrt(12)),
+        'y': float(meandf.dot(robw) * 12),
     }
     robust_weights = [
         {'asset': etflist[i], 'weight': float(robw[i]*100)}
