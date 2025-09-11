@@ -48,7 +48,7 @@ export default function FormSection({ setResult }) {
     try {
       const payload = {
         etflist: form.etflist.filter((e) => e.trim() !== "").join(","),
-        short: form.short ? 1 : 0,
+        short: form.short && form.mvType === "standard" ? 1 : 0,
         maxuse: 0,
         normal: form.mvType === "standard" ? 1 : 0,
         startdate: dayjs(form.startdate).format("YYYYMM"),

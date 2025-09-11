@@ -45,6 +45,7 @@ def mv(df,
 
     # 5) Build CVXOPT solver
     def make_solvers(short_flag):
+        print(short_flag)
         if not short_flag:
             def solv_x(r, covdf, mu):
                 P = matrix(covdf.values)
@@ -150,6 +151,7 @@ def mv(df,
 
     # 7) Robust MV Portfolio (if normal==0 perform Monte-Carlo, otherwise reuse standard)
     if not normal:
+        print("not normal")
         simw = np.zeros((gridsize, len(etflist)))
         Nsim = 100
         random.seed(123)
