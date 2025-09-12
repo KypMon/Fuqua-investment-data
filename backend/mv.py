@@ -43,7 +43,7 @@ def mv(
     # 1) Data preparation
     # ------------------------------------------------------------------
     cdf = df[(df["ym"] >= startdate) & (df["ym"] <= enddate)].copy()
-    useretfL = etflist + ["Mkt-RF", "RF2", "year", "month", "ym"]
+    useretfL = etflist + ["Mkt-RF", "RF", "year", "month", "ym"]
     cdf = cdf[useretfL]
 
     if not maxuse:
@@ -68,7 +68,7 @@ def mv(
     mu = cdf[etflist].mean()
     std = cdf[etflist].std()
     cov = cdf[etflist].cov()
-    rf = float(cdf["RF2"].mean())
+    rf = float(cdf["RF"].mean())
 
     descriptive_stats = [
         {"asset": a, "mean": float(mu[a]), "std": float(std[a]), "sr": float(mu[a] / std[a])}
