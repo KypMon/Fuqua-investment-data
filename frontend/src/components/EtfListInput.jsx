@@ -59,8 +59,6 @@ export default function EtfListInput({ etflist, setEtflist, size }) {
     }
   };
 
-  console.log(size)
-
   return (
     <>
       <Grid container spacing={4} sx={{ width: "100%" }}>

@@ -109,8 +109,8 @@ export default function ResultSection({ result }) {
       <Typography variant="h6" gutterBottom>
         {normal ? "Standard MV Portfolio" : "Robust MV Portfolio"}
       </Typography>
-      <Grid container spacing={3} sx={{ mb:4 }}>
-        <Grid item xs={12}>
+      <Grid container spacing={12} sx={{ mb:8 }}>
+        <Grid item s={12}>
           <Plot
             data={[
               {
@@ -119,16 +119,14 @@ export default function ResultSection({ result }) {
                 mode: 'lines+markers',
                 name: 'Eff. Frontier'
               },
-              ...(normal
-                ? [{
+              {
                     x: etfPts.map((p) => p.x),
                     y: etfPts.map((p) => p.y),
                     text: etfPts.map((p) => p.label),
                     mode: 'markers+text',
                     name: 'ETFs',
                     textposition: 'top center'
-                  }]
-                : []),
+              },
               {
                 x: [maxSR.x],
                 y: [maxSR.y],

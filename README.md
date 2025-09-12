@@ -13,6 +13,14 @@ source venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
+## Put necessary csv file under the backend folder
+```
+'F-F_Research_Data_Factors.csv'
+'stocks_mf_ETF_data_final.csv'
+'F-F_Momentum_Factor.csv'
+'F-F_Research_Data_5_Factors_2x3.csv'
+```
+
 ## start backend
 ```bash
 python app.py
@@ -43,7 +51,7 @@ python -m pip install -r requirements.txt
 ## Create .env file under frontend directory
 
 ```
-REACT_APP_API_BASE_URL=http://localhost:5000
+REACT_APP_API_BASE_URL=http://localhost:5001
 ```
 
 ## install dependency
