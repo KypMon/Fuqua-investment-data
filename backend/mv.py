@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
-import random 
+import random
 
 from cvxopt import matrix, solvers
 
+
 def sharpe_ratio(w, mean_ret, cov, rf):
+    """Compute the Sharpe Ratio for weights ``w``."""
     return (w @ mean_ret - rf) / np.sqrt(w.T @ cov @ w)
 
 def mv(df,
@@ -16,12 +18,30 @@ def mv(df,
        enddate=202312):
     gridsize = 100
 
+    # ------------------------------------------------------------------
     # 1) Filter by time and columns
-    cdf = df[(df['ym'] >= startdate) & (df['ym'] <= enddate)].copy()
-    cols = etflist + ['Mkt-RF','RF','year','month','ym']
+    # ------------------------------------------------------------------
+    cdf = df[(df["ym"] >= startdate) & (df["ym"] <= enddate)].copy()
+    cols = etflist + ["Mkt-RF", "RF", "year", "month", "ym"]
     cdf = cdf[cols]
+
+    # When ``maxuse`` is False, start from the latest common date
+    # among all ETFs so that no missing values remain.
     if not maxuse:
-        cdf.dropna(inplace=True)
+        stacked = cdf[etflist].stack().reset_index()
+        stacked.columns = ["row", "ticker", "value"]
+        valid_obs = stacked.dropna()
+
+        first_valids = {
+            etf: cdf[etf].first_valid_index()
+            for etf in etflist
+            if cdf[etf].first_valid_index() is not None
+        }
+        if first_valids:
+            latest_start_row = max(first_valids.values())
+            startdate = int(cdf.loc[latest_start_row, "ym"])
+        cdf = cdf.dropna()
+
     cdf.reset_index(drop=True, inplace=True)
 
     # 2) Descriptive statistics
@@ -41,11 +61,10 @@ def mv(df,
     }
 
     # 4) Risk-free rate
-    rf = float(cdf['RF'].mean())
+    rf = float(cdf["RF"].mean())
 
     # 5) Build CVXOPT solver
     def make_solvers(short_flag):
-        print(short_flag)
         if not short_flag:
             def solv_x(r, covdf, mu):
                 P = matrix(covdf.values)
@@ -149,45 +168,59 @@ def mv(df,
         'values': [w['weight'] for w in standard_weights]
     }
 
-    # 7) Robust MV Portfolio (if normal==0 perform Monte-Carlo, otherwise reuse standard)
+    # 7) Robust MV Portfolio (Monte-Carlo simulation of moments)
     if not normal:
-        print("not normal")
         simw = np.zeros((gridsize, len(etflist)))
-        Nsim = 100
-        random.seed(123)
+        Nsim = 200
+        random.seed(12345)
         for _ in range(Nsim):
-            sample = np.random.multivariate_normal(meandf.values, covdf.values, size=len(cdf))
-            simdf  = pd.DataFrame(sample, columns=etflist)
-            mu_s   = simdf.mean()
-            cov_s  = simdf.cov()
-            for j, r in enumerate(retspace_m):
-                simw[j] += solv_x(r, cov_s, mu_s)
+            simdata = np.random.multivariate_normal(meandf.values,
+                                                    covdf.values,
+                                                    len(cdf))
+            simdf = pd.DataFrame(simdata, columns=etflist)
+            simmeandf = simdf.mean()
+            simcovdf = simdf.cov()
+
+            minvar_w = solv_minvar(simcovdf, etflist)
+            maxret_w = solv_maxret(simmeandf, etflist)
+            minret = simmeandf @ minvar_w
+            maxret = simmeandf @ maxret_w
+            retspace = np.linspace(minret, maxret, gridsize)
+            weightlist_sim = [solv_x(r, simcovdf, simmeandf) for r in retspace]
+            simw += np.array(weightlist_sim)
+
         simw /= Nsim
-        sr_sim = [sharpe_ratio(simw[j], meandf, covdf, rf) for j in range(gridsize)]
+        efstd = [np.sqrt(12 * w @ covdf.values @ w) for w in simw]
+        efret = [12 * (w @ meandf) for w in simw]
+        sr_sim = [sharpe_ratio(w, meandf, covdf, rf) for w in simw]
         idx_rob = int(np.argmax(sr_sim))
         robw = simw[idx_rob]
 
-        # Robust frontier for consistency (optional rendering)
         robust_efficient_frontier = [
-            {'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j]))*np.sqrt(12)),
-             'y': float(retspace_m[j]*12)}
-            for j in range(gridsize)
+            {"x": float(efstd[i]), "y": float(efret[i])}
+            for i in range(gridsize)
         ]
         robust_allocation_stack = [
-            {'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j]))*np.sqrt(12)),
-             'allocations': {etflist[i]: float(simw[j][i]) for i in range(len(etflist))}}
-            for j in range(gridsize)
+            {
+                "x": float(efstd[i]),
+                "allocations": {etflist[j]: float(simw[i][j]) for j in range(len(etflist))},
+            }
+            for i in range(gridsize)
         ]
+        robust_ret_for_idx = efret[idx_rob]
+        robust_std_for_idx = efstd[idx_rob]
     else:
-        # If normal==1, set robust equal to standard
+        # If normal==1, set robust equal to standard outputs
         idx_rob = maxSRW
         robw = weightlist[maxSRW]
         robust_efficient_frontier = standard_efficient_frontier
-        robust_allocation_stack    = standard_allocation_stack
+        robust_allocation_stack = standard_allocation_stack
+        robust_ret_for_idx = retspace_m[idx_rob] * 12
+        robust_std_for_idx = stdlist_m[idx_rob] * np.sqrt(12)
 
     robust_max_sr = {
-        'x': float(np.sqrt(robw.dot(covdf.values).dot(robw))*np.sqrt(12)),
-        'y': float(retspace_m[idx_rob]*12)
+        "x": float(robust_std_for_idx),
+        "y": float(robust_ret_for_idx),
     }
     robust_weights = [
         {'asset': etflist[i], 'weight': float(robw[i]*100)}
