@@ -40,8 +40,6 @@ def mv(
 
     gridsize = 100
 
-    print("123")
-
     try:
         cdf = df[(df["ym"] >= startdate) & (df["ym"] <= enddate)]
         useretfL = etflist + ["Mkt-RF", "RF", "year", "month", "ym"]
@@ -74,9 +72,9 @@ def mv(
         descriptive_stats = [
             {
                 "asset": etflist[i],
-                "mean": float(meandf[i]),
-                "std": float(stddf[i]),
-                "sr": float(assetsrdf[i]),
+                "mean": float(meandf.iloc[i]),
+                "std": float(stddf.iloc[i]),
+                "sr": float(assetsrdf.iloc[i]),
             }
             for i in range(len(etflist))
         ]
@@ -87,8 +85,6 @@ def mv(
         }
 
         rf = cdf["RF"].mean()
-
-        print("123")
 
         if not short:
             def solv_x(r, covdf, meandf, etflist):
@@ -177,8 +173,8 @@ def mv(
         ]
         etf_points = [
             {
-                "x": float(stddf[i] * np.sqrt(12)),
-                "y": float(meandf[i] * 12),
+                "x": float(stddf.iloc[i] * np.sqrt(12)),
+                "y": float(meandf.iloc[i] * 12),
                 "label": etflist[i],
             }
             for i in range(len(etflist))
@@ -283,6 +279,7 @@ def mv(
             robust_efficient_frontier = [
                 {"x": float(efstd[i]), "y": float(efret[i])} for i in range(gridsize)
             ]
+
             robust_allocation_stack = [
                 {
                     "x": float(efstd[i]),
@@ -319,12 +316,14 @@ def mv(
             },
             "robust_mv": {
                 "efficient_frontier": robust_efficient_frontier,
+                "etf_points": etf_points,
                 "max_sr_point": robust_max_sr,
                 "allocation_stack": robust_allocation_stack,
                 "weights": robust_weights,
                 "pie_chart": robust_pie,
             },
             "short": int(short),
+            "normal": normal
         }
     except Exception as e:
         print(e)
