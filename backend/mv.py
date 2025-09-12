@@ -1,232 +1,447 @@
-import numpy as np
 import pandas as pd
+import numpy as np
+import os 
 import random 
-
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import warnings
+plt.rcParams['figure.figsize'] = [15, 5]
 from cvxopt import matrix, solvers
+import cvxpy as cp
+from tabulate import tabulate
 
-def sharpe_ratio(w, mean_ret, cov, rf):
-    return (w @ mean_ret - rf) / np.sqrt(w.T @ cov @ w)
 
-def mv(df,
-       etflist=['BNDX','SPSM','SPMD','SPLG','VWO','VEA','MUB','EMB'],
-       short=0,
-       maxuse=1,
-       normal=1,
-       startdate=199302,
-       enddate=202312):
+# %% 
+def get_data(file_name):
+    path = os.path.join(os.getcwd(), file_name)
+    try:
+        df = pd.read_csv(path)
+        df = df.pivot_table(index=['year', 'month'], columns = 'ticker_new', values='ret')
+        df.reset_index(inplace=True)
+        return df
+    except pd.errors.ParserError as e:
+        df = pd.read_csv(path, skiprows=3)
+        first_non_numeric_index = None
+        for index, value in df['Unnamed: 0'].items():
+            if not is_numeric(value):
+                first_non_numeric_index = index
+                break
+        
+        df = df[:first_non_numeric_index]
+        df['year'] = df['Unnamed: 0'].astype(str).str[:4]
+        df['month'] = df['Unnamed: 0'].astype(str).str[4:6]
+        df.drop(columns=['Unnamed: 0'], inplace=True)
+
+
+        for column in df.columns:
+            if column != 'year' and column != 'month':
+                df[column] = df[column].astype(float)
+            else: 
+                
+                df[column] = df[column].astype(int)
+        
+        df['RF'] = df['RF'] / 100
+        df = df.rename(columns={'RF': 'RF2'})
+        df.drop(columns={'SMB', 'HML'}, inplace = True)
+        return df
+
+
+def is_numeric(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+    
+def get_and_merge(ff_file, etf_file):
+    ffdf = get_data(ff_file)
+    etfdf = get_data(etf_file)
+    df = pd.merge(etfdf, ffdf, on=['year', 'month'], how='inner')
+    df['ym'] = df['year']*100 + df['month']
+    df['ym'] = df['ym'].astype(int)
+    return df
+
+
+# Calculate sharpe ratio
+def sharpe_ratio(x, meandf, covdf, rf): 
+    sp = (x@meandf-rf)/np.sqrt(x.T@covdf@x)
+    return sp
+
+
+def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'], short = 0, maxuse = 1, normal = 1, startdate = 199302, enddate = 202312):
     gridsize = 100
+    try: 
+        cdf = df[(df['ym'] >= startdate) & (df['ym'] <= enddate)]
+        useretfL = etflist + ['Mkt-RF', 'RF2', 'year', 'month', 'ym']
+        cdf = cdf[useretfL]
+               
+        if not maxuse: 
+            
+            stacked = cdf[etflist].stack().reset_index()
+            stacked.columns = ['row', 'ticker', 'value']
+            valid_obs = stacked.dropna()
 
-    # 1) Filter by time and columns
-    cdf = df[(df['ym'] >= startdate) & (df['ym'] <= enddate)].copy()
-    cols = etflist + ['Mkt-RF','RF','year','month','ym']
-    cdf = cdf[cols]
-    if not maxuse:
-        cdf.dropna(inplace=True)
-    cdf.reset_index(drop=True, inplace=True)
+            first_obs = valid_obs.iloc[0]
+            first_row = first_obs['row']
+            first_ticker = first_obs['ticker']
+            first_ym = cdf.loc[first_row, 'ym']
 
-    # 2) Descriptive statistics
-    meandf = cdf[etflist].mean()
-    stddf = cdf[etflist].std()
-    srdf   = meandf / stddf
-    descriptive_stats = [
-        {'asset': a, 'mean': float(meandf[a]), 'std': float(stddf[a]), 'sr': float(srdf[a])}
-        for a in etflist
-    ]
-
-    # 3) Correlation matrix
-    corr = cdf[etflist].corr().round(4)
-    correlation_matrix = {
-        'columns': list(corr.columns),
-        'data': corr.to_dict(orient='records')
-    }
-
-    # 4) Risk-free rate
-    rf = float(cdf['RF'].mean())
-
-    # 5) Build CVXOPT solver
-    def make_solvers(short_flag):
-        if not short_flag:
-            def solv_x(r, covdf, mu):
-                P = matrix(covdf.values)
-                q = matrix(np.zeros(len(mu)))
-                G = -matrix(np.eye(len(mu)))
-                h = matrix(0.0, (len(mu),1))
-                A = matrix(np.vstack((np.ones(len(mu)), mu.values)))
-                b = matrix([1.0, r])
-                solvers.options['show_progress'] = False
-                sol = solvers.qp(P, q, G, h, A, b)
-                return np.array(sol['x']).flatten()
-
-            def solv_minvar(covdf, _):
-                P = matrix(covdf.values)
-                q = matrix(np.zeros(covdf.shape[0]))
-                G = -matrix(np.eye(covdf.shape[0]))
-                h = matrix(0.0, (covdf.shape[0],1))
-                A = matrix(1.0, (1, covdf.shape[0]))
-                b = matrix(1.0)
-                solvers.options['show_progress'] = False
-                sol = solvers.qp(P, q, G, h, A, b)
-                return np.array(sol['x']).flatten()
-
-            def solv_maxret(mu, _):
-                c = -matrix(mu.values)
-                G = matrix(np.vstack((np.ones(len(mu)), -np.eye(len(mu)))))
-                h = matrix(np.vstack((np.array([[1]]), np.zeros((len(mu),1)))))
-                solvers.options['show_progress'] = False
-                sol = solvers.lp(c, G, h)
-                return np.array(sol['x']).flatten()
-        else:
-            def solv_x(r, covdf, mu):
-                P = matrix(covdf.values)
-                q = matrix(np.zeros(len(mu)))
-                G = -matrix(np.eye(len(mu)))
-                h = matrix(1.0, (len(mu),1))
-                A = matrix(np.vstack((np.ones(len(mu)), mu.values)))
-                b = matrix([1.0, r])
-                solvers.options['show_progress'] = False
-                sol = solvers.qp(P, q, G, h, A, b)
-                return np.array(sol['x']).flatten()
-
-            def solv_minvar(covdf, _):
-                P = matrix(covdf.values)
-                q = matrix(np.zeros(covdf.shape[0]))
-                G = -matrix(np.eye(covdf.shape[0]))
-                h = matrix(1.0, (covdf.shape[0],1))
-                A = matrix(1.0, (1, covdf.shape[0]))
-                b = matrix(1.0)
-                solvers.options['show_progress'] = False
-                sol = solvers.qp(P, q, G, h, A, b)
-                return np.array(sol['x']).flatten()
-
-            def solv_maxret(mu, _):
-                c = -matrix(mu.values)
-                G = matrix(np.vstack((np.ones(len(mu)), -np.eye(len(mu)))))
-                h = matrix(np.vstack((np.array([[1]]), np.zeros((len(mu),1)))))
-                solvers.options['show_progress'] = False
-                sol = solvers.lp(c, G, h)
-                return np.array(sol['x']).flatten()
-
-        return solv_x, solv_minvar, solv_maxret
-
-    solv_x, solv_minvar, solv_maxret = make_solvers(short)
-
-    # 6) Standard MV Portfolio
-    covdf = cdf[etflist].cov()
-    minv = solv_minvar(covdf, etflist)
-    maxv = solv_maxret(meandf, etflist)
-    retspace_m = np.linspace(meandf.dot(minv), meandf.dot(maxv), gridsize)
-    weightlist = [solv_x(r, covdf, meandf) for r in retspace_m]
-    stdlist_m   = [np.sqrt(w.dot(covdf.values).dot(w)) for w in weightlist]
-    srlist      = [sharpe_ratio(w, meandf, covdf, rf) for w in weightlist]
-    maxSRW      = int(np.argmax(srlist))
-
-    standard_efficient_frontier = [
-        {'x': float(s * np.sqrt(12)), 'y': float(r * 12)}
-        for s,r in zip(stdlist_m, retspace_m)
-    ]
-    etf_points = [
-        {'x': float(np.sqrt(cdf[t].var())*np.sqrt(12)),
-         'y': float(meandf[t]*12),
-         'label': t}
-        for t in etflist
-    ]
-    standard_max_sr = {
-        'x': float(stdlist_m[maxSRW]*np.sqrt(12)),
-        'y': float(retspace_m[maxSRW]*12)
-    }
-    standard_allocation_stack = [
-        {'x': float(np.sqrt(w.dot(covdf.values).dot(w))*np.sqrt(12)),
-         'allocations': {etflist[i]: float(w[i]) for i in range(len(etflist))}}
-        for w in weightlist
-    ]
-    standard_weights = [
-        {'asset': etflist[i], 'weight': float(weightlist[maxSRW][i]*100)}
-        for i in range(len(etflist))
-    ]
-    standard_pie = {
-        'labels': [w['asset'] for w in standard_weights],
-        'values': [w['weight'] for w in standard_weights]
-    }
-
-    # 7) Robust MV Portfolio (if normal==0 perform Monte-Carlo, otherwise reuse standard)
-    if not normal:
-        simw = np.zeros((gridsize, len(etflist)))
-        Nsim = 200
-        random.seed(123)
-        for _ in range(Nsim):
-            # draw sample returns and compute its moments
-            sample = np.random.multivariate_normal(meandf.values, covdf.values, size=len(cdf))
-            simdf  = pd.DataFrame(sample, columns=etflist)
-            mu_s   = simdf.mean()
-            cov_s  = simdf.cov()
-
-            # for each simulation the feasible return range changes; use
-            # simulation-specific min/max to avoid infeasible targets that can
-            # cause the optimizer to allocate everything to a single asset
-            minv_s = solv_minvar(cov_s, etflist)
-            maxv_s = solv_maxret(mu_s, etflist)
-            retspace_s = np.linspace(mu_s.dot(minv_s), mu_s.dot(maxv_s), gridsize)
-
-            for j, r in enumerate(retspace_s):
-                simw[j] += solv_x(r, cov_s, mu_s)
-
-        simw /= Nsim
-        sr_sim = [sharpe_ratio(simw[j], meandf, covdf, rf) for j in range(gridsize)]
-        idx_rob = int(np.argmax(sr_sim))
-        robw = simw[idx_rob]
-
-        # Robust frontier for consistency (optional rendering)
-        robust_efficient_frontier = [
-            {
-                'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j])) * np.sqrt(12)),
-                'y': float(meandf.dot(simw[j]) * 12),
+            # --- LATEST STARTING ticker ---
+            first_valids = {
+                etf: cdf[etf].first_valid_index()
+                for etf in etflist
+                if cdf[etf].first_valid_index() is not None
             }
-            for j in range(gridsize)
-        ]
-        robust_allocation_stack = [
-            {
-                'x': float(np.sqrt(simw[j].dot(covdf.values).dot(simw[j])) * np.sqrt(12)),
-                'allocations': {etflist[i]: float(simw[j][i]) for i in range(len(etflist))},
-            }
-            for j in range(gridsize)
-        ]
-    else:
-        # If normal==1, set robust equal to standard
-        idx_rob = maxSRW
-        robw = weightlist[maxSRW]
-        robust_efficient_frontier = standard_efficient_frontier
-        robust_allocation_stack    = standard_allocation_stack
 
-    robust_max_sr = {
-        'x': float(np.sqrt(robw.dot(covdf.values).dot(robw)) * np.sqrt(12)),
-        'y': float(meandf.dot(robw) * 12),
-    }
-    robust_weights = [
-        {'asset': etflist[i], 'weight': float(robw[i]*100)}
-        for i in range(len(etflist))
-    ]
-    robust_pie = {
-        'labels': [w['asset'] for w in robust_weights],
-        'values': [w['weight'] for w in robust_weights]
-    }
+            latest_start_ticker = max(first_valids, key=first_valids.get)
+            latest_start_row = first_valids[latest_start_ticker]
+            latest_start_ym = cdf.loc[latest_start_row, 'ym']
 
-    return {
-        "descriptive_stats":     descriptive_stats,
-        "correlation_matrix":    correlation_matrix,
-        "standard_mv": {
-            "efficient_frontier": standard_efficient_frontier,
-            "etf_points":         etf_points,
-            "max_sr_point":       standard_max_sr,
-            "allocation_stack":   standard_allocation_stack,
-            "weights":            standard_weights,
-            "pie_chart":          standard_pie
-        },
-        "robust_mv": {
-            "efficient_frontier": robust_efficient_frontier,
-            "max_sr_point":       robust_max_sr,
-            "allocation_stack":   robust_allocation_stack,
-            "weights":            robust_weights,
-            "pie_chart":          robust_pie
-        },
-        "short": int(short)
-    }
+            # --- Print results ---
+            print(f"Earliest starting ticker is '{first_ticker}' in ym {first_ym}.")
+            print(f"Latest starting ticker is '{latest_start_ticker}' in ym {latest_start_ym}.")
+            startdate = latest_start_ym
+
+        # Indicating whether to use the maximum available data
+        if not maxuse: 
+            cdf = cdf.dropna()
+        cdf.reset_index(inplace = True)
+
+        # Calculate the original moments
+        meandf = cdf[etflist].mean()
+        covdf = cdf[etflist].cov()
+        stddf = np.sqrt(cdf[etflist].var())
+        assetsrdf = meandf/stddf
+        print("Asset Descriptive Statistics: ")
+        for i in range(len(etflist)): 
+            print(f"Asset {i+1} - {etflist[i]}: Mean - {meandf[i].round(4)}, Std - {stddf[i].round(4)}, SR - {assetsrdf[i].round(4)}")
+        print("Asset Correlation Matrix: ")
+        print(cdf[etflist].corr())
+
+        # Risk Free Rate
+        rf = cdf['RF2'].mean()
+        
+        # Short Selling option
+        if not short: 
+            shortchoice = 'w/o.'
+        else: 
+            shortchoice = 'w/.'
+        
+        # Standard MV Portfolio 
+        if normal: 
+            if not short: 
+                # solve for optimal weight that minimize STD given return
+                def solv_x(r, covdf, meandf, etflist): 
+                    covmat = matrix(covdf.values)
+                    P = matrix(np.zeros(len(etflist)))
+                    G = -matrix(np.eye(len(etflist)))
+                    h = matrix(0.0, (len(etflist), 1))
+                    A = matrix(np.vstack((np.ones(len(etflist)), meandf)))
+                    b = matrix([1.0, r])
+                    solvers.options['show_progress'] = False
+                    solv = solvers.qp(covmat, P, G, h, A, b)
+                    x = np.array(solv['x']).flatten()
+                    return x
+                # Minimum Variance Portfolio 
+                def solv_minvar(simcovdf, etflist): 
+                    covmat = matrix(simcovdf.values)
+                    P = matrix(np.zeros(len(etflist)))
+                    G = -matrix(np.eye(len(etflist)))
+                    h = matrix(0.0, (len(etflist), 1))
+                    A = matrix(1.0, (1, len(etflist)))
+                    b = matrix(1.0)
+                    solvers.options['show_progress'] = False
+                    solv = solvers.qp(covmat, P, G, h, A, b)
+                    x = np.array(solv['x']).flatten()
+                    return x
+                
+                
+                # Maximum Return Portfolio
+                def solv_maxret(simmeandf, etflist): 
+                    c = -matrix(simmeandf.values)
+                    G = matrix(np.vstack((np.ones(len(etflist)), -np.eye(len(etflist)))))
+                    h = matrix(np.vstack((np.array([[1]]), np.zeros((len(etflist), 1)))))
+                    solvers.options['show_progress'] = False
+                    solv = solvers.lp(c, G, h)
+                    x = np.array(solv['x']).flatten()
+                    return x
+            else: 
+                # solve for optimal weight that minimize STD given return, with short selling
+                def solv_x(r, covdf, meandf, etflist): 
+                    covmat = matrix(covdf.values)
+                    P = matrix(np.zeros(len(etflist)))
+                    G = -matrix(np.eye(len(etflist)))
+                    h = matrix(1.0, (len(etflist), 1))
+                    A = matrix(np.vstack((np.ones(len(etflist)), meandf)))
+                    b = matrix([1.0, r])
+                    solvers.options['show_progress'] = False
+                    solv = solvers.qp(covmat, P, G, h, A, b)
+                    x = np.array(solv['x']).flatten()
+                    return x
+                
+                def solv_minvar(simcovdf, etflist): 
+                    covmat = matrix(simcovdf.values)
+                    P = matrix(np.zeros(len(etflist)))
+                    G = -matrix(np.eye(len(etflist)))
+                    h = matrix(1.0, (len(etflist), 1))
+                    A = matrix(1.0, (1, len(etflist)))
+                    b = matrix(1.0)
+                    solvers.options['show_progress'] = False
+                    solv = solvers.qp(covmat, P, G, h, A, b)
+                    x = np.array(solv['x']).flatten()
+                    return x
+                
+                def solv_maxret(simmeandf, etflist): 
+                    c = -matrix(simmeandf.values)
+                    G = matrix(np.vstack((np.ones(len(etflist)), -np.eye(len(etflist)))))
+                    h = matrix(np.vstack((np.array([[1]]), np.zeros((len(etflist), 1)))))
+                    solvers.options['show_progress'] = False
+                    solv = solvers.lp(c, G, h)
+                    x = np.array(solv['x']).flatten()
+                    return x
+                
+            minvar_w = solv_minvar(covdf, etflist)
+            maxret_w = solv_maxret(meandf, etflist)
+                
+            # Initiate the linspace of return
+            minret = meandf@minvar_w
+            maxret = meandf@maxret_w
+            retspace = np.linspace(minret, maxret, gridsize)
+            
+            # Weight, Std, and SR calculation
+            weightlist = [solv_x(i, covdf, meandf, etflist) for i in retspace]
+            stdlist = [np.sqrt(i@covdf@i) for i in weightlist]
+            SRlist = [sharpe_ratio(i, meandf, covdf, rf) for i in weightlist]
+            
+            # Maximum Sharpe Ratio Portfolio
+            maxSRW  = np.argmax(SRlist)
+            maxSR_ret = weightlist[maxSRW]@meandf
+            maxSR_std = np.sqrt(weightlist[maxSRW]@covdf@weightlist[maxSRW])
+            
+            # Report the MV Portfolio Weight
+            print("Max Sharpe Ratio Portfolio Weights: ")
+            for i in range(len(etflist)): 
+                perctw = weightlist[maxSRW][i] * 100
+                print(f"Asset {i+1} - {etflist[i]}: {perctw.round(2)}%")
+            if not short: 
+                fig, ax = plt.subplots()
+                fig.patch.set_facecolor('white')
+                ax.set_facecolor('white')
+
+                # Create the pie chart
+                wedges, texts, autotexts = ax.pie(weightlist[maxSRW], autopct='%1.1f%%',
+                    shadow=False, startangle=140)
+                ax.legend(wedges, etflist, loc='upper center', bbox_to_anchor=(0.5, -0.05),
+                    fancybox=True, shadow=True, ncol=len(etflist))
+                # Equal aspect ratio ensures that pie is drawn as a circle
+                ax.axis('equal')
+                plt.title(f'Max Sharpe Ratio Portfolio Weights, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
+                plt.show()
+
+            # Plot
+            gl = min(min(stdlist), min(stddf)) * 0.7 * np.sqrt(12)
+            gr = max(max(stdlist), max(stddf)) * 1.1 * np.sqrt(12)
+            gu = max(max(retspace), max(meandf)) * 1.15 * 12
+            gb = min(min(retspace), min(meandf)) * 0.7 * 12
+            
+            stdlist = [std * np.sqrt(12) for std in stdlist]
+            retspace = retspace * 12
+            maxSR_ret = maxSR_ret * 12
+            maxSR_std = maxSR_std * np.sqrt(12)
+            stddf = stddf * np.sqrt(12)
+            meandf = meandf * 12
+            
+            plt.plot(figsize=(15,5))
+            plt.plot(stdlist, retspace, linewidth = 1)
+            plt.scatter(stddf, meandf, color='purple', marker='o', s=40)
+            for i in range(len(etflist)): 
+                plt.annotate(etflist[i], (stddf[i], meandf[i]), textcoords="offset points", xytext=(0,10), ha='center')
+            plt.scatter(maxSR_std, maxSR_ret, color='red', marker='*', s=110)
+            plt.text(maxSR_std, maxSR_ret, s="MVP", horizontalalignment='right', verticalalignment='top', fontsize=10)
+            plt.gca().set_xlim(left=0)
+            plt.gca().set_ylim(bottom=0)
+            plt.xlim(gl, gr)
+            plt.ylim(gb, gu)
+            plt.title(f'Standard MV Portfolio, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
+            plt.show()
+
+            if not short: 
+                colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow']
+                colorlist = colors[:len(etflist)]
+                fig, ax = plt.subplots(figsize=(12, 6))
+                bottom = np.zeros_like(stdlist) 
+                allocations = pd.DataFrame(weightlist, columns = etflist)
+                for i, e in enumerate(allocations.columns):
+                    ax.fill_between(stdlist, bottom, bottom + allocations[e], label = e, color=colorlist[i], alpha=0.5)
+                    bottom += allocations[e]  
+                plt.title(f'Efficient Frontier Transition Map, Date Range: {startdate}-{enddate}')
+                plt.xlabel('Standard Deviation')
+                plt.ylabel('Allocation')
+                plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=len(etflist))
+                plt.show()
+            
+            print("Efficient Frontier Portfolios:")
+            
+            efpdf1 = pd.DataFrame(weightlist, columns = etflist)
+            efpdf2 = pd.DataFrame({'Return': retspace, 'Std': stdlist, 'SR': SRlist})
+            efpdf = pd.concat([efpdf1, efpdf2], axis=1)
+            efpdf = efpdf.round(4)
+            efpdf.index = efpdf.index + 1
+            efpdf.index.name = '#'
+            print(tabulate(efpdf, headers='keys', tablefmt='github'))
+
+            
+            
+        # Robust MV Portfolio
+        else: 
+            robw = np.zeros(len(etflist))
+            simwdf = np.zeros(gridsize)
+            
+            # Simulation Parameters Set Up
+            Nsim = 200
+            iter = 0
+            random.seed(12345)
+            while iter < Nsim: 
+                if iter % 10 == 0 and iter > 1: 
+                    print(f"Completed {round(iter*100/Nsim)}%")
+                simdata = np.random.multivariate_normal(meandf.values, covdf.values, len(cdf))
+                simdf = pd.DataFrame(simdata, columns=etflist)
+                simmeandf = simdf.mean()
+                simcovdf = simdf.cov()
+                
+                def solv_x(r, simcovdf, simmeandf, etflist): 
+                    covmat = matrix(simcovdf.values)
+                    P = matrix(np.zeros(len(etflist)))
+                    G = -matrix(np.eye(len(etflist)))
+                    h = matrix(0.0, (len(etflist), 1))
+                    A = matrix(np.vstack((np.ones(len(etflist)), simmeandf)))
+                    b = matrix([1.0, r])
+                    solvers.options['show_progress'] = False
+                    solv = solvers.qp(covmat, P, G, h, A, b)
+                    x = np.array(solv['x']).flatten()
+                    return x
+                
+                # Minimum Variance Portfolio 
+                def solv_minvar(simcovdf, etflist): 
+                    covmat = matrix(simcovdf.values)
+                    P = matrix(np.zeros(len(etflist)))
+                    G = -matrix(np.eye(len(etflist)))
+                    h = matrix(0.0, (len(etflist), 1))
+                    A = matrix(1.0, (1, len(etflist)))
+                    b = matrix(1.0)
+                    solvers.options['show_progress'] = False
+                    solv = solvers.qp(covmat, P, G, h, A, b)
+                    x = np.array(solv['x']).flatten()
+                    return x
+                minvar_w = solv_minvar(simcovdf, etflist)
+                
+                # Maximum Return Portfolio
+                def solv_maxret(simmeandf, etflist): 
+                    c = -matrix(simmeandf.values)
+                    G = matrix(np.vstack((np.ones(len(etflist)), -np.eye(len(etflist)))))
+                    h = matrix(np.vstack((np.array([[1]]), np.zeros((len(etflist), 1)))))
+                    solvers.options['show_progress'] = False
+                    solv = solvers.lp(c, G, h)
+                    x = np.array(solv['x']).flatten()
+                    return x
+                maxret_w = solv_maxret(simmeandf, etflist)
+                
+                # Initiate the linspace of return
+                minret = simmeandf@minvar_w
+                # minret = simmeandf.min()
+                maxret = simmeandf@maxret_w
+                # maxret = simmeandf.max()
+                retspace = np.linspace(minret, maxret, gridsize)
+                
+                # Weight calculation
+                weightlist = [solv_x(i, simcovdf, simmeandf, etflist) for i in retspace]
+                simwdf = [a + b for a, b in zip(simwdf, weightlist)]
+                
+                iter = iter + 1
+            print("Iteration Completed")
+            simwdf = [w/Nsim for w in simwdf]
+            
+            # Normalize
+            efstd = [np.sqrt(12 * w@covdf@w) for w in simwdf]
+            efret = [12 * w@meandf for w in simwdf]
+            SRlist = [sharpe_ratio(w, meandf, covdf, rf) for w in simwdf]
+            maxSR = np.argmax(SRlist)
+            maxSR_ret = efret[maxSR]
+            maxSR_std = efstd[maxSR]
+            robw = simwdf[maxSR]
+            
+            cml_std = np.linspace(0, efstd[-1], gridsize)
+            cml_ret = [std * (maxSR_ret - rf*12)/maxSR_std + rf*12 for std in cml_std]
+            
+            # Report the MV Portfolio Weight
+            print("Robust Max Sharpe Ratio Portfolio Weights: ")
+            for i in range(len(etflist)): 
+                perct = robw[i] * 100
+                print(f"Asset {i+1} - {etflist[i]}: {perct.round(2)}%")
+            fig, ax = plt.subplots()
+            fig.patch.set_facecolor('white')
+            ax.set_facecolor('white')
+
+            # Create the pie chart
+            wedges, texts, autotexts = ax.pie(robw, autopct='%1.1f%%',
+                shadow=False, startangle=140)
+            ax.legend(wedges, etflist, loc='upper center', bbox_to_anchor=(0.5, -0.05),
+                fancybox=True, shadow=True, ncol=len(etflist))
+            # Equal aspect ratio ensures that pie is drawn as a circle
+            ax.axis('equal')
+            plt.title(f'Robust Max Sharpe Ratio Portfolio Weights, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
+            plt.show()
+
+            stddf = stddf * np.sqrt(12)
+            meandf = meandf * 12 
+            
+            # Plot
+            gl = 0.0 #min(min(efstd), min(stddf)) * 0.7 
+            gr = max(max(efstd), max(stddf)) * 1.1 
+            gu = max(max(efret), max(meandf)) * 1.15 
+            gb = min(min(efret), min(meandf)) * 0.7 
+            
+            plt.plot(figsize=(15,5))
+            plt.plot(efstd, efret, linewidth = 1)
+            plt.plot(cml_std, cml_ret, color='red', linewidth = 1)
+            plt.scatter(stddf, meandf, color='purple', marker='o', s=40)
+            for i in range(len(etflist)): 
+                plt.annotate(etflist[i], (stddf[i], meandf[i]), textcoords="offset points", xytext=(0,10), ha='center')
+            plt.scatter(maxSR_std, maxSR_ret, color='red', marker='*', s=110)
+            plt.text(maxSR_std, maxSR_ret, s="MVP", horizontalalignment='right', verticalalignment='top', fontsize=10)
+            plt.gca().set_xlim(left=0)
+            plt.gca().set_ylim(bottom=0)
+            plt.xlim(gl, gr)
+            plt.ylim(gb, gu)
+            plt.title(f'Robust MV Portfolio, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
+            plt.show()
+
+            colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow','brown']
+            colorlist = colors[:len(etflist)]
+            fig, ax = plt.subplots(figsize=(12, 6))
+            bottom = np.zeros_like(efstd) 
+            allocations = pd.DataFrame(simwdf, columns = etflist)
+            for i, e in enumerate(allocations.columns):
+                ax.fill_between(efstd, bottom, bottom + allocations[e], label = e, color=colorlist[i], alpha=0.5)
+                bottom += allocations[e]  
+            plt.title(f'Robust Efficient Frontier Transition Map, Date Range: {startdate}-{enddate}')
+            plt.xlabel('Standard Deviation')
+            plt.ylabel('Allocation')
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=len(etflist))
+            plt.show()
+
+            print("Robust Efficient Frontier Portfolios:")
+            
+            efpdf1 = pd.DataFrame(simwdf, columns = etflist)
+            efpdf2 = pd.DataFrame({'Return': efret, 'Std': efstd, 'SR': SRlist})
+            efpdf = pd.concat([efpdf1, efpdf2], axis=1)
+            efpdf = efpdf.round(4)
+            efpdf.index = efpdf.index + 1
+            efpdf.index.name = '#'
+            print(tabulate(efpdf, headers='keys', tablefmt='github'))
+
+            
+    except: 
+        print("error")
+        # mv(df, etflist, short, 0, normal, startdate, enddate)
+# %% 
