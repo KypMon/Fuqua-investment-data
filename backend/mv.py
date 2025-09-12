@@ -40,9 +40,11 @@ def mv(
 
     gridsize = 100
 
+    print("123")
+
     try:
         cdf = df[(df["ym"] >= startdate) & (df["ym"] <= enddate)]
-        useretfL = etflist + ["Mkt-RF", "RF2", "year", "month", "ym"]
+        useretfL = etflist + ["Mkt-RF", "RF", "year", "month", "ym"]
         cdf = cdf[useretfL]
 
         if not maxuse:
@@ -84,7 +86,9 @@ def mv(
             "data": corr.to_dict(orient="records"),
         }
 
-        rf = cdf["RF2"].mean()
+        rf = cdf["RF"].mean()
+
+        print("123")
 
         if not short:
             def solv_x(r, covdf, meandf, etflist):
@@ -322,6 +326,7 @@ def mv(
             },
             "short": int(short),
         }
-    except Exception:
+    except Exception as e:
+        print(e)
         return {"error": "error"}
 
