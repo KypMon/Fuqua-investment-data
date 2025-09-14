@@ -584,7 +584,7 @@ def run_backtest():
                 return None if np.isnan(data) else float(data)
             elif isinstance(data, (np.int64, np.int32, np.int_, int)): # Added int here
                 return int(data)
-            elif isinstance(data, (np.bool_, np.bool8, bool)): # Added bool here
+            elif isinstance(data, (np.bool_, np.bool, bool)): # Added bool here
                 return bool(data)
             elif pd.isna(data):
                  return None
@@ -882,7 +882,7 @@ def run_regression():
                 return None if np.isnan(data_to_sanitize) else float(data_to_sanitize)
             elif isinstance(data_to_sanitize, (np.int64, np.int32, np.int_, int)):
                 return int(data_to_sanitize)
-            elif isinstance(data_to_sanitize, (np.bool_, np.bool8, bool)):
+            elif isinstance(data_to_sanitize, (np.bool_, np.bool, bool)):
                 return bool(data_to_sanitize)
             elif pd.isna(data_to_sanitize): 
                  return None
