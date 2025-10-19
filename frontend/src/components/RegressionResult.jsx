@@ -8,7 +8,9 @@ import {
   TableHead,
   TableRow,
   TableCell,
-  TableBody
+  TableBody,
+  Alert,
+  Stack
 } from "@mui/material";
 import Plot from 'react-plotly.js'; // Make sure react-plotly.js is installed
 import OlsSummary from './OlsSummary';
@@ -52,8 +54,8 @@ export default function RegressionResult({ result }) {
     margin: { t: 40, b: 120, l: 70, r: 70 } // Increased bottom margin for legend
   };
 
-  if (resultData.rolling_plot_data && 
-      resultData.rolling_plot_data.dates && 
+  if (resultData.rolling_plot_data &&
+      resultData.rolling_plot_data.dates &&
       resultData.rolling_plot_data.dates.length > 0) {
     
     // 1. Alpha Series (Primary Y-axis)
@@ -86,9 +88,35 @@ export default function RegressionResult({ result }) {
     }
   }
 
+  const errorMessages = Array.isArray(resultData.errors) ? resultData.errors : [];
+  const infoMessages = Array.isArray(resultData.messages) ? resultData.messages : [];
+  const warningMessages = Array.isArray(resultData.warnings) ? resultData.warnings : [];
+
   return (
     <Box mt={4}>
       <Typography variant="h6" gutterBottom>Model Output</Typography>
+
+      {(errorMessages.length > 0 || infoMessages.length > 0 || warningMessages.length > 0) && (
+        <Box mt={2}>
+          <Stack spacing={1}>
+            {errorMessages.map((message, idx) => (
+              <Alert severity="error" key={`reg-error-inline-${idx}`}>
+                {message}
+              </Alert>
+            ))}
+            {infoMessages.map((message, idx) => (
+              <Alert severity="info" key={`reg-info-${idx}`}>
+                {message}
+              </Alert>
+            ))}
+            {warningMessages.map((message, idx) => (
+              <Alert severity="warning" key={`reg-warning-${idx}`}>
+                {message}
+              </Alert>
+            ))}
+          </Stack>
+        </Box>
+      )}
 
       {resultData.regression_output && resultData.regression_output.text_summary && (
         <Paper style={{ padding: "1rem", marginBottom: "1.5rem" }}>

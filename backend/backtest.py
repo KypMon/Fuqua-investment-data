@@ -12,12 +12,20 @@ import calendar
 import numpy as np
 import statsmodels.api as sm
 from datetime import datetime
-import random 
+import random
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from scipy.stats import skew, kurtosis
 from data_loader import load_csv
+
+
+class BacktestInputError(Exception):
+    """Raised when user input for the backtest fails validation."""
+
+    def __init__(self, message, errors=None):
+        super().__init__(message)
+        self.errors = errors or [message]
 
 def backtesting_aux(start_date, end_date, tickers, allocation, rebalancing, data_short, ff5, start_balance):
 
@@ -75,8 +83,7 @@ def backtesting_aux(start_date, end_date, tickers, allocation, rebalancing, data
     dates_aux = pd.to_datetime(dict(year=y_aux, month=m_aux, day=d_aux))
 
     if not n_months == len(ff5):
-        print('Error: Number of months for tickers different than rf number of months')
-        return
+        raise BacktestInputError('Number of months for tickers different than rf number of months')
 
     dollar_amt = np.zeros((n_months, n_assets))
     
@@ -211,8 +218,11 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
         "regression_summary_tables": [],
         "portfolio_growth_plot_data": [],
         "annual_returns_plot_data": {"years": [], "series": []},
-        "drawdown_plot_data": []
+        "drawdown_plot_data": [],
+        "messages": [],
+        "warnings": []
     }
+    info_messages = []
     # --- End of new/modified section ---
 
     # Some cross-checks
@@ -232,19 +242,22 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
             n_tickers = sum([1 for t in tickers_aux if t])
 
             if n_tickers != n_alloc:
-                print(f"Error: The number of weights needs to be the same as the number of tickers in {portfolio_name[p]}")
-                return
+                raise BacktestInputError(
+                    f"The number of weights needs to be the same as the number of tickers in {portfolio_name[p]}"
+                )
 
             # Check that every element of allocation is between zero and 100
             indicator = (alloc >= 0) & (alloc <= 100)
             if n_alloc != sum(indicator):
-                print(f"Error: Weights need to be between zero and 100 in {portfolio_name[p]}")
-                return
+                raise BacktestInputError(
+                    f"Weights need to be between zero and 100 in {portfolio_name[p]}"
+                )
 
             # Check allocation adds up to 100
-            if not np.nansum(alloc) == 100:
-                print(f"Error: Weights need to add up to 100 in {portfolio_name[p]}")
-                return
+            if not np.isclose(np.nansum(alloc), 100):
+                raise BacktestInputError(
+                    f"Weights need to add up to 100 in {portfolio_name[p]}"
+                )
 
     # Filter data for the tickers in the allocation
     data_short = final_data[final_data['ticker_new'].isin(tickers)]
@@ -264,15 +277,19 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
         start_date = max_min_date
 
     if max_min_date > start_date:
-        print(f"Data range will start from {max_min_date} because that is the first available date for ticker {non_empty_idx[min_date.argmax()]}")
+        data_range_message = (
+            f"Data range will start from {max_min_date} because that is the first available date for ticker "
+            f"{non_empty_idx[min_date.argmax()]}"
+        )
+        print(data_range_message)
+        info_messages.append(data_range_message)
         start_date = max_min_date
 
     if not end_date:
         end_date = min_max_date
 
     if start_date >= end_date:
-        print("Error: Start date cannot be after end date")
-        return
+        raise BacktestInputError("Start date cannot be after end date")
 
     # Filter data based on date range
     data_short = data_short[(data_short['date'] >= start_date) & (data_short['date'] <= end_date)]
@@ -325,12 +342,13 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
     p = 3
     alloc = np.array([100])
     tickers2 = np.array(benchmark)
-    print(tickers2)
     results = backtesting_aux(start_date, end_date, tickers2, alloc, rebalancing, data_short, ff5, start_balance)
     output[p] = {key: value for key, value in zip(['allocation', 'tickers', 'dates_aux', 'drawdowns', 'ann_ret', 'sortino_ratio', 'sharpe_ratio', 'pv', 'ann_return_cagr', 'ann_return_average', 'ann_std', 'p_returns', 'drawdowns_tab2'], results)}
 
     # Output results and generate plots
-    print(f'Portfolio Backtesting {start_date} - {end_date}')
+    summary_message = f'Portfolio Backtesting {start_date} - {end_date}'
+    print(summary_message)
+    info_messages.append(summary_message)
 
     # !!!
     # Portfolio allocations
@@ -643,12 +661,15 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
                     "coefficients": coef_df.to_dict(orient='records')
                 })
             else:
-                print(f"Not enough data points for regression for {portfolio_name[p]}")
+                regression_warning = f"Not enough data points for regression for {portfolio_name[p]}"
+                print(regression_warning)
+                returned_structured_data["warnings"].append(regression_warning)
                 returned_structured_data["regression_summary_tables"].append({
                     "portfolioName": portfolio_name[p],
                     "error": "Not enough data points for regression."
                 })
 
+    returned_structured_data["messages"] = info_messages
     return returned_structured_data
 
 

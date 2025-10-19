@@ -14,7 +14,7 @@ import random
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 
 from mv import mv
-from backtest import backtesting, backtesting_aux
+from backtest import backtesting, backtesting_aux, BacktestInputError
 from data_loader import load_csv
 
 
@@ -572,7 +572,9 @@ def run_backtest():
             "regression_table": structured_results_from_backtesting.get("regression_summary_tables", []),
             "portfolio_growth_plot_data": structured_results_from_backtesting.get("portfolio_growth_plot_data", []),
             "annual_returns_plot_data": structured_results_from_backtesting.get("annual_returns_plot_data", {}),
-            "drawdown_plot_data": structured_results_from_backtesting.get("drawdown_plot_data", [])
+            "drawdown_plot_data": structured_results_from_backtesting.get("drawdown_plot_data", []),
+            "messages": structured_results_from_backtesting.get("messages", []),
+            "warnings": structured_results_from_backtesting.get("warnings", [])
         }
         
         def sanitize_for_json(data):
@@ -584,7 +586,7 @@ def run_backtest():
                 return None if np.isnan(data) else float(data)
             elif isinstance(data, (np.int64, np.int32, np.int_, int)): # Added int here
                 return int(data)
-            elif isinstance(data, (np.bool_, np.bool, bool)): # Added bool here
+            elif isinstance(data, (np.bool_, bool)): # Added bool here
                 return bool(data)
             elif pd.isna(data):
                  return None
@@ -593,6 +595,8 @@ def run_backtest():
         sanitized_response_data = sanitize_for_json(response_data)
         return jsonify(sanitized_response_data)
 
+    except BacktestInputError as e:
+        return jsonify({"error": str(e), "errors": getattr(e, "errors", [str(e)])}), 400
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -672,6 +676,14 @@ def extract_ols_summary(model):
 
     return summary
 
+
+class RegressionInputError(Exception):
+    """Raised when regression input fails validation."""
+
+    def __init__(self, message, errors=None):
+        super().__init__(message)
+        self.errors = errors or [message]
+
 @app.route("/regression", methods=["POST"])
 def run_regression():
     try:
@@ -679,38 +691,74 @@ def run_regression():
 
         data = request.json
         ticker = data.get("ticker")
-        start_date_str = data.get("start_date", "1970-01-01") 
-        end_date_str = data.get("end_date", "2023-12-31")   
-        
-        start_date = int(start_date_str.replace("-", "")[:6])
-        end_date = int(end_date_str.replace("-", "")[:6])
-        
-        model_name_req = data.get("model", "CAPM") 
-        rolling_period = int(data.get("rolling_period", 36))
+        start_date_str = data.get("start_date", "1970-01-01")
+        end_date_str = data.get("end_date", "2023-12-31")
 
-        if not ticker:
-            return jsonify({"error": "Ticker not provided"}), 400
+        def parse_date_string(raw_value, label):
+            try:
+                clean_value = (raw_value or "").replace("-", "")
+                if len(clean_value) < 6:
+                    raise ValueError
+                return int(clean_value[:6])
+            except (AttributeError, ValueError, TypeError):
+                raise RegressionInputError(f"{label} is invalid. Please use YYYY-MM-DD format.")
+
+        start_date = parse_date_string(start_date_str, "Start date")
+        end_date = parse_date_string(end_date_str, "End date")
+
+        model_name_req = data.get("model", "CAPM")
+
+        rolling_period_raw = data.get("rolling_period", 36)
+        try:
+            rolling_period = int(rolling_period_raw)
+        except (ValueError, TypeError):
+            raise RegressionInputError("Rolling period must be an integer number of months.")
+        if rolling_period <= 0:
+            raise RegressionInputError("Rolling period must be a positive integer.")
+
+        if not ticker or not str(ticker).strip():
+            raise RegressionInputError("Ticker not provided")
+
+        ticker = str(ticker).strip().upper()
 
         data_short = final_data[final_data["ticker_new"] == ticker].copy()
 
         if data_short.empty:
-            return jsonify({"error": f"No data found for ticker: {ticker}"}), 400
-            
+            raise RegressionInputError(f"No data found for ticker: {ticker}")
+
+        info_messages = []
+        warning_messages = []
+        error_messages = []
+
         max_available_date = data_short["date"].max()
         min_available_date = data_short["date"].min()
 
+        def format_ym(value):
+            value_str = f"{int(value):06d}"
+            return f"{value_str[:4]}-{value_str[4:6]}"
+
         if end_date > max_available_date:
+            info_messages.append(
+                f"End date adjusted to {format_ym(max_available_date)} because that is the latest available data for {ticker}."
+            )
             end_date = max_available_date
         if start_date < min_available_date:
+            info_messages.append(
+                f"Start date adjusted to {format_ym(min_available_date)} because that is the first available data for {ticker}."
+            )
             start_date = min_available_date
-        
+
         if start_date > end_date:
-             return jsonify({"error": "Start date cannot be after end date for the selected ticker's available range."}), 400
+            raise RegressionInputError(
+                "Start date cannot be after end date for the selected ticker's available range."
+            )
 
         data_short = data_short[(data_short["date"] >= start_date) & (data_short["date"] <= end_date)]
-        
+
         if data_short.empty:
-            return jsonify({"error": f"No data for ticker {ticker} in the specified date range {start_date} - {end_date}"}), 400
+            raise RegressionInputError(
+                f"No data for ticker {ticker} in the specified date range {format_ym(start_date)} - {format_ym(end_date)}"
+            )
 
         # Prepare y_var (dependent variable: excess returns)
         # Ensure 'RF' (risk-free rate) is present and numeric
@@ -718,12 +766,12 @@ def run_regression():
             return jsonify({"error": "RF (Risk-Free rate) column missing in data_short."}), 500
         data_short['RF'] = pd.to_numeric(data_short['RF'], errors='coerce')
         data_short['ret'] = pd.to_numeric(data_short['ret'], errors='coerce')
-        
+
         y_var_series = (data_short["ret"] - data_short["RF"]).rename('y_excess_return') # Rename for clarity
 
         nobs_initial = y_var_series.shape[0]
         if nobs_initial == 0:
-            return jsonify({"error": "No observations found for y_var after date filtering."}), 400
+            raise RegressionInputError("No observations found for the selected ticker and date range.")
 
         # Select factors based on model_name_req
         factor_columns_map = {
@@ -733,10 +781,10 @@ def run_regression():
             "FF5": ["Mkt-RF", "HML", "SMB", "CMA", "RMW"]
         }
         if model_name_req not in factor_columns_map:
-            return jsonify({"error": "Invalid model selected"}), 400
-        
+            raise RegressionInputError("Invalid model selected")
+
         factor_names = factor_columns_map[model_name_req]
-        
+
         # Ensure factor columns exist and are numeric
         for factor in factor_names:
             if factor not in data_short.columns:
@@ -744,24 +792,27 @@ def run_regression():
             data_short[factor] = pd.to_numeric(data_short[factor], errors='coerce')
 
         x_var_df_factors_only = data_short[factor_names].copy()
-        
+
         # Add constant and align data by dropping NaNs from the combined DataFrame
         x_var_with_constant_df = sm.add_constant(x_var_df_factors_only, has_constant='add', prepend=True)
-        
+
         # Align y_var with x_var_with_constant_df using their common index from data_short
         # The index of data_short is used by y_var_series and x_var_df_factors_only
         combined_for_regression = pd.concat([y_var_series, x_var_with_constant_df], axis=1)
         combined_for_regression.dropna(inplace=True) # Drop rows with NaNs in y or any x
 
-        if combined_for_regression.shape[0] < x_var_with_constant_df.shape[1] + 1:
-            return jsonify({"error": "Not enough data points for regression after handling NaNs in combined y and X."}), 400
+        min_required_obs = x_var_with_constant_df.shape[1] + 1
+        if combined_for_regression.shape[0] < min_required_obs:
+            raise RegressionInputError(
+                "Not enough data points for regression after handling missing values."
+            )
 
         y_var_final = combined_for_regression['y_excess_return']
         x_var_final_with_const = combined_for_regression.drop(columns=['y_excess_return'])
-        
+
         # Ensure column order for exog_names matches params order (sm.OLS should handle this if df passed)
         mdl = sm.OLS(y_var_final, x_var_final_with_const).fit()
-        
+
         regression_text_html = mdl.summary().as_html()
 
         # Calculate Return Contribution
@@ -783,7 +834,7 @@ def run_regression():
             "Av. Ann. Excess Return": alpha_annualized_val,
             "Return Contribution": alpha_contribution_pct
         })
-        
+
         # Factor contributions
         # x_var_df_factors_only_aligned ensures means are from the same sample used in regression
         x_var_df_factors_only_aligned = x_var_df_factors_only.loc[y_var_final.index]
@@ -804,14 +855,14 @@ def run_regression():
         # Rolling Regression Plot Data
         image_urls = [] # Keep this empty if the frontend fully handles plotting
         rolling_plot_data_for_json = None
-        
+
         nobs_final = len(y_var_final) # Number of observations after NaN handling for overall regression
         if nobs_final >= rolling_period + 10:
             # Ensure rolling regression uses the same cleaned/aligned data
             out_roll = np.full((nobs_final - rolling_period + 1, x_var_final_with_const.shape[1]), np.nan)
-            
+
             # Align data_short for date indexing with the cleaned data for rolling period
-            aligned_dates_for_rolling_idx = y_var_final.index 
+            aligned_dates_for_rolling_idx = y_var_final.index
             date_series_for_rolling = data_short.loc[aligned_dates_for_rolling_idx, "date"]
 
             for k_loop_idx in range(rolling_period -1, nobs_final): # Iterate using index positions
@@ -820,13 +871,29 @@ def run_regression():
 
                 y_roll_s = y_var_final.iloc[start_idx_rolling:end_idx_rolling]
                 x_roll_df = x_var_final_with_const.iloc[start_idx_rolling:end_idx_rolling]
-                
-                if not x_roll_df.empty and not y_roll_s.empty and len(y_roll_s) >= x_roll_df.shape[1]:
+
+                if not x_roll_df.empty and not y_roll_s.empty and len(y_roll_s) >= x_var_final_with_const.shape[1]:
                     try:
                         mdl_roll = sm.OLS(y_roll_s, x_roll_df, missing='drop').fit()
                         out_roll[k_loop_idx - (rolling_period - 1), :] = mdl_roll.params.values
                     except Exception as e_roll:
-                        print(f"Error in rolling regression for window ending at index {k_loop_idx}: {e_roll}")
+                        window_end_raw = None
+                        try:
+                            window_end_raw = date_series_for_rolling.iloc[k_loop_idx]
+                        except Exception:
+                            window_end_raw = None
+
+                        window_end_fmt = (
+                            format_ym(window_end_raw)
+                            if window_end_raw is not None and not pd.isna(window_end_raw)
+                            else f"index {k_loop_idx}"
+                        )
+
+                        error_message = (
+                            f"Rolling regression failed for the window ending {window_end_fmt}: {e_roll}"
+                        )
+                        error_messages.append(error_message)
+                        print(error_message)
                         out_roll[k_loop_idx - (rolling_period - 1), :] = np.nan
                 else:
                     out_roll[k_loop_idx - (rolling_period - 1), :] = np.nan
@@ -852,17 +919,25 @@ def run_regression():
                         "name": factor_name_plot,
                         "values": out_roll[:, factor_col_idx_in_out_roll].tolist()
                     })
-            
+
             rolling_plot_data_for_json = {
                 "dates": plot_dates_str,
                 "alpha_series": alpha_values_rolling,
                 "factor_series": factor_loadings_series_list,
                 "factor_names": factor_names # Original factor names for legend
             }
+        else:
+            warning_messages.append(
+                "Not enough observations to generate the rolling regression chart."
+            )
+
+        info_messages.append(
+            f"Regression run for {ticker} from {format_ym(start_date)} to {format_ym(end_date)} using the {model_name_req} model."
+        )
 
         response_payload = {
             "summary_table": return_contribution_list, # Use the list of dicts
-            "image_urls": image_urls, 
+            "image_urls": image_urls,
             "regression_output": {
                 "r_squared": round(mdl.rsquared, 4),
                 "adj_r_squared": round(mdl.rsquared_adj, 4),
@@ -870,9 +945,12 @@ def run_regression():
                 "n_observations": int(mdl.nobs),
                 "text_summary": regression_text_html
             },
-            "rolling_plot_data": rolling_plot_data_for_json 
+            "rolling_plot_data": rolling_plot_data_for_json,
+            "messages": info_messages,
+            "warnings": warning_messages,
+            "errors": error_messages
         }
-        
+
         def sanitize_for_json(data_to_sanitize): # Renamed variable to avoid conflict
             if isinstance(data_to_sanitize, dict):
                 return {k: sanitize_for_json(v) for k, v in data_to_sanitize.items()}
@@ -884,20 +962,19 @@ def run_regression():
                 return int(data_to_sanitize)
             elif isinstance(data_to_sanitize, (np.bool_, np.bool, bool)):
                 return bool(data_to_sanitize)
-            elif pd.isna(data_to_sanitize): 
+            elif pd.isna(data_to_sanitize):
                  return None
             return data_to_sanitize
 
         return jsonify(sanitize_for_json(response_payload))
 
+    except RegressionInputError as e:
+        return jsonify({"error": str(e), "errors": getattr(e, "errors", [str(e)])}), 400
     except Exception as e:
         import traceback
         current_traceback = traceback.format_exc() # Capture traceback string
         print(current_traceback) # Print to server logs
         return jsonify({"error": str(e), "trace": current_traceback}), 500
-
-
-
 
 @app.route('/static/<path:filename>')
 def serve_image(filename):
