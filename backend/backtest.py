@@ -277,9 +277,17 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
         start_date = max_min_date
 
     if max_min_date > start_date:
+        try:
+            ticker_with_latest_start = min_date.idxmax()
+        except ValueError:
+            ticker_with_latest_start = None
+
+        if ticker_with_latest_start is None and non_empty_idx:
+            ticker_with_latest_start = non_empty_idx[0]
+
         data_range_message = (
             f"Data range will start from {max_min_date} because that is the first available date for ticker "
-            f"{non_empty_idx[min_date.argmax()]}"
+            f"{ticker_with_latest_start}"
         )
         print(data_range_message)
         info_messages.append(data_range_message)
