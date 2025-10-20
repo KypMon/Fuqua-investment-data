@@ -167,6 +167,9 @@ def mv(
         maxSR_ret = weightlist[maxSRW] @ meandf
         maxSR_std = np.sqrt(weightlist[maxSRW] @ covdf @ weightlist[maxSRW])
 
+        minvar_std = np.sqrt(minvar_w @ covdf @ minvar_w)
+        minvar_ret = meandf @ minvar_w
+
         standard_efficient_frontier = [
             {"x": float(std * np.sqrt(12)), "y": float(ret * 12)}
             for std, ret in zip(stdlist, retspace)
@@ -182,6 +185,10 @@ def mv(
         standard_max_sr = {
             "x": float(maxSR_std * np.sqrt(12)),
             "y": float(maxSR_ret * 12),
+        }
+        standard_min_var = {
+            "x": float(minvar_std * np.sqrt(12)),
+            "y": float(minvar_ret * 12),
         }
         standard_allocation_stack = [
             {
@@ -273,6 +280,10 @@ def mv(
             maxSR_std = efstd[maxSR]
             robw = simwdf[maxSR]
 
+            minvar_idx = int(np.argmin(efstd))
+            minvar_std = efstd[minvar_idx]
+            minvar_ret = efret[minvar_idx]
+
             cml_std = np.linspace(0, efstd[-1], gridsize)
             cml_ret = [std * (maxSR_ret - rf * 12) / maxSR_std + rf * 12 for std in cml_std]
 
@@ -288,6 +299,7 @@ def mv(
                 for i in range(gridsize)
             ]
             robust_max_sr = {"x": float(maxSR_std), "y": float(maxSR_ret)}
+            robust_min_var = {"x": float(minvar_std), "y": float(minvar_ret)}
             robust_weights = [
                 {"asset": etflist[i], "weight": float(robw[i] * 100)}
                 for i in range(len(etflist))
@@ -300,6 +312,7 @@ def mv(
             robust_efficient_frontier = standard_efficient_frontier
             robust_allocation_stack = standard_allocation_stack
             robust_max_sr = standard_max_sr
+            robust_min_var = standard_min_var
             robust_weights = standard_weights
             robust_pie = standard_pie
 
@@ -310,6 +323,7 @@ def mv(
                 "efficient_frontier": standard_efficient_frontier,
                 "etf_points": etf_points,
                 "max_sr_point": standard_max_sr,
+                "min_var_point": standard_min_var,
                 "allocation_stack": standard_allocation_stack,
                 "weights": standard_weights,
                 "pie_chart": standard_pie,
@@ -318,6 +332,7 @@ def mv(
                 "efficient_frontier": robust_efficient_frontier,
                 "etf_points": etf_points,
                 "max_sr_point": robust_max_sr,
+                "min_var_point": robust_min_var,
                 "allocation_stack": robust_allocation_stack,
                 "weights": robust_weights,
                 "pie_chart": robust_pie,
