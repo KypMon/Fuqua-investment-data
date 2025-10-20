@@ -47,6 +47,31 @@ return_data = load_csv("stocks_mf_ETF_data_final.csv")
 return_data['date'] = return_data['year'] * 100 + return_data['month']
 return_data.drop(columns=['month', 'year'], inplace=True)
 
+
+def _format_ym(ym: int) -> str:
+    """Format an integer ``YYYYMM`` into ``YYYY-MM`` for display."""
+
+    year, month = divmod(int(ym), 100)
+    return f"{year:04d}-{month:02d}"
+
+
+def _build_etf_date_bounds(df: pd.DataFrame) -> dict:
+    """Return earliest and latest available ``date`` for each ETF ticker."""
+
+    bounds = {}
+    if {"ticker_new", "date", "ret"}.issubset(df.columns):
+        valid = df.dropna(subset=["ret"])
+        grouped = valid.groupby("ticker_new")["date"].agg(["min", "max"]).dropna()
+        bounds = {
+            ticker: {"earliest": int(row["min"]), "latest": int(row["max"])}
+            for ticker, row in grouped.iterrows()
+        }
+    return bounds
+
+
+ETF_DATE_BOUNDS = _build_etf_date_bounds(return_data)
+DEFAULT_ETFS = ["VOO", "VXUS", "AVUV", "AVDV", "AVEM"]
+
 # Regression
 mom = load_csv('F-F_Momentum_Factor.csv', sep=',')
 mom.columns = ['date', 'MOM']
@@ -483,18 +508,70 @@ def home():
 
 @app.route("/run", methods=["POST"])
 def run_mv():
-    data = request.json or request.form
-    etfl = data.get("etflist", "").split(",") if data.get("etflist") else ["VOO","VXUS","AVUV","AVDV","AVEM"]
-    short  = int(data.get("short", 0))
+    data = request.json or request.form or {}
+
+    raw_etfs = data.get("etflist", "")
+    etfl = [ticker.strip().upper() for ticker in raw_etfs.split(",") if ticker.strip()]
+    if not etfl:
+        etfl = DEFAULT_ETFS.copy()
+
+    errors = []
+
+    try:
+        sd = int(data.get("startdate", 199302))
+        ed = int(data.get("enddate", 202312))
+    except (TypeError, ValueError):
+        return (
+            jsonify({"errors": ["Start and end dates must be provided in YYYYMM format."]}),
+            400,
+        )
+
+    if sd > ed:
+        errors.append(
+            f"Start date {_format_ym(sd)} must be before or equal to end date {_format_ym(ed)}."
+        )
+
+    unknown = [ticker for ticker in etfl if ticker not in ETF_DATE_BOUNDS]
+    if unknown:
+        errors.append(
+            "No return data available for the following tickers: "
+            + ", ".join(sorted(unknown))
+            + "."
+        )
+
+    for ticker in etfl:
+        if ticker not in ETF_DATE_BOUNDS:
+            continue
+        bounds = ETF_DATE_BOUNDS[ticker]
+        earliest = bounds["earliest"]
+        latest = bounds["latest"]
+        if sd < earliest or ed > latest:
+            errors.append(
+                "Data for {ticker} is available from {earliest} to {latest}. "
+                "Requested range {sd} to {ed} is outside this window.".format(
+                    ticker=ticker,
+                    earliest=_format_ym(earliest),
+                    latest=_format_ym(latest),
+                    sd=_format_ym(sd),
+                    ed=_format_ym(ed),
+                )
+            )
+
+    if errors:
+        return jsonify({"errors": errors}), 400
+
+    short = int(data.get("short", 0))
     maxuse = int(data.get("maxuse", 0))
     normal = int(data.get("normal", 1))
-    sd = int(data.get("startdate", 199302))
-    ed = int(data.get("enddate",   202312))
 
     result = mv(
-        global_data.copy(), etfl,
-        short, maxuse, normal,
-        sd, ed
+        global_data.copy(),
+        etfl,
+        short,
+        maxuse,
+        normal,
+        sd,
+        ed,
     )
     return jsonify(result)
     
