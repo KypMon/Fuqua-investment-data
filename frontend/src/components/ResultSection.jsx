@@ -43,6 +43,7 @@ export default function ResultSection({ result }) {
   const ef       = block.efficient_frontier    || [];
   const etfPts   = block.etf_points             || [];
   const maxSR    = block.max_sr_point           || { x:0,y:0 };
+  const minVar   = block.min_var_point          || { x:0,y:0 };
   const allocStk = block.allocation_stack       || [];
   const weights  = block.weights                || [];
   const pieChart = block.pie_chart              || { labels: [], values: [] };
@@ -134,6 +135,14 @@ export default function ResultSection({ result }) {
                 name: 'Max SR',
                 text: ['Max SR'],
                 marker: { color:'red', size:12, symbol:'star' }
+              },
+              {
+                x: [minVar.x],
+                y: [minVar.y],
+                mode: 'markers+text',
+                name: 'Min Var',
+                text: ['Min Var'],
+                marker: { color:'green', size:12, symbol:'star' }
               }
             ]}
             layout={{
