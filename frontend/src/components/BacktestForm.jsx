@@ -7,6 +7,11 @@ import dayjs from "dayjs";
 import axios from "axios";
 
 const benchmarkOptions = ["CRSPVW", "None"];
+const rebalancingOptions = [
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" },
+  { value: "None", label: "No Rebalancing" },
+];
 
 export default function BacktestForm({ setBacktestResult }) {
   const [form, setForm] = useState({
@@ -206,22 +211,38 @@ export default function BacktestForm({ setBacktestResult }) {
 
       <Grid container spacing={2}>
         <Grid item xs={12} sm={6} md={4}>
-            <TextField
-                select
-                label="Benchmark"
-                value={form.benchmark}
-                onChange={(e) => setForm({ ...form, benchmark: e.target.value })}
-                fullWidth
-                sx={{ minWidth: 200 }}
-            >
-                {benchmarkOptions.map((opt) => (
-                <MenuItem key={opt} value={opt}>
-                    {opt}
-                </MenuItem>
-                ))}
-            </TextField>
+          <TextField
+            select
+            label="Benchmark"
+            value={form.benchmark}
+            onChange={(e) => setForm({ ...form, benchmark: e.target.value })}
+            fullWidth
+            sx={{ minWidth: 200 }}
+          >
+            {benchmarkOptions.map((opt) => (
+              <MenuItem key={opt} value={opt}>
+                {opt}
+              </MenuItem>
+            ))}
+          </TextField>
         </Grid>
-        <Grid item xs={6}>
+        <Grid item xs={12} sm={6} md={4}>
+          <TextField
+            select
+            label="Rebalancing"
+            value={form.rebalancing}
+            onChange={(e) => setForm({ ...form, rebalancing: e.target.value })}
+            fullWidth
+            sx={{ minWidth: 200 }}
+          >
+            {rebalancingOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
           <TextField
             label="Start Balance"
             value={form.start_balance}
