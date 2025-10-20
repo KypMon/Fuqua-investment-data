@@ -12,14 +12,21 @@ import OlsSummary from './OlsSummary';
 import DataTable from "./DataTable";
 
 export default function RegressionResult({ result }) {
-  
-  if (!result) return null;
+  const hasResult = Boolean(result);
+  const rawResult = result ?? {};
 
-  // result should already be an object if your axios request is correctly configured.
-  // If it might still be a string, this parsing is fine.
-  const resultData = typeof result === "string"
-  ? JSON.parse(result)
-  : result;
+  const resultData = useMemo(() => {
+    if (typeof rawResult === "string") {
+      try {
+        return JSON.parse(rawResult);
+      } catch (error) {
+        console.error("Failed to parse regression result", error);
+        return {};
+      }
+    }
+
+    return rawResult;
+  }, [rawResult]);
 
   // --- Prepare data for Rolling Alpha and Factor Loadings Plotly Chart ---
   let rollingPlotTraces = [];
@@ -53,7 +60,7 @@ export default function RegressionResult({ result }) {
   if (resultData.rolling_plot_data &&
       resultData.rolling_plot_data.dates &&
       resultData.rolling_plot_data.dates.length > 0) {
-    
+
     // 1. Alpha Series (Primary Y-axis)
     if (resultData.rolling_plot_data.alpha_series) {
       rollingPlotTraces.push({
@@ -132,6 +139,10 @@ export default function RegressionResult({ result }) {
         : [],
     [resultData.summary_table],
   );
+
+  if (!hasResult) {
+    return null;
+  }
 
   return (
     <Box mt={4}>

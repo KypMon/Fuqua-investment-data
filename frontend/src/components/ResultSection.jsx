@@ -4,14 +4,15 @@ import Plot from 'react-plotly.js';
 import DataTable from "./DataTable";
 
 export default function ResultSection({ result }) {
-  if (!result) return null;
+  const hasResult = Boolean(result);
+  const safeResult = result ?? {};
 
   // Pick helpers
   const pick = (s, c, fb = null) =>
-    result[s] != null
-      ? result[s]
-      : result[c] != null
-      ? result[c]
+    safeResult[s] != null
+      ? safeResult[s]
+      : safeResult[c] != null
+      ? safeResult[c]
       : fb;
 
   // Top‐level flags
@@ -130,6 +131,10 @@ export default function ResultSection({ result }) {
       })),
     [weights],
   );
+
+  if (!hasResult) {
+    return null;
+  }
 
   return (
     <Box mt={4}>

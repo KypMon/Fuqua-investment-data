@@ -11,7 +11,8 @@ import Plot from 'react-plotly.js'; // Import Plotly
 import DataTable from "./DataTable";
 
 export default function BacktestResult({ result }) {
-  if (!result) return null;
+  const hasResult = Boolean(result);
+  const safeResult = result ?? {};
 
   const buildFilename = (name, suffix) => {
     const base = (name || "portfolio").toString().trim();
@@ -28,20 +29,23 @@ export default function BacktestResult({ result }) {
   // --- Prepare data for Plotly charts ---
 
   // 1. Portfolio Growth Plot
-  const portfolioGrowthTraces = Array.isArray(result.portfolio_growth_plot_data)
-    ? result.portfolio_growth_plot_data.map(series => ({
-        type: 'scatter',
-        mode: 'lines',
-        name: series.name,
-        x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
-        y: series.values, // Expects array of numbers
-      }))
+  const portfolioGrowthData = Array.isArray(safeResult.portfolio_growth_plot_data)
+    ? safeResult.portfolio_growth_plot_data
     : [];
 
+  const portfolioGrowthTraces = portfolioGrowthData.map((series) => ({
+      type: 'scatter',
+      mode: 'lines',
+      name: series.name,
+      x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
+      y: series.values, // Expects array of numbers
+    }));
+
   // 2. Annual Returns Plot (Grouped Bar Chart)
-  const annualReturnYears = result.annual_returns_plot_data?.years || [];
-  const annualReturnTraces = Array.isArray(result.annual_returns_plot_data?.series)
-    ? result.annual_returns_plot_data.series.map(series => ({
+  const annualReturnsData = safeResult.annual_returns_plot_data ?? {};
+  const annualReturnYears = Array.isArray(annualReturnsData.years) ? annualReturnsData.years : [];
+  const annualReturnTraces = Array.isArray(annualReturnsData.series)
+    ? annualReturnsData.series.map(series => ({
         type: 'bar',
         name: series.name,
         x: annualReturnYears, // Uses the common 'years' array
@@ -50,18 +54,20 @@ export default function BacktestResult({ result }) {
     : [];
 
   // 3. Drawdown Plot
-  const drawdownTraces = Array.isArray(result.drawdown_plot_data)
-    ? result.drawdown_plot_data.map(series => ({
+  const drawdownData = Array.isArray(safeResult.drawdown_plot_data)
+    ? safeResult.drawdown_plot_data
+    : [];
+
+  const drawdownTraces = drawdownData.map(series => ({
         type: 'scatter',
         mode: 'lines',
         name: series.name,
         x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
         y: series.values, // Expects array of numbers (percentages)
-      }))
-    : [];
+      }));
 
-  const infoMessages = Array.isArray(result.messages) ? result.messages : [];
-  const warningMessages = Array.isArray(result.warnings) ? result.warnings : [];
+  const infoMessages = Array.isArray(safeResult.messages) ? safeResult.messages : [];
+  const warningMessages = Array.isArray(safeResult.warnings) ? safeResult.warnings : [];
 
   const allocationColumns = useMemo(
     () => [
@@ -76,17 +82,19 @@ export default function BacktestResult({ result }) {
     [],
   );
 
-  const summaryData = useMemo(() => {
-    if (!Array.isArray(result.summary_table)) return [];
+  const summaryTable = Array.isArray(safeResult.summary_table) ? safeResult.summary_table : [];
 
-    return result.summary_table.map((row) => {
+  const summaryData = useMemo(() => {
+    if (summaryTable.length === 0) return [];
+
+    return summaryTable.map((row) => {
       const formattedRow = {};
       Object.entries(row).forEach(([key, value]) => {
         formattedRow[key] = formatValue(value);
       });
       return formattedRow;
     });
-  }, [result.summary_table]);
+  }, [summaryTable]);
 
   const summaryColumns = useMemo(() => {
     if (summaryData.length === 0) return [];
@@ -130,6 +138,10 @@ export default function BacktestResult({ result }) {
     [],
   );
 
+  if (!hasResult) {
+    return null;
+  }
+
   return (
     <Box mt={4}>
       <Typography variant="h5">Backtest Output</Typography>
@@ -151,9 +163,9 @@ export default function BacktestResult({ result }) {
         </Box>
       )}
 
-      {/* {result.output_text && (
+      {/* {safeResult.output_text && (
         <Paper elevation={3} sx={{ padding: 2, marginY: 2, whiteSpace: "pre-line", fontFamily: "monospace" }}>
-          {result.output_text}
+          {safeResult.output_text}
         </Paper>
       )} */}
 
@@ -231,13 +243,13 @@ export default function BacktestResult({ result }) {
       )}
 
       {/* Backend-generated images (optional, if you still have some) */}
-      {Array.isArray(result.image_urls) && result.image_urls.length > 0 && (
+      {Array.isArray(safeResult.image_urls) && safeResult.image_urls.length > 0 && (
         <Box mt={4}>
           <Typography variant="h6" gutterBottom>
             Other Charts (from backend)
           </Typography>
           <Grid container spacing={2}>
-            {result.image_urls.map((url, idx) => (
+            {safeResult.image_urls.map((url, idx) => (
               <Grid item xs={12} md={6} key={`img-${idx}`}>
                 <img
                   src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${url}?t=${Date.now()}`}
@@ -251,8 +263,8 @@ export default function BacktestResult({ result }) {
       )}
 
       {/* Portfolio Allocations Table */}
-      {Array.isArray(result.portfolio_allocations) && result.portfolio_allocations.length > 0 && (
-        result.portfolio_allocations.map((portfolio, pIdx) => (
+      {Array.isArray(safeResult.portfolio_allocations) && safeResult.portfolio_allocations.length > 0 && (
+        safeResult.portfolio_allocations.map((portfolio, pIdx) => (
           portfolio.allocations && portfolio.allocations.length > 0 && (
             <Box key={`alloc-table-${pIdx}`} mt={3}>
               <DataTable
@@ -283,8 +295,8 @@ export default function BacktestResult({ result }) {
       )}
 
       {/* Drawdown Tables */}
-      {Array.isArray(result.drawdown_tables) && result.drawdown_tables.length > 0 && (
-        result.drawdown_tables.map((tableData, pIdx) => (
+      {Array.isArray(safeResult.drawdown_tables) && safeResult.drawdown_tables.length > 0 && (
+        safeResult.drawdown_tables.map((tableData, pIdx) => (
           tableData.data && tableData.data.length > 0 && (
             <Box key={`drawdown-detail-table-${pIdx}`} mt={3}>
               <DataTable
@@ -310,8 +322,8 @@ export default function BacktestResult({ result }) {
       )}
 
       {/* Regression Analysis Tables */}
-      {Array.isArray(result.regression_table) && result.regression_table.length > 0 && (
-         result.regression_table.map((regData, pIdx) => (
+      {Array.isArray(safeResult.regression_table) && safeResult.regression_table.length > 0 && (
+         safeResult.regression_table.map((regData, pIdx) => (
          regData.coefficients && regData.coefficients.length > 0 && (
             <Box key={`reg-summary-table-${pIdx}`} mt={3}>
               <DataTable
