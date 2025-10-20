@@ -9,6 +9,8 @@ import {
   TableRow,
   TableCell,
   TableBody,
+  Alert,
+  Stack,
 } from "@mui/material";
 import Plot from 'react-plotly.js'; // Import Plotly
 
@@ -50,9 +52,29 @@ export default function BacktestResult({ result }) {
       }))
     : [];
 
+  const infoMessages = Array.isArray(result.messages) ? result.messages : [];
+  const warningMessages = Array.isArray(result.warnings) ? result.warnings : [];
+
   return (
     <Box mt={4}>
       <Typography variant="h5">Backtest Output</Typography>
+
+      {(infoMessages.length > 0 || warningMessages.length > 0) && (
+        <Box mt={2}>
+          <Stack spacing={1}>
+            {infoMessages.map((message, idx) => (
+              <Alert severity="info" key={`info-${idx}`}>
+                {message}
+              </Alert>
+            ))}
+            {warningMessages.map((message, idx) => (
+              <Alert severity="warning" key={`warning-${idx}`}>
+                {message}
+              </Alert>
+            ))}
+          </Stack>
+        </Box>
+      )}
 
       {/* {result.output_text && (
         <Paper elevation={3} sx={{ padding: 2, marginY: 2, whiteSpace: "pre-line", fontFamily: "monospace" }}>

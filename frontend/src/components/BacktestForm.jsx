@@ -1,6 +1,6 @@
 // src/components/BacktestForm.jsx
 import React, { useState } from "react";
-import { Button, Stack, TextField, Grid, MenuItem, Typography } from "@mui/material";
+import { Button, Stack, TextField, Grid, MenuItem, Typography, Alert } from "@mui/material";
 import EtfListInput from "./EtfListInput";
 import AddIcon from "@mui/icons-material/Add";
 import dayjs from "dayjs";
@@ -22,8 +22,88 @@ export default function BacktestForm({ setBacktestResult }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState([]);
+
+  const validateForm = () => {
+    const validationErrors = [];
+    const tickers = form.etflist.map((ticker) => ticker?.trim() || "");
+
+    const start = dayjs(form.startdate);
+    const end = dayjs(form.enddate);
+
+    if (!start.isValid()) {
+      validationErrors.push("Start date is invalid.");
+    }
+
+    if (!end.isValid()) {
+      validationErrors.push("End date is invalid.");
+    }
+
+    if (start.isValid() && end.isValid() && start.isAfter(end)) {
+      validationErrors.push("Start date must be before or equal to the end date.");
+    }
+
+    const startBalance = Number(form.start_balance);
+    if (Number.isNaN(startBalance) || startBalance <= 0) {
+      validationErrors.push("Starting balance must be a positive number.");
+    }
+
+    if (tickers.filter((t) => t !== "").length === 0) {
+      validationErrors.push("Please provide at least one ticker symbol.");
+    }
+
+    const allocationSets = [form.allocation1, form.allocation2, form.allocation3];
+
+    allocationSets.forEach((allocation, index) => {
+      if (!Array.isArray(allocation)) {
+        return;
+      }
+
+      const weights = [];
+      allocation.forEach((value, tickerIndex) => {
+        const rawValue = value?.toString().trim();
+        if (!rawValue) {
+          return;
+        }
+
+        const numericValue = Number(rawValue);
+        if (Number.isNaN(numericValue)) {
+          validationErrors.push(`Allocation ${index + 1} for ${tickers[tickerIndex] || `position ${tickerIndex + 1}`} must be a number.`);
+          return;
+        }
+
+        if (numericValue < 0 || numericValue > 100) {
+          validationErrors.push(`Allocation ${index + 1} for ${tickers[tickerIndex] || `position ${tickerIndex + 1}`} must be between 0 and 100.`);
+        }
+
+        if (numericValue > 0 && !tickers[tickerIndex]) {
+          validationErrors.push(`Positive weight in allocation ${index + 1} is missing a ticker symbol at position ${tickerIndex + 1}.`);
+        }
+
+        weights.push(numericValue);
+      });
+
+      const activeWeights = weights.filter((value) => !Number.isNaN(value));
+      if (activeWeights.length > 0) {
+        const sum = activeWeights.reduce((acc, value) => acc + value, 0);
+        if (Math.abs(sum - 100) > 0.01) {
+          validationErrors.push(`Weights in allocation ${index + 1} must add up to 100.`);
+        }
+      }
+    });
+
+    return validationErrors;
+  };
 
   const handleSubmit = async () => {
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      setBacktestResult(null);
+      return;
+    }
+
+    setErrors([]);
     setLoading(true);
     try {
       const payload = {
@@ -40,8 +120,12 @@ export default function BacktestForm({ setBacktestResult }) {
 
       const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/backtest`, payload);
       setBacktestResult(res.data);
+      setErrors([]);
     } catch (err) {
       console.error("Backtest error:", err);
+      const responseErrors = err.response?.data?.errors || [err.response?.data?.error || "Failed to run backtest. Please try again."];
+      setErrors(responseErrors);
+      setBacktestResult(null);
     } finally {
       setLoading(false);
     }
@@ -49,6 +133,12 @@ export default function BacktestForm({ setBacktestResult }) {
 
   return (
     <Stack spacing={2}>
+      {errors.map((error, idx) => (
+        <Alert severity="error" key={`error-${idx}`}>
+          {error}
+        </Alert>
+      ))}
+
       <Typography variant="subtitle1" gutterBottom>
         ETF List
       </Typography>
