@@ -2,6 +2,19 @@ import React, { useMemo } from "react";
 import { Box, Typography } from "@mui/material";
 import MUIDataTable from "mui-datatables";
 
+const ensureCsvExtension = (filename) => {
+  if (filename === null || filename === undefined) {
+    return null;
+  }
+
+  const trimmed = String(filename).trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  return trimmed.toLowerCase().endsWith(".csv") ? trimmed : `${trimmed}.csv`;
+};
+
 export default function DataTable({
   title,
   titleVariant = "subtitle1",
@@ -11,6 +24,10 @@ export default function DataTable({
   tableOptions = {},
 }) {
   const memoData = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+
+  const normalizedFileName = useMemo(() => {
+    return ensureCsvExtension(exportFileName) ?? "table-data.csv";
+  }, [exportFileName]);
 
   const normalizedColumns = useMemo(() => {
     return (columns || []).map((column, index) => {
@@ -90,7 +107,7 @@ export default function DataTable({
     () => ({
       download: true,
       downloadOptions: {
-        filename: exportFileName,
+        filename: normalizedFileName,
         separator: ",",
       },
       selectableRows: "none",
@@ -113,14 +130,15 @@ export default function DataTable({
         },
       },
     }),
-    [exportFileName],
+    [normalizedFileName],
   );
 
   const mergedOptions = useMemo(() => {
     const downloadOptions = {
       ...defaultOptions.downloadOptions,
       ...(tableOptions.downloadOptions || {}),
-      filename: tableOptions.downloadOptions?.filename || exportFileName,
+      filename:
+        ensureCsvExtension(tableOptions.downloadOptions?.filename) ?? normalizedFileName,
     };
 
     return {
@@ -128,7 +146,7 @@ export default function DataTable({
       ...tableOptions,
       downloadOptions,
     };
-  }, [defaultOptions, tableOptions, exportFileName]);
+  }, [defaultOptions, tableOptions, normalizedFileName]);
 
   return (
     <Box sx={{ mb: 3 }}>
