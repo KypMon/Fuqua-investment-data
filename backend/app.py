@@ -657,10 +657,13 @@ def module4_compute_portfolios():
     except (TypeError, ValueError):
         return jsonify({"error": "Risk-free rate must be numeric"}), 400
 
+    print(rf_value)
+
     try:
         result = compute_portfolios(mat_er_covr_df, rf_value)
     except Exception as exc:  # pragma: no cover - numeric errors
-        return jsonify({"error": str(exc)}), 400
+        print(exc)
+        return jsonify({"error": f"Compute error: {str(exc)}"}), 400
 
     return jsonify(result)
 

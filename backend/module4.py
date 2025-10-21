@@ -188,6 +188,8 @@ def _build_covariance(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, List[st
     df = df.copy()
     df.columns = [str(col).strip() for col in df.columns]
 
+    print(1)
+
     rf_rows = df[df["Assets"].str.lower() == "rf"] if "Assets" in df else pd.DataFrame()
     rf_value = None
     if not rf_rows.empty:
@@ -195,22 +197,42 @@ def _build_covariance(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, List[st
         rf_value = float(rf_value.iloc[0]) if not rf_value.empty else None
         df = df[df["Assets"].str.lower() != "rf"]
 
+    print(2)
+
     if df.empty:
         raise ValueError("No asset rows found in mat_er_covr")
 
+    print(21)
+
+    print(df)
+    print(df["Assets"])
+    print(df["Assets"].astype(str))
+    print(df["Assets"].astype(str).tolist())
     assets = df["Assets"].astype(str).tolist()
+
     means = pd.to_numeric(df["Mean"], errors="coerce")
+
+    print(means)
+    print(means.isna())
+    print(means.isna().any())
+ 
     if means.isna().any():
         raise ValueError("Mean column contains non-numeric values")
+
+    print(3)
 
     cov_cols = df.columns[2 : 2 + len(assets)]
     cov_df = df[cov_cols].apply(pd.to_numeric, errors="coerce")
     if cov_df.shape[1] != len(assets):
         raise ValueError("Covariance matrix dimensions do not match asset count")
 
+    print(4)
+
     if cov_df.isna().any().any():
         raise ValueError("Covariance matrix contains invalid values")
 
+    print(5)
+    
     cov_matrix = cov_df.to_numpy()
     return means.to_numpy(), cov_matrix, assets, rf_value
 
@@ -261,10 +283,17 @@ def compute_portfolios(
     risk_free: Optional[float] = None,
     grid_size: int = 80,
 ) -> Dict[str, object]:
+    print('here')
+
     means, cov, assets, rf_from_matrix = _build_covariance(mat_er_covr)
+    print('here2')
+
+
     resolved_rf = risk_free if risk_free is not None else rf_from_matrix
+    print('here3')
     if resolved_rf is None:
         resolved_rf = 0.0
+
 
     def build_block(allow_short: bool) -> Dict[str, object]:
         min_var_weights = _solve_min_variance(cov, allow_short)
@@ -332,6 +361,8 @@ def compute_portfolios(
                 "sharpe": ((tangency_ret - resolved_rf) / tangency_std) if tangency_std > 0 else None,
             },
         }
+
+    print(assets)
 
     return {
         "assets": assets,
