@@ -1,26 +1,18 @@
-import React, { useEffect } from 'react';
-import {
-  Typography,
-  Box,
-  Paper,
-  Grid,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody
-} from "@mui/material";
+import React, { useMemo } from 'react';
+import { Typography, Box, Grid } from "@mui/material";
 import Plot from 'react-plotly.js';
+import DataTable from "./DataTable";
 
 export default function ResultSection({ result }) {
-  if (!result) return null;
+  const hasResult = Boolean(result);
+  const safeResult = result ?? {};
 
   // Pick helpers
   const pick = (s, c, fb = null) =>
-    result[s] != null
-      ? result[s]
-      : result[c] != null
-      ? result[c]
+    safeResult[s] != null
+      ? safeResult[s]
+      : safeResult[c] != null
+      ? safeResult[c]
       : fb;
 
   // Top‐level flags
@@ -36,7 +28,7 @@ export default function ResultSection({ result }) {
   const descriptiveStats = pick("descriptive_stats", "descriptiveStats", []);
   const corrMatrix       = pick("correlation_matrix", "correlationMatrix", {
     columns: [],
-    data: []
+    data: [],
   });
 
   // Portfolio data
@@ -48,70 +40,132 @@ export default function ResultSection({ result }) {
   const weights  = block.weights                || [];
   const pieChart = block.pie_chart              || { labels: [], values: [] };
 
-  // Unique assets & x‐axis for allocation
+  // Unique assets & x-axis for allocation
   const assets = weights.map((w) => w.asset);
   const allocX = allocStk.map((p) => p.x);
+
+  const descriptiveColumns = useMemo(() => ([
+    { accessorKey: "asset", header: "Asset" },
+    {
+      accessorKey: "mean",
+      header: "Mean",
+      muiTableHeadCellProps: { align: "right" },
+      muiTableBodyCellProps: { align: "right" },
+    },
+    {
+      accessorKey: "std",
+      header: "Std",
+      muiTableHeadCellProps: { align: "right" },
+      muiTableBodyCellProps: { align: "right" },
+    },
+    {
+      accessorKey: "sr",
+      header: "SR",
+      muiTableHeadCellProps: { align: "right" },
+      muiTableBodyCellProps: { align: "right" },
+    },
+  ]), []);
+
+  const descriptiveData = useMemo(
+    () =>
+      descriptiveStats.map((r) => ({
+        asset: r.asset,
+        mean: typeof r.mean === "number" ? r.mean.toFixed(4) : "N/A",
+        std: typeof r.std === "number" ? r.std.toFixed(4) : "N/A",
+        sr: typeof r.sr === "number" ? r.sr.toFixed(4) : "N/A",
+      })),
+    [descriptiveStats],
+  );
+
+  const correlationColumns = useMemo(() => {
+    if (!Array.isArray(corrMatrix.columns) || corrMatrix.columns.length === 0) {
+      return [{ accessorKey: "asset", header: "" }];
+    }
+
+    return [
+      { accessorKey: "asset", header: "" },
+      ...corrMatrix.columns.map((col) => ({
+        accessorKey: col,
+        header: col,
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+      })),
+    ];
+  }, [corrMatrix.columns]);
+
+  const correlationData = useMemo(() => {
+    if (!Array.isArray(corrMatrix.data) || corrMatrix.data.length === 0) return [];
+
+    return corrMatrix.data.map((row, idx) => {
+      const record = {
+        asset: corrMatrix.columns[idx],
+      };
+
+      corrMatrix.columns.forEach((col) => {
+        const value = row[col];
+        record[col] = typeof value === "number" ? value.toFixed(4) : value ?? "N/A";
+      });
+
+      return record;
+    });
+  }, [corrMatrix.columns, corrMatrix.data]);
+
+  const weightsColumns = useMemo(
+    () => [
+      { accessorKey: "asset", header: "Asset" },
+      {
+        accessorKey: "weight",
+        header: "Weight (%)",
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+      },
+    ],
+    [],
+  );
+
+  const weightsData = useMemo(
+    () =>
+      weights.map((w) => ({
+        asset: w.asset,
+        weight: typeof w.weight === "number" ? w.weight.toFixed(2) : "N/A",
+      })),
+    [weights],
+  );
+
+  if (!hasResult) {
+    return null;
+  }
 
   return (
     <Box mt={4}>
       {/* Descriptive stats */}
-      <Typography variant="h6">Asset Descriptive Statistics</Typography>
-      <Paper sx={{ p:2, mb:3 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Asset</TableCell>
-              <TableCell align="right">Mean</TableCell>
-              <TableCell align="right">Std</TableCell>
-              <TableCell align="right">SR</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {descriptiveStats.map((r) => (
-              <TableRow key={r.asset}>
-                <TableCell>{r.asset}</TableCell>
-                <TableCell align="right">{r.mean.toFixed(4)}</TableCell>
-                <TableCell align="right">{r.std .toFixed(4)}</TableCell>
-                <TableCell align="right">{r.sr  .toFixed(4)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+      {descriptiveData.length > 0 && (
+        <DataTable
+          title="Asset Descriptive Statistics"
+          titleVariant="h6"
+          columns={descriptiveColumns}
+          data={descriptiveData}
+          exportFileName="asset_descriptive_statistics"
+        />
+      )}
 
       {/* Correlation matrix */}
-      <Typography variant="h6">Asset Correlation Matrix</Typography>
-      <Paper sx={{ p:2, mb:3 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell></TableCell>
-              {corrMatrix.columns.map((c) => (
-                <TableCell key={c} align="right">{c}</TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {corrMatrix.data.map((row,i) => (
-              <TableRow key={i}>
-                <TableCell>{corrMatrix.columns[i]}</TableCell>
-                {corrMatrix.columns.map((c) => (
-                  <TableCell key={c} align="right">
-                    {row[c].toFixed(4)}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+      {correlationData.length > 0 && (
+        <DataTable
+          title="Asset Correlation Matrix"
+          titleVariant="h6"
+          columns={correlationColumns}
+          data={correlationData}
+          exportFileName="asset_correlation_matrix"
+        />
+      )}
 
       {/* Frontier */}
       <Typography variant="h6" gutterBottom>
         {normal ? "Standard MV Portfolio" : "Robust MV Portfolio"}
       </Typography>
       <Grid container spacing={12} sx={{ mb:8 }}>
-        <Grid item s={12}>
+        <Grid item xs={12}>
           <Plot
             data={[
               {
@@ -162,32 +216,17 @@ export default function ResultSection({ result }) {
       <Grid container spacing={3} sx={{ mb:4 }}>
         {/* weight table */}
         <Grid item xs={12} md={6}>
-          <Typography variant="subtitle1" gutterBottom>
-            Max Sharpe Ratio Weights
-          </Typography>
-          <Paper>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Asset</TableCell>
-                  <TableCell align="right">Weight&nbsp;(%)</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {weights.map((w) => (
-                  <TableRow key={w.asset}>
-                    <TableCell>{w.asset}</TableCell>
-                    <TableCell align="right">
-                      {w.weight.toFixed(2)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
+          {weightsData.length > 0 && (
+            <DataTable
+              title="Max Sharpe Ratio Weights"
+              columns={weightsColumns}
+              data={weightsData}
+              exportFileName="max_sharpe_ratio_weights"
+            />
+          )}
         </Grid>
 
-        {/* only show pie when no‐short */}
+        {/* only show pie when no-short */}
         {short === 0 && pieChart.labels.length > 0 && (
           <Grid item xs={12} md={6}>
             <Plot

@@ -1,29 +1,32 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Box,
   Typography,
   Paper,
   Grid,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
   Alert,
   Stack
 } from "@mui/material";
 import Plot from 'react-plotly.js'; // Make sure react-plotly.js is installed
 import OlsSummary from './OlsSummary';
+import DataTable from "./DataTable";
 
 export default function RegressionResult({ result }) {
-  
-  if (!result) return null;
+  const hasResult = Boolean(result);
+  const rawResult = result ?? {};
 
-  // result should already be an object if your axios request is correctly configured.
-  // If it might still be a string, this parsing is fine.
-  const resultData = typeof result === "string"
-  ? JSON.parse(result)
-  : result;
+  const resultData = useMemo(() => {
+    if (typeof rawResult === "string") {
+      try {
+        return JSON.parse(rawResult);
+      } catch (error) {
+        console.error("Failed to parse regression result", error);
+        return {};
+      }
+    }
+
+    return rawResult;
+  }, [rawResult]);
 
   // --- Prepare data for Rolling Alpha and Factor Loadings Plotly Chart ---
   let rollingPlotTraces = [];
@@ -57,7 +60,7 @@ export default function RegressionResult({ result }) {
   if (resultData.rolling_plot_data &&
       resultData.rolling_plot_data.dates &&
       resultData.rolling_plot_data.dates.length > 0) {
-    
+
     // 1. Alpha Series (Primary Y-axis)
     if (resultData.rolling_plot_data.alpha_series) {
       rollingPlotTraces.push({
@@ -91,6 +94,55 @@ export default function RegressionResult({ result }) {
   const errorMessages = Array.isArray(resultData.errors) ? resultData.errors : [];
   const infoMessages = Array.isArray(resultData.messages) ? resultData.messages : [];
   const warningMessages = Array.isArray(resultData.warnings) ? resultData.warnings : [];
+
+  const summaryColumns = useMemo(
+    () => [
+      { accessorKey: "factor", header: "Factor" },
+      {
+        accessorKey: "averageExcessReturn",
+        header: "Av. Ann. Excess Return (%)",
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+        Cell: ({ cell }) => {
+          const value = cell.getValue();
+          return value === "—" ? "—" : `${value}%`;
+        },
+      },
+      {
+        accessorKey: "returnContribution",
+        header: "Return Contribution (%)",
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+        Cell: ({ cell }) => {
+          const value = cell.getValue();
+          return value === "—" ? "—" : `${value}%`;
+        },
+      },
+    ],
+    [],
+  );
+
+  const summaryData = useMemo(
+    () =>
+      Array.isArray(resultData.summary_table)
+        ? resultData.summary_table.map((row) => ({
+            factor: row["Factor"],
+            averageExcessReturn:
+              row["Av. Ann. Excess Return"] !== null && row["Av. Ann. Excess Return"] !== undefined
+                ? (parseFloat(row["Av. Ann. Excess Return"]) * 100).toFixed(2)
+                : "—",
+            returnContribution:
+              row["Return Contribution"] !== null && row["Return Contribution"] !== undefined
+                ? parseFloat(row["Return Contribution"]).toFixed(2)
+                : "—",
+          }))
+        : [],
+    [resultData.summary_table],
+  );
+
+  if (!hasResult) {
+    return null;
+  }
 
   return (
     <Box mt={4}>
@@ -158,37 +210,15 @@ export default function RegressionResult({ result }) {
       )}
 
       {/* Summary Table (Return Contribution) */}
-      {resultData.summary_table && resultData.summary_table.length > 0 && (
+      {summaryData.length > 0 && (
         <Box mt={4}>
-          <Typography variant="h6" gutterBottom>Summary Table: Return Contribution</Typography>
-          <Paper>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Factor</TableCell>
-                  <TableCell align="right">Av. Ann. Excess Return</TableCell>
-                  <TableCell align="right">Return Contribution (%)</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {resultData.summary_table.map((row, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell>{row["Factor"]}</TableCell>
-                    <TableCell align="right">
-                      {row["Av. Ann. Excess Return"] !== null && row["Av. Ann. Excess Return"] !== undefined 
-                        ? `${(parseFloat(row["Av. Ann. Excess Return"]) * 100).toFixed(2)}%`
-                        : "—"}
-                    </TableCell>
-                    <TableCell align="right">
-                      {row["Return Contribution"] != null && row["Return Contribution"] !== undefined
-                        ? `${parseFloat(row["Return Contribution"]).toFixed(2)}%`
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
+          <DataTable
+            title="Summary Table: Return Contribution"
+            titleVariant="h6"
+            columns={summaryColumns}
+            data={summaryData}
+            exportFileName="regression_return_contribution"
+          />
         </Box>
       )}
     </Box>
