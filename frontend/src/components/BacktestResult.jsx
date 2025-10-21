@@ -1,39 +1,51 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Box,
   Typography,
   Grid,
   Paper,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
   Alert,
   Stack,
 } from "@mui/material";
 import Plot from 'react-plotly.js'; // Import Plotly
+import DataTable from "./DataTable";
 
 export default function BacktestResult({ result }) {
-  if (!result) return null;
+  const hasResult = Boolean(result);
+  const safeResult = result ?? {};
+
+  const buildFilename = (name, suffix) => {
+    const base = (name || "portfolio").toString().trim();
+    const sanitized = base.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase();
+    return `${sanitized || "portfolio"}_${suffix}.csv`;
+  };
+
+  const formatValue = (value, digits = 4) => {
+    if (value === null || value === undefined) return "N/A";
+    if (typeof value === "number") return value.toFixed(digits);
+    return value;
+  };
 
   // --- Prepare data for Plotly charts ---
 
   // 1. Portfolio Growth Plot
-  const portfolioGrowthTraces = Array.isArray(result.portfolio_growth_plot_data)
-    ? result.portfolio_growth_plot_data.map(series => ({
-        type: 'scatter',
-        mode: 'lines',
-        name: series.name,
-        x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
-        y: series.values, // Expects array of numbers
-      }))
+  const portfolioGrowthData = Array.isArray(safeResult.portfolio_growth_plot_data)
+    ? safeResult.portfolio_growth_plot_data
     : [];
 
+  const portfolioGrowthTraces = portfolioGrowthData.map((series) => ({
+      type: 'scatter',
+      mode: 'lines',
+      name: series.name,
+      x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
+      y: series.values, // Expects array of numbers
+    }));
+
   // 2. Annual Returns Plot (Grouped Bar Chart)
-  const annualReturnYears = result.annual_returns_plot_data?.years || [];
-  const annualReturnTraces = Array.isArray(result.annual_returns_plot_data?.series)
-    ? result.annual_returns_plot_data.series.map(series => ({
+  const annualReturnsData = safeResult.annual_returns_plot_data ?? {};
+  const annualReturnYears = Array.isArray(annualReturnsData.years) ? annualReturnsData.years : [];
+  const annualReturnTraces = Array.isArray(annualReturnsData.series)
+    ? annualReturnsData.series.map(series => ({
         type: 'bar',
         name: series.name,
         x: annualReturnYears, // Uses the common 'years' array
@@ -42,18 +54,93 @@ export default function BacktestResult({ result }) {
     : [];
 
   // 3. Drawdown Plot
-  const drawdownTraces = Array.isArray(result.drawdown_plot_data)
-    ? result.drawdown_plot_data.map(series => ({
+  const drawdownData = Array.isArray(safeResult.drawdown_plot_data)
+    ? safeResult.drawdown_plot_data
+    : [];
+
+  const drawdownTraces = drawdownData.map(series => ({
         type: 'scatter',
         mode: 'lines',
         name: series.name,
         x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
         y: series.values, // Expects array of numbers (percentages)
-      }))
-    : [];
+      }));
 
-  const infoMessages = Array.isArray(result.messages) ? result.messages : [];
-  const warningMessages = Array.isArray(result.warnings) ? result.warnings : [];
+  const infoMessages = Array.isArray(safeResult.messages) ? safeResult.messages : [];
+  const warningMessages = Array.isArray(safeResult.warnings) ? safeResult.warnings : [];
+
+  const allocationColumns = useMemo(
+    () => [
+      { accessorKey: "ticker", header: "Ticker" },
+      {
+        accessorKey: "allocation",
+        header: "Allocation (%)",
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+      },
+    ],
+    [],
+  );
+
+  const summaryTable = Array.isArray(safeResult.summary_table) ? safeResult.summary_table : [];
+
+  const summaryData = useMemo(() => {
+    if (summaryTable.length === 0) return [];
+
+    return summaryTable.map((row) => {
+      const formattedRow = {};
+      Object.entries(row).forEach(([key, value]) => {
+        formattedRow[key] = formatValue(value);
+      });
+      return formattedRow;
+    });
+  }, [summaryTable]);
+
+  const summaryColumns = useMemo(() => {
+    if (summaryData.length === 0) return [];
+
+    return Object.keys(summaryData[0]).map((key) => ({
+      accessorKey: key,
+      header: key,
+      muiTableHeadCellProps: { align: key === "Metric" ? "left" : "right" },
+      muiTableBodyCellProps: { align: key === "Metric" ? "left" : "right" },
+    }));
+  }, [summaryData]);
+
+  const regressionColumns = useMemo(
+    () => [
+      { accessorKey: "factor", header: "Factor" },
+      {
+        accessorKey: "loadings",
+        header: "Loadings",
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+      },
+      {
+        accessorKey: "stdErrors",
+        header: "Std. Errors",
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+      },
+      {
+        accessorKey: "tStat",
+        header: "t-stat",
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+      },
+      {
+        accessorKey: "pValue",
+        header: "p-value",
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+      },
+    ],
+    [],
+  );
+
+  if (!hasResult) {
+    return null;
+  }
 
   return (
     <Box mt={4}>
@@ -76,9 +163,9 @@ export default function BacktestResult({ result }) {
         </Box>
       )}
 
-      {/* {result.output_text && (
+      {/* {safeResult.output_text && (
         <Paper elevation={3} sx={{ padding: 2, marginY: 2, whiteSpace: "pre-line", fontFamily: "monospace" }}>
-          {result.output_text}
+          {safeResult.output_text}
         </Paper>
       )} */}
 
@@ -154,20 +241,20 @@ export default function BacktestResult({ result }) {
           </Paper>
         </Box>
       )}
-      
+
       {/* Backend-generated images (optional, if you still have some) */}
-      {Array.isArray(result.image_urls) && result.image_urls.length > 0 && (
+      {Array.isArray(safeResult.image_urls) && safeResult.image_urls.length > 0 && (
         <Box mt={4}>
           <Typography variant="h6" gutterBottom>
             Other Charts (from backend)
           </Typography>
           <Grid container spacing={2}>
-            {result.image_urls.map((url, idx) => (
+            {safeResult.image_urls.map((url, idx) => (
               <Grid item xs={12} md={6} key={`img-${idx}`}>
-                <img 
-                  src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${url}?t=${Date.now()}`} 
-                  alt={`Chart ${idx}`} 
-                  style={{ width: "100%", border: "1px solid #ddd" }} 
+                <img
+                  src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${url}?t=${Date.now()}`}
+                  alt={`Chart ${idx}`}
+                  style={{ width: "100%", border: "1px solid #ddd" }}
                 />
               </Grid>
             ))}
@@ -176,142 +263,86 @@ export default function BacktestResult({ result }) {
       )}
 
       {/* Portfolio Allocations Table */}
-      {Array.isArray(result.portfolio_allocations) && result.portfolio_allocations.length > 0 && (
-        result.portfolio_allocations.map((portfolio, pIdx) => (
+      {Array.isArray(safeResult.portfolio_allocations) && safeResult.portfolio_allocations.length > 0 && (
+        safeResult.portfolio_allocations.map((portfolio, pIdx) => (
           portfolio.allocations && portfolio.allocations.length > 0 && (
             <Box key={`alloc-table-${pIdx}`} mt={3}>
-              <Typography variant="subtitle1" gutterBottom>
-                {portfolio.portfolioName} Allocations
-              </Typography>
-              <Paper>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Ticker</TableCell>
-                      <TableCell align="right">Allocation (%)</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {portfolio.allocations.map((alloc, aIdx) => (
-                      <TableRow key={aIdx}>
-                        <TableCell>{alloc.ticker}</TableCell>
-                        <TableCell align="right">
-                          {alloc.Allocation !== null && alloc.Allocation !== undefined ? alloc.Allocation.toFixed(2) : 'N/A'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Paper>
+              <DataTable
+                title={`${portfolio.portfolioName} Allocations`}
+                columns={allocationColumns}
+                data={portfolio.allocations.map((alloc) => ({
+                  ticker: alloc.ticker,
+                  allocation: formatValue(alloc.Allocation, 2),
+                }))}
+                exportFileName={buildFilename(portfolio.portfolioName, "allocations")}
+              />
             </Box>
           )
         ))
       )}
 
       {/* Performance Summary Table */}
-      {Array.isArray(result.summary_table) && result.summary_table.length > 0 && (
+      {summaryData.length > 0 && (
         <Box mt={4}>
-            <Typography variant="h6" gutterBottom>Performance Summary</Typography>
-            <Paper>
-              <Table size="small">
-              <TableHead>
-                  <TableRow>
-                    <TableCell>Metric</TableCell>
-                    {/* Dynamically generate headers from the keys of the first data row, excluding 'Metric' */}
-                    {Object.keys(result.summary_table[0] || {}).filter(key => key !== 'Metric').map(col => (
-                        <TableCell key={col} align="right">{col}</TableCell>
-                    ))}
-                  </TableRow>
-              </TableHead>
-              <TableBody>
-                  {result.summary_table.map((row, idx) => (
-                  <TableRow key={idx}>
-                      <TableCell>{row.Metric}</TableCell>
-                      {Object.keys(row).filter(key => key !== 'Metric').map(colKey => (
-                          <TableCell key={colKey} align="right">
-                              {typeof row[colKey] === 'number' ? row[colKey].toFixed(4) : (row[colKey] === null ? 'N/A' : row[colKey])}
-                          </TableCell>
-                      ))}
-                  </TableRow>
-                  ))}
-              </TableBody>
-              </Table>
-            </Paper>
+          <DataTable
+            title="Performance Summary"
+            titleVariant="h6"
+            columns={summaryColumns}
+            data={summaryData}
+            exportFileName="performance_summary"
+          />
         </Box>
       )}
 
       {/* Drawdown Tables */}
-      {Array.isArray(result.drawdown_tables) && result.drawdown_tables.length > 0 && (
-        result.drawdown_tables.map((tableData, pIdx) => (
+      {Array.isArray(safeResult.drawdown_tables) && safeResult.drawdown_tables.length > 0 && (
+        safeResult.drawdown_tables.map((tableData, pIdx) => (
           tableData.data && tableData.data.length > 0 && (
             <Box key={`drawdown-detail-table-${pIdx}`} mt={3}>
-              <Typography variant="subtitle1" gutterBottom>
-                Top 3 Drawdowns: {tableData.portfolioName}
-              </Typography>
-              <Paper>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      {Object.keys(tableData.data[0]).map(col => (
-                        <TableCell key={col} align={typeof tableData.data[0][col] === 'number' ? "right" : "left"}>{col}</TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {tableData.data.map((row, rIdx) => (
-                      <TableRow key={rIdx}>
-                        {Object.values(row).map((val, cellIdx) => (
-                          <TableCell key={cellIdx} align={typeof val === 'number' ? "right" : "left"}>
-                            {typeof val === 'number' ? val.toFixed(4) : (val === null ? 'N/A' : val)}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Paper>
+              <DataTable
+                title={`Top 3 Drawdowns: ${tableData.portfolioName}`}
+                columns={Object.keys(tableData.data[0] || {}).map((col) => ({
+                  accessorKey: col,
+                  header: col,
+                  muiTableHeadCellProps: { align: typeof tableData.data[0][col] === 'number' ? "right" : "left" },
+                  muiTableBodyCellProps: { align: typeof tableData.data[0][col] === 'number' ? "right" : "left" },
+                }))}
+                data={tableData.data.map((row) => {
+                  const formattedRow = {};
+                  Object.entries(row).forEach(([key, value]) => {
+                    formattedRow[key] = formatValue(value);
+                  });
+                  return formattedRow;
+                })}
+                exportFileName={buildFilename(tableData.portfolioName, "drawdowns")}
+              />
             </Box>
           )
         ))
       )}
 
       {/* Regression Analysis Tables */}
-      {Array.isArray(result.regression_table) && result.regression_table.length > 0 && (
-         result.regression_table.map((regData, pIdx) => (
-            regData.coefficients && regData.coefficients.length > 0 && (
-                <Box key={`reg-summary-table-${pIdx}`} mt={3}>
-                    <Typography variant="subtitle1" gutterBottom>
-                        Regression Analysis vs Benchmark: {regData.portfolioName}
-                    </Typography>
-                    <Typography variant="body2" sx={{mb:1}}>
-                        R-squared: {regData.r_squared !== null ? regData.r_squared.toFixed(4) : 'N/A'}, Adj. R-squared: {regData.adj_r_squared !== null ? regData.adj_r_squared.toFixed(4) : 'N/A'}, Annualized Alpha: {regData.annualized_alpha !== null ? regData.annualized_alpha.toFixed(4) : 'N/A'}
-                    </Typography>
-                    <Paper>
-                        <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Factor</TableCell>
-                                <TableCell align="right">Loadings</TableCell>
-                                <TableCell align="right">Std. Errors</TableCell>
-                                <TableCell align="right">t-stat</TableCell>
-                                <TableCell align="right">p-value</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {regData.coefficients.map((row, idx) => (
-                            <TableRow key={idx}>
-                                <TableCell>{row.Factor}</TableCell>
-                                <TableCell align="right">{row.Loadings !== null ? row.Loadings.toFixed(4) : 'N/A'}</TableCell>
-                                <TableCell align="right">{row['Standard Errors'] !== null ? row['Standard Errors'].toFixed(4) : 'N/A'}</TableCell>
-                                <TableCell align="right">{row['t-stat'] !== null ? row['t-stat'].toFixed(4) : 'N/A'}</TableCell>
-                                <TableCell align="right">{row['p-value'] !== null ? row['p-value'].toFixed(4) : 'N/A'}</TableCell>
-                            </TableRow>
-                            ))}
-                        </TableBody>
-                        </Table>
-                    </Paper>
-                </Box>
-            )
+      {Array.isArray(safeResult.regression_table) && safeResult.regression_table.length > 0 && (
+         safeResult.regression_table.map((regData, pIdx) => (
+         regData.coefficients && regData.coefficients.length > 0 && (
+            <Box key={`reg-summary-table-${pIdx}`} mt={3}>
+              <DataTable
+                title={`Regression Analysis vs Benchmark: ${regData.portfolioName}`}
+                columns={regressionColumns}
+                data={regData.coefficients.map((row) => ({
+                  factor: row.Factor,
+                  loadings: formatValue(row.Loadings),
+                  stdErrors: formatValue(row['Standard Errors']),
+                  tStat: formatValue(row['t-stat']),
+                  pValue: formatValue(row['p-value']),
+                }))}
+                exportFileName={buildFilename(regData.portfolioName, "regression_coefficients")}
+              />
+              <Typography variant="body2" sx={{mb:1}}>
+                  R-squared: {formatValue(regData.r_squared)}, Adj. R-squared: {formatValue(regData.adj_r_squared)}, Annualized Alpha: {formatValue(regData.annualized_alpha)}
+              </Typography>
+            </Box>
+         )
          ))
       )}
     </Box>
