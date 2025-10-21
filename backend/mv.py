@@ -197,13 +197,21 @@ def mv(
             }
             for w in weightlist
         ]
-        standard_weights = [
+        standard_max_sr_weights = [
             {"asset": etflist[i], "weight": float(weightlist[maxSRW][i] * 100)}
             for i in range(len(etflist))
         ]
-        standard_pie = {
-            "labels": [w["asset"] for w in standard_weights],
-            "values": [w["weight"] for w in standard_weights],
+        standard_max_sr_pie = {
+            "labels": [w["asset"] for w in standard_max_sr_weights],
+            "values": [w["weight"] for w in standard_max_sr_weights],
+        }
+        standard_min_var_weights = [
+            {"asset": etflist[i], "weight": float(minvar_w[i] * 100)}
+            for i in range(len(etflist))
+        ]
+        standard_min_var_pie = {
+            "labels": [w["asset"] for w in standard_min_var_weights],
+            "values": [w["weight"] for w in standard_min_var_weights],
         }
 
         if not normal:
@@ -300,21 +308,34 @@ def mv(
             ]
             robust_max_sr = {"x": float(maxSR_std), "y": float(maxSR_ret)}
             robust_min_var = {"x": float(minvar_std), "y": float(minvar_ret)}
-            robust_weights = [
+            robust_max_sr_weights = [
                 {"asset": etflist[i], "weight": float(robw[i] * 100)}
                 for i in range(len(etflist))
             ]
-            robust_pie = {
-                "labels": [w["asset"] for w in robust_weights],
-                "values": [w["weight"] for w in robust_weights],
+            robust_max_sr_pie = {
+                "labels": [w["asset"] for w in robust_max_sr_weights],
+                "values": [w["weight"] for w in robust_max_sr_weights],
+            }
+            robust_min_var_weights = [
+                {
+                    "asset": etflist[i],
+                    "weight": float(simwdf[minvar_idx][i] * 100),
+                }
+                for i in range(len(etflist))
+            ]
+            robust_min_var_pie = {
+                "labels": [w["asset"] for w in robust_min_var_weights],
+                "values": [w["weight"] for w in robust_min_var_weights],
             }
         else:
             robust_efficient_frontier = standard_efficient_frontier
             robust_allocation_stack = standard_allocation_stack
             robust_max_sr = standard_max_sr
             robust_min_var = standard_min_var
-            robust_weights = standard_weights
-            robust_pie = standard_pie
+            robust_max_sr_weights = standard_max_sr_weights
+            robust_max_sr_pie = standard_max_sr_pie
+            robust_min_var_weights = standard_min_var_weights
+            robust_min_var_pie = standard_min_var_pie
 
         return {
             "descriptive_stats": descriptive_stats,
@@ -325,8 +346,12 @@ def mv(
                 "max_sr_point": standard_max_sr,
                 "min_var_point": standard_min_var,
                 "allocation_stack": standard_allocation_stack,
-                "weights": standard_weights,
-                "pie_chart": standard_pie,
+                "weights": standard_max_sr_weights,
+                "pie_chart": standard_max_sr_pie,
+                "max_sr_weights": standard_max_sr_weights,
+                "max_sr_pie_chart": standard_max_sr_pie,
+                "min_var_weights": standard_min_var_weights,
+                "min_var_pie_chart": standard_min_var_pie,
             },
             "robust_mv": {
                 "efficient_frontier": robust_efficient_frontier,
@@ -334,8 +359,12 @@ def mv(
                 "max_sr_point": robust_max_sr,
                 "min_var_point": robust_min_var,
                 "allocation_stack": robust_allocation_stack,
-                "weights": robust_weights,
-                "pie_chart": robust_pie,
+                "weights": robust_max_sr_weights,
+                "pie_chart": robust_max_sr_pie,
+                "max_sr_weights": robust_max_sr_weights,
+                "max_sr_pie_chart": robust_max_sr_pie,
+                "min_var_weights": robust_min_var_weights,
+                "min_var_pie_chart": robust_min_var_pie,
             },
             "short": int(short),
             "normal": normal
