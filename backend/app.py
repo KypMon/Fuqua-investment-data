@@ -12,10 +12,18 @@ import statsmodels.api as sm
 from datetime import datetime
 import random
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
+from werkzeug.utils import secure_filename
 
 from mv import mv
 from backtest import backtesting, backtesting_aux, BacktestInputError
 from data_loader import load_csv
+from module4 import (
+    compute_portfolios,
+    create_mat_er_covr,
+    download_matret,
+    parse_matrix_payload,
+    timestamped_filename,
+)
 
 
 app = Flask(
@@ -26,6 +34,20 @@ app = Flask(
 CORS(app, resources={r"/*": {"origins": "*"}})
 STATIC_DIR = "static"
 os.makedirs(STATIC_DIR, exist_ok=True)
+
+
+def save_dataframe(df: pd.DataFrame, prefix: str) -> str:
+    filename = timestamped_filename(prefix)
+    path = os.path.join(STATIC_DIR, filename)
+    df.to_csv(path, index=False)
+    return filename
+
+
+def dataframe_payload(df: pd.DataFrame) -> dict:
+    return {
+        "columns": list(df.columns),
+        "records": df.to_dict(orient="records"),
+    }
 
 # -------- Portfolio Logic (from robust_mv10.py) --------
 ## This code is for the MV playground 3 ## 
@@ -497,7 +519,151 @@ def run_mv():
         sd, ed
     )
     return jsonify(result)
-    
+
+
+@app.route("/module4/matret/generate", methods=["POST"])
+def module4_generate_matret():
+    data = request.json or {}
+    tickers = data.get("tickers", [])
+    if isinstance(tickers, str):
+        tickers = [t.strip() for t in tickers.split(",") if t.strip()]
+
+    start_date = data.get("start_date", "2000-01-01")
+    end_date = data.get("end_date", datetime.today().strftime("%Y-%m-%d"))
+
+    try:
+        matret_df, available = download_matret(tickers, start_date, end_date)
+    except Exception as exc:  # pragma: no cover - defensive error path
+        return jsonify({"error": str(exc)}), 400
+
+    filename = save_dataframe(matret_df, "matret")
+    return jsonify(
+        {
+            "matrix": dataframe_payload(matret_df),
+            "tickers": available,
+            "csv_url": f"/static/{filename}",
+        }
+    )
+
+
+@app.route("/module4/matret/upload", methods=["POST"])
+def module4_upload_matret():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+
+    try:
+        df = pd.read_csv(file)
+    except Exception as exc:  # pragma: no cover - pandas error path
+        return jsonify({"error": f"Unable to read CSV: {exc}"}), 400
+
+    if df.empty:
+        return jsonify({"error": "Uploaded file is empty"}), 400
+
+    filename = save_dataframe(df, "matret_upload")
+    return jsonify(
+        {
+            "matrix": dataframe_payload(df),
+            "csv_url": f"/static/{filename}",
+            "original_filename": secure_filename(file.filename),
+        }
+    )
+
+
+@app.route("/module4/mat_er_covr/generate", methods=["POST"])
+def module4_generate_mat_er_covr():
+    data = request.json or {}
+    matret_payload = data.get("matret")
+    risk_free = data.get("risk_free")
+
+    try:
+        matret_df = parse_matrix_payload(matret_payload)
+    except Exception as exc:
+        return jsonify({"error": f"Invalid matret payload: {exc}"}), 400
+
+    try:
+        rf_value = float(risk_free) if risk_free is not None else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "Risk-free rate must be numeric"}), 400
+
+    try:
+        mat_er_covr_df, resolved_rf = create_mat_er_covr(matret_df, rf_value)
+    except Exception as exc:  # pragma: no cover - numeric errors
+        return jsonify({"error": str(exc)}), 400
+
+    filename = save_dataframe(mat_er_covr_df, "mat_er_covr")
+    return jsonify(
+        {
+            "matrix": dataframe_payload(mat_er_covr_df),
+            "risk_free": resolved_rf,
+            "csv_url": f"/static/{filename}",
+        }
+    )
+
+
+@app.route("/module4/mat_er_covr/upload", methods=["POST"])
+def module4_upload_mat_er_covr():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+
+    try:
+        df = pd.read_csv(file)
+    except Exception as exc:
+        return jsonify({"error": f"Unable to read CSV: {exc}"}), 400
+
+    if df.empty:
+        return jsonify({"error": "Uploaded file is empty"}), 400
+
+    rf_value = None
+    if "Assets" in df.columns and "Mean" in df.columns:
+        asset_series = df["Assets"].astype(str).str.lower()
+        rf_rows = df[asset_series == "rf"]
+        if not rf_rows.empty:
+            numeric_rf = pd.to_numeric(rf_rows["Mean"], errors="coerce").dropna()
+            if not numeric_rf.empty:
+                rf_value = float(numeric_rf.iloc[0])
+
+    filename = save_dataframe(df, "mat_er_covr_upload")
+    return jsonify(
+        {
+            "matrix": dataframe_payload(df),
+            "risk_free": rf_value,
+            "csv_url": f"/static/{filename}",
+            "original_filename": secure_filename(file.filename),
+        }
+    )
+
+
+@app.route("/module4/portfolios", methods=["POST"])
+def module4_compute_portfolios():
+    data = request.json or {}
+    mat_er_covr_payload = data.get("mat_er_covr")
+    risk_free = data.get("risk_free")
+
+    try:
+        mat_er_covr_df = parse_matrix_payload(mat_er_covr_payload)
+    except Exception as exc:
+        return jsonify({"error": f"Invalid mat_er_covr payload: {exc}"}), 400
+
+    try:
+        rf_value = float(risk_free) if risk_free is not None else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "Risk-free rate must be numeric"}), 400
+
+    try:
+        result = compute_portfolios(mat_er_covr_df, rf_value)
+    except Exception as exc:  # pragma: no cover - numeric errors
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify(result)
+
 
 @app.route("/backtest", methods=["POST"])
 def run_backtest():

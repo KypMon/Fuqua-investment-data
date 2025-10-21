@@ -5,6 +5,7 @@ import ResultSection from "./components/ResultSection";
 import BacktestForm from "./components/BacktestForm";
 import BacktestResult from "./components/BacktestResult";
 import RegressionPage from "./components/RegressionPage";
+import ModuleFourPage from "./components/ModuleFourPage";
 import { useNavigate, useLocation, Routes, Route, Navigate, NavLink  } from "react-router-dom";
 
 function App() {
@@ -16,7 +17,9 @@ function App() {
 
   // Match the current path to tab value
   const currentPath = location.pathname;
-  const tabValue = currentPath.startsWith("/backtest")
+  const tabValue = currentPath.startsWith("/module4")
+    ? "module4"
+    : currentPath.startsWith("/backtest")
     ? "backtest"
     : currentPath.startsWith("/regression")
     ? "regression"
@@ -45,6 +48,7 @@ function App() {
             textColor="inherit"
           >
             <Tab label="MV Analysis" value="mv" />
+            <Tab label="Module 4" value="module4" />
             <Tab label="Backtest" value="backtest" />
             <Tab label="Regression" value="regression" />
           </Tabs>
@@ -62,6 +66,10 @@ function App() {
                 <ResultSection result={result} />
               </>
             }
+          />
+          <Route
+            path="/module4"
+            element={<ModuleFourPage />}
           />
           <Route path="/backtest" element={
             <>
