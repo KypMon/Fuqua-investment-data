@@ -36,12 +36,14 @@ export default function ResultSection({ result }) {
   const etfPts   = block.etf_points             || [];
   const maxSR    = block.max_sr_point           || { x:0,y:0 };
   const minVar   = block.min_var_point          || { x:0,y:0 };
-  const allocStk = block.allocation_stack       || [];
-  const weights  = block.weights                || [];
-  const pieChart = block.pie_chart              || { labels: [], values: [] };
+  const allocStk      = block.allocation_stack       || [];
+  const maxSRWeights  = block.max_sr_weights         || block.weights || [];
+  const maxSRPie      = block.max_sr_pie_chart       || block.pie_chart || { labels: [], values: [] };
+  const minVarWeights = block.min_var_weights        || [];
+  const minVarPie     = block.min_var_pie_chart      || { labels: [], values: [] };
 
   // Unique assets & x-axis for allocation
-  const assets = weights.map((w) => w.asset);
+  const assets = maxSRWeights.map((w) => w.asset);
   const allocX = allocStk.map((p) => p.x);
 
   const descriptiveColumns = useMemo(() => ([
@@ -123,13 +125,22 @@ export default function ResultSection({ result }) {
     [],
   );
 
-  const weightsData = useMemo(
+  const maxSRWeightsData = useMemo(
     () =>
-      weights.map((w) => ({
+      maxSRWeights.map((w) => ({
         asset: w.asset,
         weight: typeof w.weight === "number" ? w.weight.toFixed(2) : "N/A",
       })),
-    [weights],
+    [maxSRWeights],
+  );
+
+  const minVarWeightsData = useMemo(
+    () =>
+      minVarWeights.map((w) => ({
+        asset: w.asset,
+        weight: typeof w.weight === "number" ? w.weight.toFixed(2) : "N/A",
+      })),
+    [minVarWeights],
   );
 
   if (!hasResult) {
@@ -213,26 +224,29 @@ export default function ResultSection({ result }) {
       </Grid>
 
       {/* Pie + Table row */}
+      <Typography variant="subtitle1" gutterBottom>
+        Max Sharpe Ratio Portfolio
+      </Typography>
       <Grid container spacing={3} sx={{ mb:4 }}>
         {/* weight table */}
         <Grid item xs={12} md={6}>
-          {weightsData.length > 0 && (
+          {maxSRWeightsData.length > 0 && (
             <DataTable
               title="Max Sharpe Ratio Weights"
               columns={weightsColumns}
-              data={weightsData}
+              data={maxSRWeightsData}
               exportFileName="max_sharpe_ratio_weights"
             />
           )}
         </Grid>
 
         {/* only show pie when no-short */}
-        {short === 0 && pieChart.labels.length > 0 && (
+        {short === 0 && maxSRPie.labels.length > 0 && (
           <Grid item xs={12} md={6}>
             <Plot
               data={[{
-                labels: pieChart.labels,
-                values: pieChart.values,
+                labels: maxSRPie.labels,
+                values: maxSRPie.values,
                 type: 'pie',
                 hole: 0.4
               }]}
@@ -246,6 +260,43 @@ export default function ResultSection({ result }) {
           </Grid>
         )}
       </Grid>
+
+      {minVarWeightsData.length > 0 && (
+        <>
+          <Typography variant="subtitle1" gutterBottom>
+            Minimum Variance Portfolio
+          </Typography>
+          <Grid container spacing={3} sx={{ mb:4 }}>
+            <Grid item xs={12} md={6}>
+              <DataTable
+                title="Min Variance Weights"
+                columns={weightsColumns}
+                data={minVarWeightsData}
+                exportFileName="minimum_variance_weights"
+              />
+            </Grid>
+
+            {short === 0 && minVarPie.labels.length > 0 && (
+              <Grid item xs={12} md={6}>
+                <Plot
+                  data={[{
+                    labels: minVarPie.labels,
+                    values: minVarPie.values,
+                    type: 'pie',
+                    hole: 0.4
+                  }]}
+                  layout={{
+                    title: 'Min Var Weights (Pie)',
+                    showlegend: true,
+                    margin: { t:30, b:30, l:20, r:20 }
+                  }}
+                  style={{ width:'100%', height:300 }}
+                />
+              </Grid>
+            )}
+          </Grid>
+        </>
+      )}
 
       {/* Allocation Transition (standard only) */}
       {normal && allocStk.length > 0 && (
