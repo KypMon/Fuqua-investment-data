@@ -6,6 +6,7 @@ import BacktestForm from "./components/BacktestForm";
 import BacktestResult from "./components/BacktestResult";
 import RegressionPage from "./components/RegressionPage";
 import MatrixPage from "./components/MatrixPage";
+import LifeCycleSimulationPage from "./components/LifeCycleSimulationPage";
 import { useNavigate, useLocation, Routes, Route, Navigate, NavLink  } from "react-router-dom";
 
 function App() {
@@ -23,6 +24,8 @@ function App() {
     ? "backtest"
     : currentPath.startsWith("/regression")
     ? "regression"
+    : currentPath.startsWith("/life-cycle")
+    ? "life-cycle"
     : "mv";
     
   const handleTabChange = (event, newValue) => {
@@ -51,6 +54,7 @@ function App() {
             <Tab label="Backtest" value="backtest" />
             <Tab label="Regression" value="regression" />
             <Tab label="Matrix" value="matrix" />
+            <Tab label="Life Cycle" value="life-cycle" />
           </Tabs>
         </Toolbar>
       </AppBar>
@@ -71,6 +75,7 @@ function App() {
             path="/matrix"
             element={<MatrixPage />}
           />
+          <Route path="/life-cycle" element={<LifeCycleSimulationPage />} />
           <Route path="/backtest" element={
             <>
               <BacktestForm setBacktestResult={setBacktestResult} />

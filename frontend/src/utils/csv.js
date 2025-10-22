@@ -13,7 +13,7 @@ export const ensureCsvExtension = (filename) => {
   return trimmed.toLowerCase().endsWith(".csv") ? trimmed : `${trimmed}.csv`;
 };
 
-const escapeCsvValue = (value) => {
+export const escapeCsvValue = (value) => {
   const stringValue = value == null ? "" : String(value);
   if (stringValue === "") {
     return "";
