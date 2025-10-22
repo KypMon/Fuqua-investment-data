@@ -17,7 +17,7 @@ from werkzeug.utils import secure_filename
 from mv import mv
 from backtest import backtesting, backtesting_aux, BacktestInputError
 from data_loader import load_csv
-from module4 import (
+from matrix import (
     compute_portfolios,
     create_mat_er_covr,
     download_matret,
@@ -534,8 +534,8 @@ def run_mv():
     return jsonify(result)
 
 
-@app.route("/module4/matret/generate", methods=["POST"])
-def module4_generate_matret():
+@app.route("/matrix/matret/generate", methods=["POST"])
+def matrix_generate_matret():
     data = request.json or {}
     tickers = data.get("tickers", [])
     if isinstance(tickers, str):
@@ -559,8 +559,8 @@ def module4_generate_matret():
     )
 
 
-@app.route("/module4/matret/upload", methods=["POST"])
-def module4_upload_matret():
+@app.route("/matrix/matret/upload", methods=["POST"])
+def matrix_upload_matret():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -586,8 +586,8 @@ def module4_upload_matret():
     )
 
 
-@app.route("/module4/mat_er_covr/generate", methods=["POST"])
-def module4_generate_mat_er_covr():
+@app.route("/matrix/mat_er_covr/generate", methods=["POST"])
+def matrix_generate_mat_er_covr():
     data = request.json or {}
     matret_payload = data.get("matret")
     risk_free = data.get("risk_free")
@@ -617,8 +617,8 @@ def module4_generate_mat_er_covr():
     )
 
 
-@app.route("/module4/mat_er_covr/upload", methods=["POST"])
-def module4_upload_mat_er_covr():
+@app.route("/matrix/mat_er_covr/upload", methods=["POST"])
+def matrix_upload_mat_er_covr():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -654,8 +654,8 @@ def module4_upload_mat_er_covr():
     )
 
 
-@app.route("/module4/portfolios", methods=["POST"])
-def module4_compute_portfolios():
+@app.route("/matrix/portfolios", methods=["POST"])
+def matrix_compute_portfolios():
     data = request.json or {}
     mat_er_covr_payload = data.get("mat_er_covr")
     risk_free = data.get("risk_free")

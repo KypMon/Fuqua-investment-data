@@ -141,7 +141,7 @@ const extractError = (error, fallback = "Unexpected error") => {
   return fallback;
 };
 
-export default function ModuleFourPage() {
+export default function MatrixPage() {
   const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
   const [tickers, setTickers] = useState(() => [...DEFAULT_TICKERS]);
@@ -178,7 +178,7 @@ export default function ModuleFourPage() {
     setMatretError(null);
     setMatretLoading(true);
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/matret/generate`, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/matret/generate`, {
         tickers: sanitizedTickers,
         start_date: startDate,
         end_date: endDate,
@@ -215,7 +215,7 @@ export default function ModuleFourPage() {
     formData.append("file", file);
 
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/matret/upload`, formData, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/matret/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setMatretState(response.data);
@@ -246,7 +246,7 @@ export default function ModuleFourPage() {
     setMatErCovrError(null);
     setMatErCovrLoading(true);
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/mat_er_covr/generate`, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/mat_er_covr/generate`, {
         matret: matretState.matrix,
         risk_free: riskValue,
       });
@@ -274,7 +274,7 @@ export default function ModuleFourPage() {
     formData.append("file", file);
 
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/mat_er_covr/upload`, formData, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/mat_er_covr/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setMatErCovrState(response.data);
@@ -305,7 +305,7 @@ export default function ModuleFourPage() {
     setPortfolioError(null);
     setPortfolioLoading(true);
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/portfolios`, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/portfolios`, {
         mat_er_covr: matErCovrState.matrix,
         risk_free: riskValue,
       });

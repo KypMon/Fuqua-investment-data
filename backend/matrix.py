@@ -1,4 +1,4 @@
-"""Utilities for the custom mean-variance module ("module 4")."""
+"""Utilities for the custom mean-variance module ("matrix")."""
 from __future__ import annotations
 
 import io
