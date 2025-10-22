@@ -32,18 +32,35 @@ const formatNumber = (value, digits = 4) => {
   return numeric.toFixed(digits);
 };
 
-const createColumns = (columns = [], decimals = 6) =>
-  columns.map((column) => {
+const normalizeColumnList = (source) => {
+  if (Array.isArray(source)) {
+    return source;
+  }
+
+  if (Array.isArray(source?.columns)) {
+    return source.columns;
+  }
+
+  if (Array.isArray(source?.records) && source.records.length > 0) {
+    return Object.keys(source.records[0]);
+  }
+
+  return [];
+};
+
+const createColumns = (source = [], decimals = 6) =>
+  normalizeColumnList(source).map((column) => {
     const key = typeof column === "string" ? column : String(column);
     const lowerKey = key.toLowerCase();
     const isDate = lowerKey === "date";
+    const isLabel = lowerKey === "assets" || lowerKey === "asset";
     const align = isDate ? "left" : "right";
 
     return {
       accessorKey: key,
       header: key,
-      muiTableHeadCellProps: { align },
-      muiTableBodyCellProps: { align },
+      muiTableHeadCellProps: { align: isLabel ? "left" : align },
+      muiTableBodyCellProps: { align: isLabel ? "left" : align },
       Cell: ({ value }) => {
         if (value === null || value === undefined || value === "") {
           return "";
@@ -281,7 +298,7 @@ export default function ModuleFourPage() {
     }
   };
 
-  const matretColumns = useMemo(() => createColumns(matretState?.matrix?.columns ?? []), [
+  const matretColumns = useMemo(() => createColumns(matretState?.matrix ?? []), [
     matretState,
   ]);
 
@@ -297,7 +314,7 @@ export default function ModuleFourPage() {
   }, [matretState, apiBaseUrl]);
 
   const matErCovrColumns = useMemo(
-    () => createColumns(matErCovrState?.matrix?.columns ?? [], 6),
+    () => createColumns(matErCovrState?.matrix ?? [], 6),
     [matErCovrState],
   );
 

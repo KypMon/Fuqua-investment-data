@@ -44,9 +44,21 @@ def save_dataframe(df: pd.DataFrame, prefix: str) -> str:
 
 
 def dataframe_payload(df: pd.DataFrame) -> dict:
+    """Serialize a dataframe for JSON responses.
+
+    ``pandas`` represents missing values as ``NaN`` which does not have a
+    native JSON representation.  ``json.dumps`` would emit the JavaScript
+    identifier ``NaN`` which is invalid JSON and causes ``JSON.parse`` to
+    throw on the frontend.  To keep the payloads consumable for both uploaded
+    and generated matrices we normalise the dataframe and replace missing
+    values with ``None`` (rendered as ``null`` in JSON) before converting it to
+    dictionaries.
+    """
+
+    sanitized = df.where(pd.notna(df), None)
     return {
-        "columns": list(df.columns),
-        "records": df.to_dict(orient="records"),
+        "columns": list(sanitized.columns),
+        "records": sanitized.to_dict(orient="records"),
     }
 
 # -------- Portfolio Logic (from robust_mv10.py) --------
