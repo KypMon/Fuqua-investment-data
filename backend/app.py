@@ -17,6 +17,11 @@ from werkzeug.utils import secure_filename
 from mv import mv
 from backtest import backtesting, backtesting_aux, BacktestInputError
 from data_loader import load_csv
+from life_cycle import (
+    LifeCycleInputError,
+    load_vector_from_csv,
+    run_life_cycle_analysis,
+)
 from matrix import (
     compute_portfolios,
     create_mat_er_covr,
@@ -532,6 +537,60 @@ def run_mv():
         sd, ed
     )
     return jsonify(result)
+
+
+def _parse_float(value, label, default=0.0):
+    if value in (None, ""):
+        return float(default)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise LifeCycleInputError(f"{label} must be a numeric value.")
+
+
+def _parse_int(value, label, default=0):
+    if value in (None, ""):
+        return int(default)
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        raise LifeCycleInputError(f"{label} must be an integer value.")
+
+
+@app.route("/life-cycle/run", methods=["POST"])
+def run_life_cycle():
+    try:
+        returns_file = request.files.get("returns_file")
+        cashflows_file = request.files.get("cashflows_file")
+
+        returns_vector = load_vector_from_csv(returns_file, "Return")
+        cashflow_vector = load_vector_from_csv(cashflows_file, "Cash flow")
+
+        form_data = request.form or {}
+        if not form_data:
+            form_data = request.json or {}
+
+        initial_wealth = _parse_float(form_data.get("initial_wealth", 0), "Initial wealth", 0.0)
+        wmin_cutoff = _parse_float(form_data.get("wmin_cutoff", 0), "Minimum wealth cutoff", 0.0)
+        nsim = _parse_int(form_data.get("nsim", 1000), "Number of simulations", 1000)
+
+        result = run_life_cycle_analysis(
+            returns_vector,
+            cashflow_vector,
+            w0=initial_wealth,
+            wmin_cutoff=wmin_cutoff,
+            nsim=nsim,
+        )
+
+        return jsonify(result)
+
+    except LifeCycleInputError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        import traceback
+
+        traceback.print_exc()
+        return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
 
 
 @app.route("/matrix/matret/generate", methods=["POST"])
