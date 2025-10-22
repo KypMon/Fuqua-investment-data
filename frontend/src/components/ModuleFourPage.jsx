@@ -20,7 +20,7 @@ import DataTable from "./DataTable";
 import EtfListInput from "./EtfListInput";
 
 const DEFAULT_TICKERS = ["SPY", "IWM", "TLT", "LQD", "IEF"];
-const DEFAULT_START = "2004-12-31";
+const DEFAULT_START = "2020-12-31";
 const DEFAULT_END = "2023-12-31";
 
 const formatNumber = (value, digits = 4) => {
@@ -434,16 +434,16 @@ export default function ModuleFourPage() {
         </Typography>
         <Stack spacing={2}>
           <Typography variant="subtitle1">Generate from Yahoo! Finance</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6} lg={4}>
-              <Stack spacing={1}>
-                <Typography variant="subtitle2">Tickers</Typography>
-                <EtfListInput
-                  etflist={tickers}
-                  setEtflist={setTickers}
-                  size={12}
-                  minItems={2}
-                />
+
+          <EtfListInput
+            etflist={tickers}
+            setEtflist={setTickers}
+            size={4}
+            minItems={2}
+          />
+          
+          <Grid container>
+              <Stack spacing={4}>
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon />}
@@ -456,28 +456,28 @@ export default function ModuleFourPage() {
                   Enter at least two ticker symbols.
                 </Typography>
               </Stack>
-            </Grid>
-            <Grid item xs={12} md={3} lg={4}>
-              <TextField
-                label="Start Date"
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} md={3} lg={4}>
-              <TextField
-                label="End Date"
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-            </Grid>
           </Grid>
+
+          <Stack direction="row" spacing={2}>            
+            <TextField
+              label="Start Date"
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+
+            <TextField
+              label="End Date"
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          </Stack>
+
           <LoadingButton
             variant="contained"
             onClick={handleGenerateMatret}

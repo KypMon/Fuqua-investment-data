@@ -61,7 +61,7 @@ export default function EtfListInput({ etflist, setEtflist, size, minItems = 1 }
 
   return (
     <>
-      <Grid container spacing={4} sx={{ width: "100%" }}>
+      <Grid container spacing={2} sx={{ width: "100%" }}>
         {etflist.map((etf, idx) => (
           <Grid item key={idx} size={size}>
             <Box sx={{ position: "relative", width: "100%" }}>
