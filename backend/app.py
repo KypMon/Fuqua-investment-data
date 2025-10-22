@@ -55,7 +55,8 @@ def dataframe_payload(df: pd.DataFrame) -> dict:
     dictionaries.
     """
 
-    sanitized = df.where(pd.notna(df), None)
+    sanitized = df.copy().astype(object)
+    sanitized = sanitized.where(pd.notna(sanitized), None)
     return {
         "columns": list(sanitized.columns),
         "records": sanitized.to_dict(orient="records"),
