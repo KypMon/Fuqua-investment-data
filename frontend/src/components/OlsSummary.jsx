@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
 import { Button } from '@mui/material';
+import { useCallback, useMemo } from 'react';
 import '../styles/table.css';
 
 const OlsSummary = ({ html }) => {
@@ -33,7 +33,7 @@ const OlsSummary = ({ html }) => {
   return (
     <div>
       <Button variant="outlined" size="small" onClick={handleDownload} sx={{ mb: 2 }}>
-        Download Summary
+        Download HTML
       </Button>
       <div id="ols-summary-container" dangerouslySetInnerHTML={{ __html: htmlSummary }} />
     </div>
