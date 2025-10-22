@@ -7,7 +7,7 @@ const CACHE_KEY = "etfOptions";
 let cachedOptions = null;
 const filterOptions = createFilterOptions({ limit: 10 });
 
-export default function EtfListInput({ etflist, setEtflist, size }) {
+export default function EtfListInput({ etflist, setEtflist, size, minItems = 1 }) {
   const [options, setOptions] = useState([]);
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function EtfListInput({ etflist, setEtflist, size }) {
   };
 
   const removeEtfField = (index) => {
-    if (etflist.length > 1) {
+    if (etflist.length > minItems) {
       const updated = [...etflist];
       updated.splice(index, 1);
       setEtflist(updated);
@@ -61,7 +61,7 @@ export default function EtfListInput({ etflist, setEtflist, size }) {
 
   return (
     <>
-      <Grid container spacing={4} sx={{ width: "100%" }}>
+      <Grid container spacing={2} sx={{ width: "100%" }}>
         {etflist.map((etf, idx) => (
           <Grid item key={idx} size={size}>
             <Box sx={{ position: "relative", width: "100%" }}>
@@ -82,7 +82,7 @@ export default function EtfListInput({ etflist, setEtflist, size }) {
                   <TextField {...params} label={`ETF ${idx + 1}`} fullWidth />
                 )}
               />
-              {etflist.length > 1 && (
+              {etflist.length > minItems && (
                 <IconButton
                   size="small"
                   onClick={() => removeEtfField(idx)}

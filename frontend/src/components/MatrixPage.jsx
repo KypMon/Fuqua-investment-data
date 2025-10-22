@@ -12,13 +12,15 @@ import {
   Typography,
 } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
+import AddIcon from "@mui/icons-material/Add";
 import Plot from "react-plotly.js";
 import axios from "axios";
 
 import DataTable from "./DataTable";
+import EtfListInput from "./EtfListInput";
 
-const DEFAULT_TICKERS = "SPY,IWM,TLT,LQD,IEF";
-const DEFAULT_START = "2004-12-31";
+const DEFAULT_TICKERS = ["SPY", "IWM", "TLT", "LQD", "IEF"];
+const DEFAULT_START = "2020-12-31";
 const DEFAULT_END = "2023-12-31";
 
 const formatNumber = (value, digits = 4) => {
@@ -139,10 +141,15 @@ const extractError = (error, fallback = "Unexpected error") => {
   return fallback;
 };
 
-export default function ModuleFourPage() {
+export default function MatrixPage() {
   const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
-  const [tickersInput, setTickersInput] = useState(DEFAULT_TICKERS);
+  const [tickers, setTickers] = useState(() => [...DEFAULT_TICKERS]);
+  const sanitizedTickers = useMemo(
+    () => tickers.map((ticker) => ticker.trim()).filter(Boolean),
+    [tickers],
+  );
+  const hasMinimumTickers = sanitizedTickers.length >= 2;
   const [startDate, setStartDate] = useState(DEFAULT_START);
   const [endDate, setEndDate] = useState(DEFAULT_END);
 
@@ -163,11 +170,16 @@ export default function ModuleFourPage() {
   const [portfolioLoading, setPortfolioLoading] = useState(false);
 
   const handleGenerateMatret = async () => {
+    if (!hasMinimumTickers) {
+      setMatretError("Please provide at least two ticker symbols.");
+      return;
+    }
+
     setMatretError(null);
     setMatretLoading(true);
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/matret/generate`, {
-        tickers: tickersInput,
+      const response = await axios.post(`${apiBaseUrl}/matrix/matret/generate`, {
+        tickers: sanitizedTickers,
         start_date: startDate,
         end_date: endDate,
       });
@@ -176,6 +188,13 @@ export default function ModuleFourPage() {
       setPortfolioState(null);
       if (matErCovrState) {
         setMatErCovrState(null);
+      }
+
+      if (Array.isArray(response.data?.tickers) && response.data.tickers.length > 0) {
+        const nextTickers = response.data.tickers.map((value) =>
+          value == null ? "" : String(value).trim(),
+        );
+        setTickers(nextTickers.length >= 2 ? nextTickers : [...nextTickers, ""]);
       }
     } catch (error) {
       setMatretError(extractError(error, "Failed to generate matret"));
@@ -196,7 +215,7 @@ export default function ModuleFourPage() {
     formData.append("file", file);
 
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/matret/upload`, formData, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/matret/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setMatretState(response.data);
@@ -227,7 +246,7 @@ export default function ModuleFourPage() {
     setMatErCovrError(null);
     setMatErCovrLoading(true);
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/mat_er_covr/generate`, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/mat_er_covr/generate`, {
         matret: matretState.matrix,
         risk_free: riskValue,
       });
@@ -255,7 +274,7 @@ export default function ModuleFourPage() {
     formData.append("file", file);
 
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/mat_er_covr/upload`, formData, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/mat_er_covr/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setMatErCovrState(response.data);
@@ -286,7 +305,7 @@ export default function ModuleFourPage() {
     setPortfolioError(null);
     setPortfolioLoading(true);
     try {
-      const response = await axios.post(`${apiBaseUrl}/module4/portfolios`, {
+      const response = await axios.post(`${apiBaseUrl}/matrix/portfolios`, {
         mat_er_covr: matErCovrState.matrix,
         risk_free: riskValue,
       });
@@ -415,41 +434,55 @@ export default function ModuleFourPage() {
         </Typography>
         <Stack spacing={2}>
           <Typography variant="subtitle1">Generate from Yahoo! Finance</Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6} lg={4}>
-              <TextField
-                label="Tickers"
-                value={tickersInput}
-                onChange={(event) => setTickersInput(event.target.value)}
-                helperText="Comma-separated list"
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} md={3} lg={4}>
-              <TextField
-                label="Start Date"
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-            </Grid>
-            <Grid item xs={12} md={3} lg={4}>
-              <TextField
-                label="End Date"
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-            </Grid>
+
+          <EtfListInput
+            etflist={tickers}
+            setEtflist={setTickers}
+            size={4}
+            minItems={2}
+          />
+          
+          <Grid container>
+              <Stack spacing={4}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={() => setTickers((current) => [...current, ""])}
+                  sx={{ alignSelf: "flex-start" }}
+                >
+                  Add Ticker
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  Enter at least two ticker symbols.
+                </Typography>
+              </Stack>
           </Grid>
+
+          <Stack direction="row" spacing={2}>            
+            <TextField
+              label="Start Date"
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+
+            <TextField
+              label="End Date"
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
+          </Stack>
+
           <LoadingButton
             variant="contained"
             onClick={handleGenerateMatret}
             loading={matretLoading}
+            disabled={!hasMinimumTickers}
             sx={{ alignSelf: "flex-start" }}
           >
             Generate matret
