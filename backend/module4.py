@@ -104,7 +104,9 @@ def download_matret(
     if raw.empty:
         raise ValueError("No price data returned for the requested tickers")
 
-    adj_close = raw["Adj Close"] if "Adj Close" in raw else raw
+    print(raw)
+
+    adj_close = raw["Close"] if "Close" in raw else raw
     if isinstance(adj_close, pd.Series):
         adj_close = adj_close.to_frame()
 
@@ -188,51 +190,108 @@ def _build_covariance(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, List[st
     df = df.copy()
     df.columns = [str(col).strip() for col in df.columns]
 
-    print(1)
+    # Locate the column that represents the expected return vector.
+    mean_column: Optional[str] = None
+    for candidate in df.columns:
+        normalized = str(candidate).strip().lower()
+        if normalized in {"mean", "er", "expected_return", "expectedreturn"}:
+            mean_column = candidate
+            break
+    if mean_column is None:
+        raise ValueError("Could not identify the mean return column in mat_er_covr")
 
-    rf_rows = df[df["Assets"].str.lower() == "rf"] if "Assets" in df else pd.DataFrame()
-    rf_value = None
-    if not rf_rows.empty:
-        rf_value = pd.to_numeric(rf_rows["Mean"], errors="coerce").dropna()
-        rf_value = float(rf_value.iloc[0]) if not rf_value.empty else None
-        df = df[df["Assets"].str.lower() != "rf"]
+    # Locate a column that might contain asset labels (optional).
+    asset_column: Optional[str] = None
+    for candidate in df.columns:
+        if candidate == mean_column:
+            continue
+        normalized = str(candidate).strip().lower()
+        if normalized in {"assets", "asset", "ticker", "tickers"}:
+            asset_column = candidate
+            break
+        if normalized.startswith("unnamed"):
+            column_values = df[candidate].astype(str).str.strip()
+            if column_values.replace("", np.nan).notna().any():
+                asset_column = candidate
+                break
 
-    print(2)
+    rf_value: Optional[float] = None
+    assets: Optional[List[str]] = None
+
+    if asset_column is not None:
+        asset_series = df[asset_column].astype(str).str.strip()
+        rf_mask = asset_series.str.lower() == "rf"
+        if rf_mask.any():
+            rf_series = pd.to_numeric(df.loc[rf_mask, mean_column], errors="coerce").dropna()
+            if not rf_series.empty:
+                rf_value = float(rf_series.iloc[0])
+            df = df.loc[~rf_mask].copy()
+            asset_series = asset_series.loc[~rf_mask]
+        assets = asset_series.tolist()
+        df.drop(columns=[asset_column], inplace=True)
 
     if df.empty:
         raise ValueError("No asset rows found in mat_er_covr")
 
-    print(21)
-
-    print(df)
-    print(df["Assets"])
-    print(df["Assets"].astype(str))
-    print(df["Assets"].astype(str).tolist())
-    assets = df["Assets"].astype(str).tolist()
-
-    means = pd.to_numeric(df["Mean"], errors="coerce")
-
-    print(means)
-    print(means.isna())
-    print(means.isna().any())
- 
+    means = pd.to_numeric(df[mean_column], errors="coerce")
     if means.isna().any():
         raise ValueError("Mean column contains non-numeric values")
 
-    print(3)
+    # Candidate covariance columns are everything except the mean column.
+    cov_candidate_cols = [col for col in df.columns if col != mean_column]
+    if not cov_candidate_cols:
+        raise ValueError("Covariance matrix columns not found in mat_er_covr")
 
-    cov_cols = df.columns[2 : 2 + len(assets)]
-    cov_df = df[cov_cols].apply(pd.to_numeric, errors="coerce")
-    if cov_df.shape[1] != len(assets):
-        raise ValueError("Covariance matrix dimensions do not match asset count")
+    cov_df = df[cov_candidate_cols].apply(pd.to_numeric, errors="coerce")
 
-    print(4)
+    if assets is None:
+        # Attempt to infer and remove a risk-free row by looking for NaNs across the covariance block.
+        rf_rows = cov_df.isna().all(axis=1)
+        if rf_rows.any():
+            rf_series = means[rf_rows].dropna()
+            if not rf_series.empty:
+                rf_value = float(rf_series.iloc[0])
+            df = df.loc[~rf_rows].copy()
+            means = means.loc[~rf_rows]
+            cov_df = cov_df.loc[~rf_rows]
+
+    if df.empty:
+        raise ValueError("No asset rows found in mat_er_covr")
 
     if cov_df.isna().any().any():
         raise ValueError("Covariance matrix contains invalid values")
 
-    print(5)
-    
+    if assets is not None:
+        # Re-order covariance columns to align with the asset order.
+        normalized_columns = {str(col).strip().lower(): col for col in cov_df.columns}
+        ordered_columns: List[str] = []
+        for asset in assets:
+            key = str(asset).strip().lower()
+            variants = [key, f"cov_{key}"]
+            matched: Optional[str] = None
+            for variant in variants:
+                if variant in normalized_columns:
+                    matched = normalized_columns[variant]
+                    break
+            if matched is None:
+                raise ValueError(f"Covariance columns missing for asset '{asset}'")
+            ordered_columns.append(matched)
+        cov_df = cov_df[ordered_columns]
+    else:
+        inferred_assets: List[str] = []
+        for col in cov_df.columns:
+            name = str(col).strip()
+            lower = name.lower()
+            if lower.startswith("cov_"):
+                suffix = name.split("_", 1)[1]
+                inferred_assets.append(suffix if suffix else name)
+            else:
+                inferred_assets.append(name)
+        assets = inferred_assets
+
+    if cov_df.shape[0] != len(assets) or cov_df.shape[1] != len(assets):
+        raise ValueError("Covariance matrix dimensions do not match asset count")
+
     cov_matrix = cov_df.to_numpy()
     return means.to_numpy(), cov_matrix, assets, rf_value
 
@@ -283,17 +342,10 @@ def compute_portfolios(
     risk_free: Optional[float] = None,
     grid_size: int = 80,
 ) -> Dict[str, object]:
-    print('here')
-
     means, cov, assets, rf_from_matrix = _build_covariance(mat_er_covr)
-    print('here2')
-
-
     resolved_rf = risk_free if risk_free is not None else rf_from_matrix
-    print('here3')
     if resolved_rf is None:
         resolved_rf = 0.0
-
 
     def build_block(allow_short: bool) -> Dict[str, object]:
         min_var_weights = _solve_min_variance(cov, allow_short)
@@ -362,8 +414,6 @@ def compute_portfolios(
             },
         }
 
-    print(assets)
-
     return {
         "assets": assets,
         "risk_free": resolved_rf,
@@ -381,4 +431,3 @@ def dataframe_to_csv_bytes(df: pd.DataFrame) -> bytes:
 def timestamped_filename(prefix: str) -> str:
     ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
     return f"{prefix}_{ts}.csv"
-
