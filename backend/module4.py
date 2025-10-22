@@ -172,15 +172,16 @@ def create_mat_er_covr(matret: pd.DataFrame, risk_free: Optional[float] = None) 
     cov = numeric.cov()
 
     assets = list(numeric.columns)
-    result = pd.DataFrame({"Assets": assets, "Mean": means.values})
-    for idx, asset in enumerate(assets):
-        result[asset] = cov.iloc[:, idx].values
+    result = pd.DataFrame({"Assets": assets, "Er": means.values})
+    for asset in assets:
+        column_name = f"cov_{asset}"
+        result[column_name] = cov.loc[:, asset].values
 
     resolved_rf = risk_free if risk_free is not None else rf_value
     if resolved_rf is not None:
-        rf_row = {"Assets": "rf", "Mean": float(resolved_rf)}
+        rf_row = {"Assets": "rf", "Er": float(resolved_rf)}
         for asset in assets:
-            rf_row[asset] = np.nan
+            rf_row[f"cov_{asset}"] = np.nan
         result = pd.concat([result, pd.DataFrame([rf_row])], ignore_index=True)
 
     return result, resolved_rf
