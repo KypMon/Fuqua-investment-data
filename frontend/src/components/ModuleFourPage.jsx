@@ -12,12 +12,14 @@ import {
   Typography,
 } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
+import AddIcon from "@mui/icons-material/Add";
 import Plot from "react-plotly.js";
 import axios from "axios";
 
 import DataTable from "./DataTable";
+import EtfListInput from "./EtfListInput";
 
-const DEFAULT_TICKERS = "SPY,IWM,TLT,LQD,IEF";
+const DEFAULT_TICKERS = ["SPY", "IWM", "TLT", "LQD", "IEF"];
 const DEFAULT_START = "2004-12-31";
 const DEFAULT_END = "2023-12-31";
 
@@ -142,7 +144,12 @@ const extractError = (error, fallback = "Unexpected error") => {
 export default function ModuleFourPage() {
   const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
 
-  const [tickersInput, setTickersInput] = useState(DEFAULT_TICKERS);
+  const [tickers, setTickers] = useState(() => [...DEFAULT_TICKERS]);
+  const sanitizedTickers = useMemo(
+    () => tickers.map((ticker) => ticker.trim()).filter(Boolean),
+    [tickers],
+  );
+  const hasMinimumTickers = sanitizedTickers.length >= 2;
   const [startDate, setStartDate] = useState(DEFAULT_START);
   const [endDate, setEndDate] = useState(DEFAULT_END);
 
@@ -163,11 +170,16 @@ export default function ModuleFourPage() {
   const [portfolioLoading, setPortfolioLoading] = useState(false);
 
   const handleGenerateMatret = async () => {
+    if (!hasMinimumTickers) {
+      setMatretError("Please provide at least two ticker symbols.");
+      return;
+    }
+
     setMatretError(null);
     setMatretLoading(true);
     try {
       const response = await axios.post(`${apiBaseUrl}/module4/matret/generate`, {
-        tickers: tickersInput,
+        tickers: sanitizedTickers,
         start_date: startDate,
         end_date: endDate,
       });
@@ -176,6 +188,13 @@ export default function ModuleFourPage() {
       setPortfolioState(null);
       if (matErCovrState) {
         setMatErCovrState(null);
+      }
+
+      if (Array.isArray(response.data?.tickers) && response.data.tickers.length > 0) {
+        const nextTickers = response.data.tickers.map((value) =>
+          value == null ? "" : String(value).trim(),
+        );
+        setTickers(nextTickers.length >= 2 ? nextTickers : [...nextTickers, ""]);
       }
     } catch (error) {
       setMatretError(extractError(error, "Failed to generate matret"));
@@ -417,13 +436,26 @@ export default function ModuleFourPage() {
           <Typography variant="subtitle1">Generate from Yahoo! Finance</Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6} lg={4}>
-              <TextField
-                label="Tickers"
-                value={tickersInput}
-                onChange={(event) => setTickersInput(event.target.value)}
-                helperText="Comma-separated list"
-                fullWidth
-              />
+              <Stack spacing={1}>
+                <Typography variant="subtitle2">Tickers</Typography>
+                <EtfListInput
+                  etflist={tickers}
+                  setEtflist={setTickers}
+                  size={12}
+                  minItems={2}
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={() => setTickers((current) => [...current, ""])}
+                  sx={{ alignSelf: "flex-start" }}
+                >
+                  Add Ticker
+                </Button>
+                <Typography variant="caption" color="text.secondary">
+                  Enter at least two ticker symbols.
+                </Typography>
+              </Stack>
             </Grid>
             <Grid item xs={12} md={3} lg={4}>
               <TextField
@@ -450,6 +482,7 @@ export default function ModuleFourPage() {
             variant="contained"
             onClick={handleGenerateMatret}
             loading={matretLoading}
+            disabled={!hasMinimumTickers}
             sx={{ alignSelf: "flex-start" }}
           >
             Generate matret
