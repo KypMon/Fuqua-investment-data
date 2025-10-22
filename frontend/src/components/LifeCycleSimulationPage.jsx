@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -12,10 +12,12 @@ import {
 } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DownloadIcon from "@mui/icons-material/Download";
 import Plot from "react-plotly.js";
 import axios from "axios";
 
 import DataTable from "./DataTable";
+import { downloadCsvContent, escapeCsvValue } from "../utils/csv";
 
 const formatNumber = (value, options = {}) => {
   if (value === null || value === undefined || Number.isNaN(value)) {
@@ -210,6 +212,74 @@ export default function LifeCycleSimulationPage() {
     ].filter(Boolean);
   }, [result]);
 
+  const summaryDownloadRows = useMemo(() => {
+    const summary = result?.summary;
+    if (!summary) {
+      return [];
+    }
+
+    const rows = [
+      { metric: "Mean final wealth", value: formatNumber(summary.mean) },
+      { metric: "Median final wealth", value: formatNumber(summary.median) },
+      { metric: "Minimum final wealth", value: formatNumber(summary.min) },
+      { metric: "Maximum final wealth", value: formatNumber(summary.max) },
+    ];
+
+    if (summary.std !== undefined) {
+      rows.push({ metric: "Std. dev. final wealth", value: formatNumber(summary.std) });
+    }
+
+    rows.push(
+      {
+        metric: "Final count below cutoff",
+        value: formatNumber(summary.final_below_cutoff_count, { maximumFractionDigits: 0 }),
+      },
+      {
+        metric: "Final % below cutoff",
+        value: `${formatNumber(summary.final_below_cutoff_pct * 100, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}%`,
+      },
+      { metric: "Cutoff", value: formatNumber(summary.wmin_cutoff) },
+    );
+
+    const metadata = result?.metadata;
+    if (metadata) {
+      rows.push(
+        { metric: "Initial wealth", value: formatNumber(metadata.initial_wealth) },
+        {
+          metric: "Number of periods",
+          value: formatNumber(metadata.n_periods, { maximumFractionDigits: 0 }),
+        },
+        { metric: "Simulations", value: formatNumber(metadata.n_simulations, { maximumFractionDigits: 0 }) },
+      );
+    }
+
+    return rows;
+  }, [result]);
+
+  const summaryCsvContent = useMemo(() => {
+    if (!summaryDownloadRows.length) {
+      return null;
+    }
+
+    const header = "Metric,Value";
+    const lines = summaryDownloadRows.map(({ metric, value }) =>
+      `${escapeCsvValue(metric)},${escapeCsvValue(value)}`,
+    );
+
+    return [header, ...lines].join("\n");
+  }, [summaryDownloadRows]);
+
+  const handleDownloadSummary = useCallback(() => {
+    if (!summaryCsvContent) {
+      return;
+    }
+
+    downloadCsvContent(summaryCsvContent, "life-cycle-summary.csv");
+  }, [summaryCsvContent]);
+
   const metadataItems = useMemo(() => {
     const metadata = result?.metadata;
     if (!metadata) {
@@ -320,9 +390,23 @@ export default function LifeCycleSimulationPage() {
       {result ? (
         <Stack spacing={4}>
           <Paper elevation={2} sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Summary
-            </Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+              sx={{ mb: 2 }}
+            >
+              <Typography variant="h6">Summary</Typography>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownloadSummary}
+                disabled={!summaryCsvContent}
+              >
+                Download Summary
+              </Button>
+            </Stack>
             <Grid container spacing={2}>
               {summaryItems.map((item) => (
                 <Grid item xs={12} sm={6} md={4} key={item.label}>
