@@ -217,10 +217,13 @@ print(str(global_data))
 # @SDS end
 
 
+# @SDS begin
+# @SDS unused function
 # Calculate sharpe ratio
-def sharpe_ratio(x, meandf, covdf, rf): 
-    sp = (x@meandf-rf)/np.sqrt(x.T@covdf@x)
-    return sp
+# def sharpe_ratio(x, meandf, covdf, rf): 
+#     sp = (x@meandf-rf)/np.sqrt(x.T@covdf@x)
+#     return sp
+# @SDS End
 
 # def mv_back(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'], short = 0, maxuse = 1, normal = 1, startdate = 199302, enddate = 202312):
 
@@ -590,9 +593,17 @@ def run_mv():
     ed = int(data.get("enddate",   202312))
 
     result = mv(
-        global_data.copy(), etfl,
-        short, maxuse, normal,
-        sd, ed
+        # @SDS begin
+        # note: .copy() is a shallow copy
+        #global_data.copy(), 
+        data_service.get_global_data().copy(),
+        # @SDS end
+        etfl,
+        short, 
+        maxuse, 
+        normal,
+        sd, 
+        ed
     )
     return jsonify(result)
 
@@ -999,7 +1010,10 @@ class RegressionInputError(Exception):
 @app.route("/regression", methods=["POST"])
 def run_regression():
     try:
-        global final_data # Ensure final_data is accessible if it's a global variable
+        # @SDS begin
+        #global final_data # Ensure final_data is accessible if it's a global variable
+        final_data = data_service.get_global_data()
+        # @SDS end
 
         data = request.json
         ticker = data.get("ticker")
