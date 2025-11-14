@@ -12,6 +12,9 @@ plt.rcParams['figure.figsize'] = [15, 5]
 from cvxopt import matrix, solvers
 import cvxpy as cp
 from tabulate import tabulate
+# @SDS begin
+from src.services.file_service import FileService
+# @SDS end
 
 # %% 
 def get_data(file_name):
@@ -450,8 +453,13 @@ def mv(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'
         # mv(df, etflist, short, 0, normal, startdate, enddate)
 # %% 
 plt.rcParams['figure.figsize'] = [15, 5]
-ff_file = 'F-F_Research_Data_Factors.csv'
-etf_file = 'stocks_mf_ETF_data_final.csv'
+# @SDS begin
+#ff_file = 'F-F_Research_Data_Factors.csv'
+#etf_file = 'stocks_mf_ETF_data_final.csv'
+file_service = FileService()
+ff_file = file_service.get_ff_file_path()
+etf_file = file_service.get_etf_file_path()
+# @SDS end
 df = get_and_merge(ff_file, etf_file)
 
 

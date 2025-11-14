@@ -16,7 +16,10 @@ from werkzeug.utils import secure_filename
 
 from mv import mv
 from backtest import backtesting, backtesting_aux, BacktestInputError
-from data_loader import load_csv
+# @SDS begin
+#  data_loader logic moved to data_service.py
+# from data_loader import load_csv
+# @SDS end
 from life_cycle import (
     LifeCycleInputError,
     load_vector_from_csv,
@@ -50,9 +53,9 @@ log = AppLogger.set_up_logger(args.log)
 
 config = Config.set_up_config(args.config)
 
-file_service = FileService(config)
+file_service = FileService()
 
-data_service = DataService(config)
+data_service = DataService()
 # @SDS end
 
 app = Flask(
@@ -117,7 +120,7 @@ etf_file = file_service.get_etf_file_path()
 ### Load CSV data once using the shared loader
 # RAW_DF = load_csv("stocks_mf_ETF_data_final.csv")
 # @SDS is RAW_DF used?
-RAW_DF = load_csv(etf_file)
+RAW_DF = data_service.load_csv(etf_file)
 RAW_DF["ym"] = RAW_DF["year"] * 100 + RAW_DF["month"]
 
 # return_data = load_csv("stocks_mf_ETF_data_final.csv")
@@ -151,7 +154,7 @@ log.info(str(final_data))
 def get_data(file_name):
     # ETF
     try:
-        df = load_csv(file_name)
+        df = data_service.load_csv(file_name)
         df = df.pivot_table(index=['year', 'month'], columns = 'ticker_new', values='ret')
         df.reset_index(inplace=True)
 
@@ -159,7 +162,7 @@ def get_data(file_name):
         return df
     # FF
     except pd.errors.ParserError:
-        df = load_csv(file_name, skiprows=3)
+        df = data_service.load_csv(file_name, skiprows=3)
         first_non_numeric_index = None
         for index, value in df['Unnamed: 0'].items():
             if not is_numeric(value):

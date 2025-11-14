@@ -1,13 +1,15 @@
 import os
 from datetime import datetime, UTC
 import pandas as pd
-
+from src.config.config import Config
 from src.logging.app_logger import AppLogger
 
 class FileService(object):
 
-    def __init__(self, config):
+    def __init__(self):
         self.logger = AppLogger.get_logger()
+
+        config = Config.get_config()
 
         data_dir = config.get("data.directory")
 

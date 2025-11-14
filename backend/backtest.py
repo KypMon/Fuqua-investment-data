@@ -17,7 +17,11 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from scipy.stats import skew, kurtosis
-from data_loader import load_csv
+# @SDS begin
+#from data_loader import load_csv
+from src.services.data_service import DataService
+from src.services.file_service import FileService
+# @SDS end
 
 
 class BacktestInputError(Exception):
@@ -180,6 +184,11 @@ def backtesting_aux(start_date, end_date, tickers, allocation, rebalancing, data
 
 def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocation3, rebalancing, benchmark, start_balance):
 
+    # @SDS begin
+    data_service = DataService()
+    file_service = FileService()
+    # @SDS end
+
     # Ensure allocations are properly handled as numeric arrays
     allocation1 = np.array(allocation1, dtype=float)
     allocation2 = np.array(allocation2, dtype=float)
@@ -191,7 +200,10 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
     allocation3 = np.where(allocation3 == None, np.nan, allocation3)
     
     # Load Data
-    return_data = load_csv("stocks_mf_ETF_data_final.csv")
+    # @SDS begin
+    # return_data = load_csv("stocks_mf_ETF_data_final.csv")
+    return_data = data_service.load_csv(file_service.get_etf_file_path())
+    # @SDS end
     return_data['date'] = return_data['year'] * 100 + return_data['month']
     return_data = return_data.drop(columns=['month', 'year'])
 
@@ -304,7 +316,10 @@ def backtesting(start_date, end_date, tickers, allocation1, allocation2, allocat
 
     # Get risk-free rate data (Fama-French factors)
     # ff5 = load_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=r'\s+', skiprows=1)
-    ff5 = load_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=",", skiprows=1)
+    # @SDS begin
+    # ff5 = load_csv("F-F_Research_Data_5_Factors_2x3.csv", sep=",", skiprows=1)
+    ff5 = data_service.load_csv(file_service.get_ff5_file_path(), sep=",", skiprows=1)
+    # @SDS end
 
     ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
     ff5 = ff5[(ff5['date'] >= start_date) & (ff5['date'] <= end_date)]
