@@ -31,3 +31,6 @@ Pipfile.lock
 
 # CSV
 *.csv
+
+# for matplotlib config
+matplotlib_config/

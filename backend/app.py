@@ -27,9 +27,33 @@ from matrix import (
     create_mat_er_covr,
     download_matret,
     parse_matrix_payload,
-    timestamped_filename,
+    # @SDS begin
+    # timestamped_filename,
+    # @SDS emd
 )
 
+# @SDS begin
+# @SDS introduce argument parsing, logging, configuration, and central file & data services
+from src.logging.app_logger import AppLogger
+from src.config.config import Config
+from src.services.data_service import DataService
+from src.services.file_service import FileService
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--log", type=str)
+parser.add_argument("--config", type=str)
+
+args = parser.parse_args()
+
+log = AppLogger.set_up_logger(args.log)
+
+config = Config.set_up_config(args.config)
+
+file_service = FileService(config)
+
+data_service = DataService(config)
+# @SDS end
 
 app = Flask(
     __name__,
@@ -37,16 +61,22 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(__file__), "static")
 )
 CORS(app, resources={r"/*": {"origins": "*"}})
-STATIC_DIR = "static"
-os.makedirs(STATIC_DIR, exist_ok=True)
 
+# @SDS begin
+# @SDS this logic moved to file_service.py
+# STATIC_DIR = "static"
+# os.makedirs(STATIC_DIR, exist_ok=True)
+file_service.make_static_dir()
+# @SDS end
 
-def save_dataframe(df: pd.DataFrame, prefix: str) -> str:
-    filename = timestamped_filename(prefix)
-    path = os.path.join(STATIC_DIR, filename)
-    df.to_csv(path, index=False)
-    return filename
-
+# @SDS begin
+# @SDS this method moved to file_service.py
+# def save_dataframe(df: pd.DataFrame, prefix: str) -> str:
+#     filename = timestamped_filename(prefix)
+#     path = os.path.join(STATIC_DIR, filename)
+#     df.to_csv(path, index=False)
+#     return filename
+# @ SDS end
 
 def dataframe_payload(df: pd.DataFrame) -> dict:
     """Serialize a dataframe for JSON responses.
@@ -74,33 +104,49 @@ def dataframe_payload(df: pd.DataFrame) -> dict:
 plt.rcParams['figure.figsize'] = [15, 5]
 from cvxopt import matrix, solvers
 from tabulate import tabulate
-ff_file = 'F-F_Research_Data_Factors.csv'
-etf_file = 'stocks_mf_ETF_data_final.csv'
 
+# @SDS begin
+# @SDS move the generation of final_data to its own class, data_service.py
+# @SDS replace hard-coded file names with configuration
+# ff_file = 'F-F_Research_Data_Factors.csv'
+ff_file = file_service.get_ff_file_path()
+
+# etf_file = 'stocks_mf_ETF_data_final.csv'
+etf_file = file_service.get_etf_file_path()
 
 ### Load CSV data once using the shared loader
-RAW_DF = load_csv("stocks_mf_ETF_data_final.csv")
+# RAW_DF = load_csv("stocks_mf_ETF_data_final.csv")
+# @SDS is RAW_DF used?
+RAW_DF = load_csv(etf_file)
 RAW_DF["ym"] = RAW_DF["year"] * 100 + RAW_DF["month"]
 
+# return_data = load_csv("stocks_mf_ETF_data_final.csv")
+# return_data = load_csv(etf_file)
+# return_data['date'] = return_data['year'] * 100 + return_data['month']
+# return_data.drop(columns=['month', 'year'], inplace=True)
 
-return_data = load_csv("stocks_mf_ETF_data_final.csv")
-return_data['date'] = return_data['year'] * 100 + return_data['month']
-return_data.drop(columns=['month', 'year'], inplace=True)
+# # Regression
+# # mom = load_csv('F-F_Momentum_Factor.csv', sep=',')
+# mom_file = file_service.get_mom_file_path()
+# mom = load_csv(mom_file)
+# mom.columns = ['date', 'MOM']
+# mom['MOM'] = mom['MOM'].astype('float64')/100
 
-# Regression
-mom = load_csv('F-F_Momentum_Factor.csv', sep=',')
-mom.columns = ['date', 'MOM']
-mom['MOM'] = mom['MOM'].astype('float64')/100
+# # ff5 = load_csv('F-F_Research_Data_5_Factors_2x3.csv', sep=',', skiprows=1)
+# ff5_file = file_service.get_ff5_file_path()
+# ff5 = load_csv(ff5_file, sep=',', skiprows=1)
+# ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
+# for cols in ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']:
+#     ff5[cols] = ff5[cols].astype('float64')/100
 
-ff5 = load_csv('F-F_Research_Data_5_Factors_2x3.csv', sep=',', skiprows=1)
-ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
-for cols in ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']:
-    ff5[cols] = ff5[cols].astype('float64')/100
 # Merge factors
-all_factors = pd.merge(mom, ff5, on='date', how='outer').sort_values(by='date')
+# all_factors = pd.merge(mom, ff5, on='date', how='outer').sort_values(by='date')
 
 # Merge return data with factors
-final_data = pd.merge(return_data, all_factors, on='date', how='outer').sort_values(by=['ticker_new', 'date'])
+# final_data = pd.merge(return_data, all_factors, on='date', how='outer').sort_values(by=['ticker_new', 'date'])
+final_data = data_service.get_final_data()
+log.info(str(final_data))
+# @SDS end
 
 def get_data(file_name):
     # ETF
@@ -608,7 +654,10 @@ def matrix_generate_matret():
     except Exception as exc:  # pragma: no cover - defensive error path
         return jsonify({"error": str(exc)}), 400
 
-    filename = save_dataframe(matret_df, "matret")
+    # @SDS begin
+    # filename = save_dataframe(matret_df, "matret")
+    filename = file_service.save_dataframe(matret_df, "matret")
+    # @SDS end
     return jsonify(
         {
             "matrix": dataframe_payload(matret_df),
@@ -635,7 +684,11 @@ def matrix_upload_matret():
     if df.empty:
         return jsonify({"error": "Uploaded file is empty"}), 400
 
-    filename = save_dataframe(df, "matret_upload")
+    # @SDS begin
+    # filename = save_dataframe(df, "matret_upload")
+    filename = file_service.save_dataframe(df, "matret_upload")
+    # @SDS end
+
     return jsonify(
         {
             "matrix": dataframe_payload(df),
@@ -666,7 +719,10 @@ def matrix_generate_mat_er_covr():
     except Exception as exc:  # pragma: no cover - numeric errors
         return jsonify({"error": str(exc)}), 400
 
-    filename = save_dataframe(mat_er_covr_df, "mat_er_covr")
+    # @SDS begin
+    # filename = save_dataframe(mat_er_covr_df, "mat_er_covr")
+    filename = file_service.save_dataframe(mat_er_covr_df, "mat_er_covr")
+    # @SDS end
     return jsonify(
         {
             "matrix": dataframe_payload(mat_er_covr_df),
@@ -702,7 +758,10 @@ def matrix_upload_mat_er_covr():
             if not numeric_rf.empty:
                 rf_value = float(numeric_rf.iloc[0])
 
-    filename = save_dataframe(df, "mat_er_covr_upload")
+    # @SDS begin
+    # filename = save_dataframe(df, "mat_er_covr_upload")
+    filename = file_service.save_dataframe(df, "mat_er_covr_upload")
+    # @ SDS end
     return jsonify(
         {
             "matrix": dataframe_payload(df),
@@ -1219,7 +1278,13 @@ def run_regression():
 
 @app.route('/static/<path:filename>')
 def serve_image(filename):
-    return send_from_directory(STATIC_DIR, filename)
+    # @SDS begin
+    # return send_from_directory(STATIC_DIR, filename)
+    return send_from_directory(file_service.get_STATIC_DIR(), filename)
+    # @SDS end
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    # @SDS begin
+    # app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host=config.get("HOST"), port=int(config.get("PORT")))
+    # @SDS end

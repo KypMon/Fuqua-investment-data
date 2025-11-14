@@ -432,7 +432,9 @@ def dataframe_to_csv_bytes(df: pd.DataFrame) -> bytes:
     df.to_csv(buffer, index=False)
     return buffer.getvalue().encode("utf-8")
 
-
-def timestamped_filename(prefix: str) -> str:
-    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
-    return f"{prefix}_{ts}.csv"
+# @SDS begin
+#  moved to file_service.py
+# def timestamped_filename(prefix: str) -> str:
+#     ts = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+#     return f"{prefix}_{ts}.csv"
+# @SDS end
