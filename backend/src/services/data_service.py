@@ -70,4 +70,62 @@ class DataService(object):
         """
         df = self._read_csv_cached(filename, self._make_key(filename, kwargs)[1])
         return df.copy()
+    
+    def get_global_data(self):
+        ff_file = self.file_service.get_ff_file_path()
+        etf_file = self.file_service.get_etf_file_path()
+        global_data = self.get_and_merge(ff_file, etf_file)
+        return global_data
+
+    def get_and_merge(self, ff_file, etf_file):
+        ffdf = self.get_data(ff_file)
+
+
+        etfdf = self.get_data(etf_file)
+
+        df = pd.merge(etfdf, ffdf, on=['year', 'month'], how='inner')
+        df['ym'] = df['year']*100 + df['month']
+        df['ym'] = df['ym'].astype(int)
+
+        return df
+    
+    def get_data(self, file_name):
+        # ETF
+        try:
+            df = self.load_csv(file_name)
+            df = df.pivot_table(index=['year', 'month'], columns = 'ticker_new', values='ret')
+            df.reset_index(inplace=True)
+
+            df.drop(columns={'RF'}, inplace = True)
+            return df
+        # FF
+        except pd.errors.ParserError:
+            df = self.load_csv(file_name, skiprows=3)
+            first_non_numeric_index = None
+            for index, value in df['Unnamed: 0'].items():
+                if not self.is_numeric(value):
+                    first_non_numeric_index = index
+                    break
+            
+            df = df[:first_non_numeric_index]
+            df['year'] = df['Unnamed: 0'].astype(str).str[:4]
+            df['month'] = df['Unnamed: 0'].astype(str).str[4:6]
+            df.drop(columns=['Unnamed: 0'], inplace=True)
+
+            for column in df.columns:
+                if column != 'year' and column != 'month':
+                    df[column] = df[column].astype(float)
+                else: 
+                    
+                    df[column] = df[column].astype(int)
+            df['RF'] = df['RF'] / 100
+            df.drop(columns={'SMB', 'HML'}, inplace = True)
+            return df
+        
+    def is_numeric(self, value):
+        try:
+            float(value)
+            return True
+        except ValueError:
+            return False
 

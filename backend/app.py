@@ -148,64 +148,73 @@ RAW_DF["ym"] = RAW_DF["year"] * 100 + RAW_DF["month"]
 # Merge return data with factors
 # final_data = pd.merge(return_data, all_factors, on='date', how='outer').sort_values(by=['ticker_new', 'date'])
 final_data = data_service.get_final_data()
-log.info(str(final_data))
+log.info("final_data")
+print(str(final_data))
 # @SDS end
 
-def get_data(file_name):
-    # ETF
-    try:
-        df = data_service.load_csv(file_name)
-        df = df.pivot_table(index=['year', 'month'], columns = 'ticker_new', values='ret')
-        df.reset_index(inplace=True)
+# @SDS begin
+# @SDS move this data logic to data_service.py
+# def get_data(file_name):
+#     # ETF
+#     try:
+#         df = data_service.load_csv(file_name)
+#         df = df.pivot_table(index=['year', 'month'], columns = 'ticker_new', values='ret')
+#         df.reset_index(inplace=True)
 
-        df.drop(columns={'RF'}, inplace = True)
-        return df
-    # FF
-    except pd.errors.ParserError:
-        df = data_service.load_csv(file_name, skiprows=3)
-        first_non_numeric_index = None
-        for index, value in df['Unnamed: 0'].items():
-            if not is_numeric(value):
-                first_non_numeric_index = index
-                break
+#         df.drop(columns={'RF'}, inplace = True)
+#         return df
+#     # FF
+#     except pd.errors.ParserError:
+#         df = data_service.load_csv(file_name, skiprows=3)
+#         first_non_numeric_index = None
+#         for index, value in df['Unnamed: 0'].items():
+#             if not is_numeric(value):
+#                 first_non_numeric_index = index
+#                 break
         
-        df = df[:first_non_numeric_index]
-        df['year'] = df['Unnamed: 0'].astype(str).str[:4]
-        df['month'] = df['Unnamed: 0'].astype(str).str[4:6]
-        df.drop(columns=['Unnamed: 0'], inplace=True)
+#         df = df[:first_non_numeric_index]
+#         df['year'] = df['Unnamed: 0'].astype(str).str[:4]
+#         df['month'] = df['Unnamed: 0'].astype(str).str[4:6]
+#         df.drop(columns=['Unnamed: 0'], inplace=True)
 
-        for column in df.columns:
-            if column != 'year' and column != 'month':
-                df[column] = df[column].astype(float)
-            else: 
+#         for column in df.columns:
+#             if column != 'year' and column != 'month':
+#                 df[column] = df[column].astype(float)
+#             else: 
                 
-                df[column] = df[column].astype(int)
-        df['RF'] = df['RF'] / 100
-        df.drop(columns={'SMB', 'HML'}, inplace = True)
-        return df
+#                 df[column] = df[column].astype(int)
+#         df['RF'] = df['RF'] / 100
+#         df.drop(columns={'SMB', 'HML'}, inplace = True)
+#         return df
 
-def is_numeric(value):
-    try:
-        float(value)
-        return True
-    except ValueError:
-        return False
+# def is_numeric(value):
+#     try:
+#         float(value)
+#         return True
+#     except ValueError:
+#         return False
     
-def get_and_merge(ff_file, etf_file):
-    ffdf = get_data(ff_file)
+# def get_and_merge(ff_file, etf_file):
+#     ffdf = get_data(ff_file)
 
 
-    etfdf = get_data(etf_file)
+#     etfdf = get_data(etf_file)
 
-    df = pd.merge(etfdf, ffdf, on=['year', 'month'], how='inner')
-    df['ym'] = df['year']*100 + df['month']
-    df['ym'] = df['ym'].astype(int)
+#     df = pd.merge(etfdf, ffdf, on=['year', 'month'], how='inner')
+#     df['ym'] = df['year']*100 + df['month']
+#     df['ym'] = df['ym'].astype(int)
 
-    return df
+#     return df
+# @SDS end
 
 # Global Data
 # Import data from CSV file
-global_data = get_and_merge(ff_file, etf_file) 
+# @SDS begin
+# global_data = get_and_merge(ff_file, etf_file) 
+global_data = data_service.get_global_data()
+log.info("global data")
+print(str(global_data))
+# @SDS end
 
 
 # Calculate sharpe ratio
