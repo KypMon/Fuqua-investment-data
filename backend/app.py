@@ -584,7 +584,9 @@ def home():
 
 @app.route("/run", methods=["POST"])
 def run_mv():
+    log.info(request.url)
     data = request.json or request.form
+    log.info("data: " + str(data))
     etfl = data.get("etflist", "").split(",") if data.get("etflist") else ["VOO","VXUS","AVUV","AVDV","AVEM"]
     short  = int(data.get("short", 0))
     maxuse = int(data.get("maxuse", 0))
@@ -605,6 +607,8 @@ def run_mv():
         sd, 
         ed
     )
+
+    #log.info("result: " + str(result))
     return jsonify(result)
 
 
@@ -628,6 +632,7 @@ def _parse_int(value, label, default=0):
 
 @app.route("/life-cycle/run", methods=["POST"])
 def run_life_cycle():
+    log.info(request.url)
     try:
         returns_file = request.files.get("returns_file")
         cashflows_file = request.files.get("cashflows_file")
@@ -664,6 +669,7 @@ def run_life_cycle():
 
 @app.route("/matrix/matret/generate", methods=["POST"])
 def matrix_generate_matret():
+    log.info(request.url)
     data = request.json or {}
     tickers = data.get("tickers", [])
     if isinstance(tickers, str):
@@ -824,6 +830,7 @@ def matrix_compute_portfolios():
 
 @app.route("/backtest", methods=["POST"])
 def run_backtest():
+    log.info(request.url)
     try:
         data = request.json
 
@@ -1009,10 +1016,11 @@ class RegressionInputError(Exception):
 
 @app.route("/regression", methods=["POST"])
 def run_regression():
+    log.info(request.url)
     try:
         # @SDS begin
         #global final_data # Ensure final_data is accessible if it's a global variable
-        final_data = data_service.get_global_data()
+        final_data = data_service.get_final_data()
         # @SDS end
 
         data = request.json
@@ -1041,7 +1049,7 @@ def run_regression():
             raise RegressionInputError("Rolling period must be an integer number of months.")
         if rolling_period <= 0:
             raise RegressionInputError("Rolling period must be a positive integer.")
-
+        
         if not ticker or not str(ticker).strip():
             raise RegressionInputError("Ticker not provided")
 
