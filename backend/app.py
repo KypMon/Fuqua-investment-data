@@ -21,7 +21,8 @@ from mv import mv
 # src/services/backtest_service.py
 # src/services/backtesting_aux.py
 # from backtest import backtesting, backtesting_aux, BacktestInputError
-from src.services.backtest_service import BacktestService, BacktestInputError
+from src.services.backtest_service import BacktestService
+from src.services.backtest_input_error import BacktestInputError
 # @SDS end
 
 # @SDS begin
@@ -83,23 +84,29 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(__file__), "static")
 )
 
-## CORS(app, resources={r"/*": {"origins": "*"}})  won't work with credentials
-front_end_url = config.get("front.end.origins")
-log.info("front_end_url: " + front_end_url)
-CORS(
-    app,
-    #origins=["http://localhost.fuqua.duke.edu:3000"],
-    origins=[front_end_url],
-    supports_credentials=True
-)
-
-
 app.wsgi_app = Authentication(DispatcherMiddleware(app.wsgi_app, {
     #'/mv': app.wsgi_app
     '/': app.wsgi_app
     })
     # ,config=config
 )
+
+## CORS(app, resources={r"/*": {"origins": "*"}})  won't work with credentials
+# http://localhost.fuqua.duke.edu:3000
+CORS(
+    app,
+    supports_credentials=True,
+    origins=[config.get("home.page.redirect")],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-XSRF-TOKEN",
+    ],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+)
+
+
 
 
 # @SDS begin
@@ -183,30 +190,30 @@ global_data = data_service.get_global_data()
 ##
 ## This route receives the user's JWT token from the front-end, and sets it as a secure, HttpOnly cookie.
 ##
-@app.route("/auth/session", methods=["POST"])
-def establish_session():
-    log.info("/auth/session")
-    """
-    Receive a JWT from the frontend, set it as a secure cookie that
-    your Authentication middleware will read on future requests.
-    """
-    data = request.get_json(silent=True) or {}
-    jwt_token = data.get("jwt")
-    if not jwt_token:
-        return jsonify({"error": "missing JWT"}), 400
+# @app.route("/auth/session", methods=["POST"])
+# def establish_session():
+#     log.info("/auth/session")
+#     """
+#     Receive a JWT from the frontend, set it as a secure cookie that
+#     your Authentication middleware will read on future requests.
+#     """
+#     data = request.get_json(silent=True) or {}
+#     jwt_token = data.get("jwt")
+#     if not jwt_token:
+#         return jsonify({"error": "missing JWT"}), 400
 
-    cookie_name = Config.get_property("auth_cookie_name") or "fwjwt"
+#     cookie_name = Config.get_property("auth_cookie_name") or "fwjwt"
 
-    resp = Response(status=204)
-    resp.set_cookie(
-        cookie_name,
-        jwt_token,
-        httponly=True,      # keep inaccessible to JS
-        secure=True,        # HTTPS only
-        samesite="Lax",     # include on normal navigation
-        path="/"
-    )
-    return resp
+#     resp = Response(status=204)
+#     resp.set_cookie(
+#         cookie_name,
+#         jwt_token,
+#         httponly=True,      # keep inaccessible to JS
+#         secure=True,        # HTTPS only
+#         samesite="Lax",     # include on normal navigation
+#         path="/"
+#     )
+#     return resp
 
 ##
 ## This is Flask's before_request decorator pattern.  
@@ -214,7 +221,6 @@ def establish_session():
 ##
 @app.before_request
 def authenticate_and_authorize():
-    log.info("BEFORE REQUEST !!!  YAY !!")
     status_code = request.environ.get("status_code")
     if status_code == 401:
         log.info("HTTP status code is " + str(status_code))
@@ -240,24 +246,24 @@ def authenticate_and_authorize():
 ## This route is called only when user starts up the app.
 ##  It's purpose is to redirect the user to a login page, if the user is not already logged into FW.
 ##
-@app.route("/auth/check", methods=["GET"])
-def auth_check():
-    log.info("WE ARE IN auth_check")
-    """
-    Called by the front end to verify that we have a valid session.
-    """
-    status_code = request.environ.get("status_code", 500)
-    log.info("status_code: " + str(status_code))
-    if status_code != 200:
-        # unauthenticated or invalid token → ask browser to redirect
-        login_url = Config.get_property("fw.login.url")
-        redirect_to = Config.get_property("home.page.redirect", "/")
-        log.info("/auth/check: " + str(login_url) + str(redirect_to))
-        return redirect(login_url + redirect_to, code=302)
+# @app.route("/auth/check", methods=["GET"])
+# def auth_check():
+#     log.info("WE ARE IN auth_check")
+#     """
+#     Called by the front end to verify that we have a valid session.
+#     """
+#     status_code = request.environ.get("status_code", 500)
+#     log.info("status_code: " + str(status_code))
+#     if status_code != 200:
+#         # unauthenticated or invalid token → ask browser to redirect
+#         login_url = Config.get_property("fw.login.url")
+#         redirect_to = Config.get_property("home.page.redirect", "/")
+#         log.info("/auth/check: " + str(login_url) + str(redirect_to))
+#         return redirect(login_url + redirect_to, code=302)
 
-    claims = request.environ.get("claims")
-    log.info("claims: " + str(claims))
-    return {"status": "ok", "claims": claims}, 200
+#     claims = request.environ.get("claims")
+#     log.info("claims: " + str(claims))
+#     return {"status": "ok", "claims": claims}, 200
 
 @app.route('/', methods=['GET'])
 def home():

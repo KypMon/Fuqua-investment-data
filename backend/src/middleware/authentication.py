@@ -61,6 +61,10 @@ class Authentication(object):
             return self.app(environ, start_response)
         # ---- end static skip ----
 
+        # skip all authentication logic for OPTIONS
+        if request.method == "OPTIONS":
+            return self.app(environ, start_response)
+
         try:
             data = request.headers.get("Cookie") if request.headers.get("Cookie") is not None \
                     else (environ["HTTP_COOKIE"] if "HTTP_COOKIE" in environ else None)
@@ -68,8 +72,8 @@ class Authentication(object):
             #self.logger.info("data: " + str(data))
 
             JWT = self.extractJWT(data) if data is not None else None
-            #if JWT is not None:
-            #   self.logger.info("JWT is " + JWT)
+            # if JWT is not None:
+            #    self.logger.info("JWT is " + JWT)
 
             if JWT is None: # return 401
                 self.logger.info("No JWT")
@@ -82,10 +86,10 @@ class Authentication(object):
             claims = jwt.decode(
                 JWT,
                 key=signing_key.key,
-                algorithms=self.auth_config["algorithm"], # RS256
+                algorithms=Authentication.auth_config["algorithm"], # RS256
                 options={"verify_exp": True, "verify_iat": False}, # expiration time, issued at time
-                audience=self.auth_config["audience"], #"FuquaWorld",
-                issuer=self.auth_config["issuer"] # https://go-dev.fuqua.duke.edu/auth
+                audience=Authentication.auth_config["audience"], #"FuquaWorld",
+                issuer=Authentication.auth_config["issuer"] # https://go-dev.fuqua.duke.edu/auth
             )
 
             if claims is None: # return 401
@@ -122,11 +126,11 @@ class Authentication(object):
 
             cookies = cookieString.split(";")
 
-            filtered = list(filter(lambda x: self.auth_config["auth_cookie_name"] in x, cookies))
+            filtered = list(filter(lambda x: Authentication.auth_config["auth_cookie_name"] in x, cookies))
             if len(filtered) == 0:
                 return None
 
-            JWT = filtered[0].strip().replace(self.auth_config["auth_cookie_name"]+"=", "")
+            JWT = filtered[0].strip().replace(Authentication.auth_config["auth_cookie_name"]+"=", "")
             return JWT
         except Exception as err:
             self.logger.error(str(err))
@@ -134,6 +138,6 @@ class Authentication(object):
             return None
 
     def extract_signing_key(self, JWT:str):
-        jwks_client = PyJWKClient(self.auth_config["jwks_uri"] )
+        jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"] )
         signing_key = jwks_client.get_signing_key_from_jwt(JWT)
         return signing_key
