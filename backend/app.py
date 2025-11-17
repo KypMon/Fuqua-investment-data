@@ -1,5 +1,5 @@
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, Response, jsonify, send_from_directory, redirect
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,34 +13,49 @@ from datetime import datetime
 import random
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from werkzeug.utils import secure_filename
-
 from mv import mv
-from backtest import backtesting, backtesting_aux, BacktestInputError
+
 # @SDS begin
-#  data_loader logic moved to data_service.py
+# backtesting, backtesting_aux, BacktestInputError moved into: 
+# src/services/backtest_input_error.py
+# src/services/backtest_service.py
+# src/services/backtesting_aux.py
+# from backtest import backtesting, backtesting_aux, BacktestInputError
+from src.services.backtest_service import BacktestService, BacktestInputError
+# @SDS end
+
+# @SDS begin
+#  data_loader logic moved to src/services/data_service.py
 # from data_loader import load_csv
 # @SDS end
+
 from life_cycle import (
     LifeCycleInputError,
     load_vector_from_csv,
     run_life_cycle_analysis,
 )
-from matrix import (
-    compute_portfolios,
-    create_mat_er_covr,
-    download_matret,
-    parse_matrix_payload,
-    # @SDS begin
-    # timestamped_filename,
-    # @SDS emd
-)
 
 # @SDS begin
-# @SDS introduce argument parsing, logging, configuration, and central file & data services
+# Refactored to src/services/matrix_service.py
+# from matrix import (
+#     compute_portfolios,
+#     create_mat_er_covr,
+#     download_matret,
+#     parse_matrix_payload,
+#     # timestamped_filename,
+# )
+from src.services.matrix_service import MatrixService
+# @SDS end
+
+# @SDS begin
+# @SDS introduce argument parsing, logging, configuration, authentication and central file & data services
 from src.logging.app_logger import AppLogger
 from src.config.config import Config
 from src.services.data_service import DataService
 from src.services.file_service import FileService
+from src.middleware.authentication import Authentication
+from src.middleware.fw_user import FwUser
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -56,6 +71,10 @@ config = Config.set_up_config(args.config)
 file_service = FileService()
 
 data_service = DataService()
+
+backtest_service = BacktestService()
+
+matrix_service = MatrixService()
 # @SDS end
 
 app = Flask(
@@ -63,7 +82,25 @@ app = Flask(
     static_url_path="/static",
     static_folder=os.path.join(os.path.dirname(__file__), "static")
 )
-CORS(app, resources={r"/*": {"origins": "*"}})
+
+## CORS(app, resources={r"/*": {"origins": "*"}})  won't work with credentials
+front_end_url = config.get("front.end.origins")
+log.info("front_end_url: " + front_end_url)
+CORS(
+    app,
+    #origins=["http://localhost.fuqua.duke.edu:3000"],
+    origins=[front_end_url],
+    supports_credentials=True
+)
+
+
+app.wsgi_app = Authentication(DispatcherMiddleware(app.wsgi_app, {
+    #'/mv': app.wsgi_app
+    '/': app.wsgi_app
+    })
+    # ,config=config
+)
+
 
 # @SDS begin
 # @SDS this logic moved to file_service.py
@@ -80,6 +117,8 @@ file_service.make_static_dir()
 #     df.to_csv(path, index=False)
 #     return filename
 # @ SDS end
+
+
 
 def dataframe_payload(df: pd.DataFrame) -> dict:
     """Serialize a dataframe for JSON responses.
@@ -123,88 +162,13 @@ etf_file = file_service.get_etf_file_path()
 RAW_DF = data_service.load_csv(etf_file)
 RAW_DF["ym"] = RAW_DF["year"] * 100 + RAW_DF["month"]
 
-# return_data = load_csv("stocks_mf_ETF_data_final.csv")
-# return_data = load_csv(etf_file)
-# return_data['date'] = return_data['year'] * 100 + return_data['month']
-# return_data.drop(columns=['month', 'year'], inplace=True)
 
-# # Regression
-# # mom = load_csv('F-F_Momentum_Factor.csv', sep=',')
-# mom_file = file_service.get_mom_file_path()
-# mom = load_csv(mom_file)
-# mom.columns = ['date', 'MOM']
-# mom['MOM'] = mom['MOM'].astype('float64')/100
-
-# # ff5 = load_csv('F-F_Research_Data_5_Factors_2x3.csv', sep=',', skiprows=1)
-# ff5_file = file_service.get_ff5_file_path()
-# ff5 = load_csv(ff5_file, sep=',', skiprows=1)
-# ff5.columns = ['date', 'Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']
-# for cols in ['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'RF']:
-#     ff5[cols] = ff5[cols].astype('float64')/100
-
-# Merge factors
-# all_factors = pd.merge(mom, ff5, on='date', how='outer').sort_values(by='date')
 
 # Merge return data with factors
 # final_data = pd.merge(return_data, all_factors, on='date', how='outer').sort_values(by=['ticker_new', 'date'])
 final_data = data_service.get_final_data()
-log.info("final_data")
-print(str(final_data))
-# @SDS end
-
-# @SDS begin
-# @SDS move this data logic to data_service.py
-# def get_data(file_name):
-#     # ETF
-#     try:
-#         df = data_service.load_csv(file_name)
-#         df = df.pivot_table(index=['year', 'month'], columns = 'ticker_new', values='ret')
-#         df.reset_index(inplace=True)
-
-#         df.drop(columns={'RF'}, inplace = True)
-#         return df
-#     # FF
-#     except pd.errors.ParserError:
-#         df = data_service.load_csv(file_name, skiprows=3)
-#         first_non_numeric_index = None
-#         for index, value in df['Unnamed: 0'].items():
-#             if not is_numeric(value):
-#                 first_non_numeric_index = index
-#                 break
-        
-#         df = df[:first_non_numeric_index]
-#         df['year'] = df['Unnamed: 0'].astype(str).str[:4]
-#         df['month'] = df['Unnamed: 0'].astype(str).str[4:6]
-#         df.drop(columns=['Unnamed: 0'], inplace=True)
-
-#         for column in df.columns:
-#             if column != 'year' and column != 'month':
-#                 df[column] = df[column].astype(float)
-#             else: 
-                
-#                 df[column] = df[column].astype(int)
-#         df['RF'] = df['RF'] / 100
-#         df.drop(columns={'SMB', 'HML'}, inplace = True)
-#         return df
-
-# def is_numeric(value):
-#     try:
-#         float(value)
-#         return True
-#     except ValueError:
-#         return False
-    
-# def get_and_merge(ff_file, etf_file):
-#     ffdf = get_data(ff_file)
-
-
-#     etfdf = get_data(etf_file)
-
-#     df = pd.merge(etfdf, ffdf, on=['year', 'month'], how='inner')
-#     df['ym'] = df['year']*100 + df['month']
-#     df['ym'] = df['ym'].astype(int)
-
-#     return df
+#log.info("final_data")
+#print(str(final_data))
 # @SDS end
 
 # Global Data
@@ -212,371 +176,88 @@ print(str(final_data))
 # @SDS begin
 # global_data = get_and_merge(ff_file, etf_file) 
 global_data = data_service.get_global_data()
-log.info("global data")
-print(str(global_data))
+#log.info("global data")
+#print(str(global_data))
 # @SDS end
 
+##
+## This route receives the user's JWT token from the front-end, and sets it as a secure, HttpOnly cookie.
+##
+@app.route("/auth/session", methods=["POST"])
+def establish_session():
+    log.info("/auth/session")
+    """
+    Receive a JWT from the frontend, set it as a secure cookie that
+    your Authentication middleware will read on future requests.
+    """
+    data = request.get_json(silent=True) or {}
+    jwt_token = data.get("jwt")
+    if not jwt_token:
+        return jsonify({"error": "missing JWT"}), 400
 
-# @SDS begin
-# @SDS unused function
-# Calculate sharpe ratio
-# def sharpe_ratio(x, meandf, covdf, rf): 
-#     sp = (x@meandf-rf)/np.sqrt(x.T@covdf@x)
-#     return sp
-# @SDS End
+    cookie_name = Config.get_property("auth_cookie_name") or "fwjwt"
 
-# def mv_back(df, etflist = ['BNDX', 'SPSM', 'SPMD', 'SPLG', 'VWO', 'VEA', 'MUB', 'EMB'], short = 0, maxuse = 1, normal = 1, startdate = 199302, enddate = 202312):
+    resp = Response(status=204)
+    resp.set_cookie(
+        cookie_name,
+        jwt_token,
+        httponly=True,      # keep inaccessible to JS
+        secure=True,        # HTTPS only
+        samesite="Lax",     # include on normal navigation
+        path="/"
+    )
+    return resp
 
-#     gridsize = 100
-
-#     try: 
-#         cdf = df[(df['ym'] >= startdate) & (df['ym'] <= enddate)]
-
-#         useretfL = etflist + ['Mkt-RF', 'RF', 'year', 'month', 'ym']
-#         cdf = cdf[useretfL]
+##
+## This is Flask's before_request decorator pattern.  
+## Every Flask request is intercepted here.
+##
+@app.before_request
+def authenticate_and_authorize():
+    log.info("BEFORE REQUEST !!!  YAY !!")
+    status_code = request.environ.get("status_code")
+    if status_code == 401:
+        log.info("HTTP status code is " + str(status_code))
+        login_url = Config.get_property("fw.login.url")
+        home_page_redirect = Config.get_property("home.page.redirect")
+        log.info("FuquaWorld login redirect is: " + login_url + home_page_redirect)
+        return redirect(login_url + home_page_redirect)
+    
+    if status_code == 500:
+        log.info("HTTP status code is " + str(status_code))
         
-#         # Indicating whether to use the maximum available data
-#         if not maxuse: 
-#             cdf = cdf.dropna()
-#         cdf.reset_index(inplace = True)
-        
-#         # Calculate the original moments
-#         meandf = cdf[etflist].mean()
-#         covdf = cdf[etflist].cov()
-#         stddf = np.sqrt(cdf[etflist].var())
-#         assetsrdf = meandf/stddf
-#         print("Asset Descriptive Statistics: ")
-#         for i in range(len(etflist)): 
-#             print(f"Asset {i+1} - {etflist[i]}: Mean - {meandf[i].round(4)}, Std - {stddf[i].round(4)}, SR - {assetsrdf[i].round(4)}")
-#         print("Asset Correlation Matrix: ")
-#         print(cdf[etflist].corr())
+        error_message = request.environ.get("err")
+        #return render_template('500.html',error_message=error_message)
+        log.error("500 status code")
+    
+    # verify user is authorized to use the application
+    fwUser=FwUser(request.environ.get("claims"))
+    if fwUser is None:
+        #return render_template('500.html', error_message="No fwUser object.") 
+        log.error("FwUser is None")
+    
+##
+## This route is called only when user starts up the app.
+##  It's purpose is to redirect the user to a login page, if the user is not already logged into FW.
+##
+@app.route("/auth/check", methods=["GET"])
+def auth_check():
+    log.info("WE ARE IN auth_check")
+    """
+    Called by the front end to verify that we have a valid session.
+    """
+    status_code = request.environ.get("status_code", 500)
+    log.info("status_code: " + str(status_code))
+    if status_code != 200:
+        # unauthenticated or invalid token → ask browser to redirect
+        login_url = Config.get_property("fw.login.url")
+        redirect_to = Config.get_property("home.page.redirect", "/")
+        log.info("/auth/check: " + str(login_url) + str(redirect_to))
+        return redirect(login_url + redirect_to, code=302)
 
-#         # Risk Free Rate
-#         rf = cdf['RF'].mean()
-        
-#         # Short Selling option
-#         if not short: 
-#             shortchoice = 'w/o.'
-#         else: 
-#             shortchoice = 'w/.'
-        
-#         # Standard MV Portfolio 
-#         if normal: 
-#             if not short: 
-#                 # solve for optimal weight that minimize STD given return
-#                 def solv_x(r, covdf, meandf, etflist): 
-#                     covmat = matrix(covdf.values)
-#                     P = matrix(np.zeros(len(etflist)))
-#                     G = -matrix(np.eye(len(etflist)))
-#                     h = matrix(0.0, (len(etflist), 1))
-#                     A = matrix(np.vstack((np.ones(len(etflist)), meandf)))
-#                     b = matrix([1.0, r])
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.qp(covmat, P, G, h, A, b)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-#                 # Minimum Variance Portfolio 
-#                 def solv_minvar(simcovdf, etflist): 
-#                     covmat = matrix(simcovdf.values)
-#                     P = matrix(np.zeros(len(etflist)))
-#                     G = -matrix(np.eye(len(etflist)))
-#                     h = matrix(0.0, (len(etflist), 1))
-#                     A = matrix(1.0, (1, len(etflist)))
-#                     b = matrix(1.0)
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.qp(covmat, P, G, h, A, b)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-                
-                
-#                 # Maximum Return Portfolio
-#                 def solv_maxret(simmeandf, etflist): 
-#                     c = -matrix(simmeandf.values)
-#                     G = matrix(np.vstack((np.ones(len(etflist)), -np.eye(len(etflist)))))
-#                     h = matrix(np.vstack((np.array([[1]]), np.zeros((len(etflist), 1)))))
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.lp(c, G, h)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-#             else: 
-#                 # solve for optimal weight that minimize STD given return, with short selling
-#                 def solv_x(r, covdf, meandf, etflist): 
-#                     covmat = matrix(covdf.values)
-#                     P = matrix(np.zeros(len(etflist)))
-#                     G = -matrix(np.eye(len(etflist)))
-#                     h = matrix(1.0, (len(etflist), 1))
-#                     A = matrix(np.vstack((np.ones(len(etflist)), meandf)))
-#                     b = matrix([1.0, r])
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.qp(covmat, P, G, h, A, b)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-                
-#                 def solv_minvar(simcovdf, etflist): 
-#                     covmat = matrix(simcovdf.values)
-#                     P = matrix(np.zeros(len(etflist)))
-#                     G = -matrix(np.eye(len(etflist)))
-#                     h = matrix(1.0, (len(etflist), 1))
-#                     A = matrix(1.0, (1, len(etflist)))
-#                     b = matrix(1.0)
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.qp(covmat, P, G, h, A, b)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-                
-#                 def solv_maxret(simmeandf, etflist): 
-#                     c = -matrix(simmeandf.values)
-#                     G = matrix(np.vstack((np.ones(len(etflist)), -np.eye(len(etflist)))))
-#                     h = matrix(np.vstack((np.array([[1]]), np.zeros((len(etflist), 1)))))
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.lp(c, G, h)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-                
-#             minvar_w = solv_minvar(covdf, etflist)
-#             maxret_w = solv_maxret(meandf, etflist)
-                
-#             # Initiate the linspace of return
-#             minret = meandf@minvar_w
-#             maxret = meandf@maxret_w
-#             retspace = np.linspace(minret, maxret, gridsize)
-            
-#             # Weight, Std, and SR calculation
-#             weightlist = [solv_x(i, covdf, meandf, etflist) for i in retspace]
-#             stdlist = [np.sqrt(i@covdf@i) for i in weightlist]
-#             SRlist = [sharpe_ratio(i, meandf, covdf, rf) for i in weightlist]
-            
-#             # Maximum Sharpe Ratio Portfolio
-#             maxSRW  = np.argmax(SRlist)
-#             maxSR_ret = weightlist[maxSRW]@meandf
-#             maxSR_std = np.sqrt(weightlist[maxSRW]@covdf@weightlist[maxSRW])
-            
-#             # Report the MV Portfolio Weight
-#             print("Max Sharpe Ratio Portfolio Weights: ")
-#             for i in range(len(etflist)): 
-#                 perctw = weightlist[maxSRW][i] * 100
-#                 print(f"Asset {i+1} - {etflist[i]}: {perctw.round(2)}%")
-#             if not short: 
-#                 fig, ax = plt.subplots()
-#                 fig.patch.set_facecolor('white')
-#                 ax.set_facecolor('white')
-
-#                 # Create the pie chart
-#                 wedges, texts, autotexts = ax.pie(weightlist[maxSRW], autopct='%1.1f%%',
-#                     shadow=False, startangle=140)
-#                 ax.legend(wedges, etflist, loc='upper center', bbox_to_anchor=(0.5, -0.05),
-#                     fancybox=True, shadow=True, ncol=len(etflist))
-#                 # Equal aspect ratio ensures that pie is drawn as a circle
-#                 ax.axis('equal')
-#                 plt.title(f'Max Sharpe Ratio Portfolio Weights, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
-#                 plt.show()
-
-#             # Plot
-#             gl = min(min(stdlist), min(stddf)) * 0.7 * np.sqrt(12)
-#             gr = max(max(stdlist), max(stddf)) * 1.1 * np.sqrt(12)
-#             gu = max(max(retspace), max(meandf)) * 1.15 * 12
-#             gb = min(min(retspace), min(meandf)) * 0.7 * 12
-            
-#             stdlist = [std * np.sqrt(12) for std in stdlist]
-#             retspace = retspace * 12
-#             maxSR_ret = maxSR_ret * 12
-#             maxSR_std = maxSR_std * np.sqrt(12)
-#             stddf = stddf * np.sqrt(12)
-#             meandf = meandf * 12
-            
-#             plt.plot(figsize=(15,5))
-#             plt.plot(stdlist, retspace, linewidth = 1)
-#             plt.scatter(stddf, meandf, color='purple', marker='o', s=40)
-#             for i in range(len(etflist)): 
-#                 plt.annotate(etflist[i], (stddf[i], meandf[i]), textcoords="offset points", xytext=(0,10), ha='center')
-#             plt.scatter(maxSR_std, maxSR_ret, color='red', marker='*', s=110)
-#             plt.text(maxSR_std, maxSR_ret, s="MVP", horizontalalignment='right', verticalalignment='top', fontsize=10)
-#             plt.gca().set_xlim(left=0)
-#             plt.gca().set_ylim(bottom=0)
-#             plt.xlim(gl, gr)
-#             plt.ylim(gb, gu)
-#             plt.title(f'Standard MV Portfolio, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
-#             print(shortchoice)
-#             plt.show()
-
-#             if not short: 
-#                 colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow']
-#                 colorlist = colors[:len(etflist)]
-#                 fig, ax = plt.subplots(figsize=(12, 6))
-#                 bottom = np.zeros_like(stdlist) 
-#                 allocations = pd.DataFrame(weightlist, columns = etflist)
-#                 for i, e in enumerate(allocations.columns):
-#                     ax.fill_between(stdlist, bottom, bottom + allocations[e], label = e, color=colorlist[i], alpha=0.5)
-#                     bottom += allocations[e]  
-#                 plt.title(f'Efficient Frontier Transition Map, Date Range: {startdate}-{enddate}')
-#                 plt.xlabel('Standard Deviation')
-#                 plt.ylabel('Allocation')
-#                 plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=len(etflist))
-#                 plt.show()
-            
-#             print("Efficient Frontier Portfolios:")
-            
-#             efpdf1 = pd.DataFrame(weightlist, columns = etflist)
-#             efpdf2 = pd.DataFrame({'Return': retspace, 'Std': stdlist, 'SR': SRlist})
-#             efpdf = pd.concat([efpdf1, efpdf2], axis=1)
-#             efpdf = efpdf.round(4)
-#             efpdf.index = efpdf.index + 1
-#             efpdf.index.name = '#'
-#             print(tabulate(efpdf, headers='keys', tablefmt='github'))
-
-            
-            
-#         # Robust MV Portfolio
-#         else: 
-#             robw = np.zeros(len(etflist))
-#             simwdf = np.zeros(gridsize)
-            
-#             # Simulation Parameters Set Up
-#             Nsim = 100
-#             iter = 0
-#             random.seed(123)
-#             while iter < Nsim: 
-#                 if iter % 10 == 0 and iter > 1: 
-#                     print(f"Completed {round(iter*100/Nsim)}%")
-#                 simdata = np.random.multivariate_normal(meandf.values, covdf.values, len(cdf))
-#                 simdf = pd.DataFrame(simdata, columns=etflist)
-#                 simmeandf = simdf.mean()
-#                 simcovdf = simdf.cov()
-                
-#                 def solv_x(r, simcovdf, simmeandf, etflist): 
-#                     covmat = matrix(simcovdf.values)
-#                     P = matrix(np.zeros(len(etflist)))
-#                     G = -matrix(np.eye(len(etflist)))
-#                     h = matrix(0.0, (len(etflist), 1))
-#                     A = matrix(np.vstack((np.ones(len(etflist)), simmeandf)))
-#                     b = matrix([1.0, r])
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.qp(covmat, P, G, h, A, b)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-                
-#                 # Minimum Variance Portfolio 
-#                 def solv_minvar(simcovdf, etflist): 
-#                     covmat = matrix(simcovdf.values)
-#                     P = matrix(np.zeros(len(etflist)))
-#                     G = -matrix(np.eye(len(etflist)))
-#                     h = matrix(0.0, (len(etflist), 1))
-#                     A = matrix(1.0, (1, len(etflist)))
-#                     b = matrix(1.0)
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.qp(covmat, P, G, h, A, b)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-#                 minvar_w = solv_minvar(simcovdf, etflist)
-                
-#                 # Maximum Return Portfolio
-#                 def solv_maxret(simmeandf, etflist): 
-#                     c = -matrix(simmeandf.values)
-#                     G = matrix(np.vstack((np.ones(len(etflist)), -np.eye(len(etflist)))))
-#                     h = matrix(np.vstack((np.array([[1]]), np.zeros((len(etflist), 1)))))
-#                     solvers.options['show_progress'] = False
-#                     solv = solvers.lp(c, G, h)
-#                     x = np.array(solv['x']).flatten()
-#                     return x
-#                 maxret_w = solv_maxret(simmeandf, etflist)
-                
-#                 # Initiate the linspace of return
-#                 minret = simmeandf@minvar_w
-#                 # minret = simmeandf.min()
-#                 maxret = simmeandf@maxret_w
-#                 # maxret = simmeandf.max()
-#                 retspace = np.linspace(minret, maxret, gridsize)
-                
-#                 # Weight calculation
-#                 weightlist = [solv_x(i, simcovdf, simmeandf, etflist) for i in retspace]
-#                 simwdf = [a + b for a, b in zip(simwdf, weightlist)]
-                
-#                 iter = iter + 1
-#             print("Iteration Completed")
-#             simwdf = [w/Nsim for w in simwdf]
-            
-#             # Normalize
-#             efstd = [np.sqrt(12 * w@covdf@w) for w in simwdf]
-#             efret = [12 * w@meandf for w in simwdf]
-#             SRlist = [sharpe_ratio(w, meandf, covdf, rf) for w in simwdf]
-#             maxSR = np.argmax(SRlist)
-#             maxSR_ret = efret[maxSR]
-#             maxSR_std = efstd[maxSR]
-#             robw = simwdf[maxSR]
-            
-#             cml_std = np.linspace(0, efstd[-1], gridsize)
-#             cml_ret = [std * (maxSR_ret - rf*12)/maxSR_std + rf*12 for std in cml_std]
-            
-#             # Report the MV Portfolio Weight
-#             print("Robust Max Sharpe Ratio Portfolio Weights: ")
-#             for i in range(len(etflist)): 
-#                 perct = robw[i] * 100
-#                 print(f"Asset {i+1} - {etflist[i]}: {perct.round(2)}%")
-#             # fig, ax = plt.subplots()
-#             # fig.patch.set_facecolor('white')
-#             # ax.set_facecolor('white')
-
-#             # Create the pie chart
-#             wedges, texts, autotexts = ax.pie(robw, autopct='%1.1f%%',
-#                 shadow=False, startangle=140)
-#             ax.legend(wedges, etflist, loc='upper center', bbox_to_anchor=(0.5, -0.05),
-#                 fancybox=True, shadow=True, ncol=len(etflist))
-#             # Equal aspect ratio ensures that pie is drawn as a circle
-#             ax.axis('equal')
-#             plt.title(f'Robust Max Sharpe Ratio Portfolio Weights, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
-#             # plt.show()
-
-#             stddf = stddf * np.sqrt(12)
-#             meandf = meandf * 12 
-            
-#             # Plot
-#             gl = min(min(efstd), min(stddf)) * 0.7 
-#             gr = max(max(efstd), max(stddf)) * 1.1 
-#             gu = max(max(efret), max(meandf)) * 1.15 
-#             gb = min(min(efret), min(meandf)) * 0.7 
-            
-#             plt.plot(figsize=(15,5))
-#             plt.plot(efstd, efret, linewidth = 1)
-#             plt.plot(cml_std, cml_ret, color='red', linewidth = 1)
-#             plt.scatter(stddf, meandf, color='purple', marker='o', s=40)
-#             for i in range(len(etflist)): 
-#                 plt.annotate(etflist[i], (stddf[i], meandf[i]), textcoords="offset points", xytext=(0,10), ha='center')
-#             plt.scatter(maxSR_std, maxSR_ret, color='red', marker='*', s=110)
-#             plt.text(maxSR_std, maxSR_ret, s="MVP", horizontalalignment='right', verticalalignment='top', fontsize=10)
-#             plt.gca().set_xlim(left=0)
-#             plt.gca().set_ylim(bottom=0)
-#             plt.xlim(gl, gr)
-#             plt.ylim(gb, gu)
-#             plt.title(f'Robust MV Portfolio, {shortchoice} Short Selling, Date Range: {startdate}-{enddate}')
-#             plt.show()
-
-#             colors = ['orange', 'blue', 'green', 'red', 'purple', 'cyan', 'magenta', 'yellow']
-#             colorlist = colors[:len(etflist)]
-#             fig, ax = plt.subplots(figsize=(12, 6))
-#             bottom = np.zeros_like(efstd) 
-#             allocations = pd.DataFrame(simwdf, columns = etflist)
-#             for i, e in enumerate(allocations.columns):
-#                 ax.fill_between(efstd, bottom, bottom + allocations[e], label = e, color=colorlist[i], alpha=0.5)
-#                 bottom += allocations[e]  
-#             plt.title(f'Robust Efficient Frontier Transition Map, Date Range: {startdate}-{enddate}')
-#             plt.xlabel('Standard Deviation')
-#             plt.ylabel('Allocation')
-#             plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=len(etflist))
-#             plt.show()
-
-#             print("Robust Efficient Frontier Portfolios:")
-            
-#             efpdf1 = pd.DataFrame(simwdf, columns = etflist)
-#             efpdf2 = pd.DataFrame({'Return': efret, 'Std': efstd, 'SR': SRlist})
-#             efpdf = pd.concat([efpdf1, efpdf2], axis=1)
-#             efpdf = efpdf.round(4)
-#             efpdf.index = efpdf.index + 1
-#             efpdf.index.name = '#'
-#             print(tabulate(efpdf, headers='keys', tablefmt='github'))
-
-            
-#     except Exception as e:
-#         import traceback
+    claims = request.environ.get("claims")
+    log.info("claims: " + str(claims))
+    return {"status": "ok", "claims": claims}, 200
 
 @app.route('/', methods=['GET'])
 def home():
@@ -679,7 +360,7 @@ def matrix_generate_matret():
     end_date = data.get("end_date", datetime.today().strftime("%Y-%m-%d"))
 
     try:
-        matret_df, available = download_matret(tickers, start_date, end_date)
+        matret_df, available = matrix_service.download_matret(tickers, start_date, end_date)
     except Exception as exc:  # pragma: no cover - defensive error path
         return jsonify({"error": str(exc)}), 400
 
@@ -698,6 +379,7 @@ def matrix_generate_matret():
 
 @app.route("/matrix/matret/upload", methods=["POST"])
 def matrix_upload_matret():
+    log.info(request.url)
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -729,12 +411,13 @@ def matrix_upload_matret():
 
 @app.route("/matrix/mat_er_covr/generate", methods=["POST"])
 def matrix_generate_mat_er_covr():
+    log.info(request.url)
     data = request.json or {}
     matret_payload = data.get("matret")
     risk_free = data.get("risk_free")
 
     try:
-        matret_df = parse_matrix_payload(matret_payload)
+        matret_df = matrix_service.parse_matrix_payload(matret_payload)
     except Exception as exc:
         return jsonify({"error": f"Invalid matret payload: {exc}"}), 400
 
@@ -744,7 +427,7 @@ def matrix_generate_mat_er_covr():
         return jsonify({"error": "Risk-free rate must be numeric"}), 400
 
     try:
-        mat_er_covr_df, resolved_rf = create_mat_er_covr(matret_df, rf_value)
+        mat_er_covr_df, resolved_rf = matrix_service.create_mat_er_covr(matret_df, rf_value)
     except Exception as exc:  # pragma: no cover - numeric errors
         return jsonify({"error": str(exc)}), 400
 
@@ -763,6 +446,7 @@ def matrix_generate_mat_er_covr():
 
 @app.route("/matrix/mat_er_covr/upload", methods=["POST"])
 def matrix_upload_mat_er_covr():
+    log.info(request.url)
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -803,12 +487,13 @@ def matrix_upload_mat_er_covr():
 
 @app.route("/matrix/portfolios", methods=["POST"])
 def matrix_compute_portfolios():
+    log.info(request.url)
     data = request.json or {}
     mat_er_covr_payload = data.get("mat_er_covr")
     risk_free = data.get("risk_free")
 
     try:
-        mat_er_covr_df = parse_matrix_payload(mat_er_covr_payload)
+        mat_er_covr_df = matrix_service.parse_matrix_payload(mat_er_covr_payload)
     except Exception as exc:
         return jsonify({"error": f"Invalid mat_er_covr payload: {exc}"}), 400
 
@@ -820,7 +505,7 @@ def matrix_compute_portfolios():
     print(rf_value)
 
     try:
-        result = compute_portfolios(mat_er_covr_df, rf_value)
+        result = matrix_service.compute_portfolios(mat_er_covr_df, rf_value)
     except Exception as exc:  # pragma: no cover - numeric errors
         print(exc)
         return jsonify({"error": f"Compute error: {str(exc)}"}), 400
@@ -875,7 +560,7 @@ def run_backtest():
         structured_results_from_backtesting = {} 
 
         with redirect_stdout(f):
-            structured_results_from_backtesting = backtesting(
+            structured_results_from_backtesting = backtest_service.backtesting(
                 start_date, end_date, tickers,
                 allocation1, allocation2, allocation3,
                 rebalancing, benchmark, start_balance
@@ -1312,6 +997,7 @@ def run_regression():
 
 @app.route('/static/<path:filename>')
 def serve_image(filename):
+    log.info(request.url)
     # @SDS begin
     # return send_from_directory(STATIC_DIR, filename)
     return send_from_directory(file_service.get_STATIC_DIR(), filename)
