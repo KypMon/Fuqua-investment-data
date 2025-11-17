@@ -96,7 +96,7 @@ class MatrixService(object):
         if raw.empty:
             raise ValueError("No price data returned for the requested tickers")
 
-        self.logger.info(str(raw))
+        #self.logger.info(str(raw))
 
         adj_close = raw["Close"] if "Close" in raw else raw
         if isinstance(adj_close, pd.Series):

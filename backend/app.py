@@ -1,5 +1,5 @@
 
-from flask import Flask, request, Response, jsonify, send_from_directory, redirect
+from flask import Flask, g, request, Response, jsonify, send_from_directory, redirect
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -106,26 +106,12 @@ CORS(
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 )
 
-
-
-
 # @SDS begin
 # @SDS this logic moved to file_service.py
 # STATIC_DIR = "static"
 # os.makedirs(STATIC_DIR, exist_ok=True)
 file_service.make_static_dir()
 # @SDS end
-
-# @SDS begin
-# @SDS this method moved to file_service.py
-# def save_dataframe(df: pd.DataFrame, prefix: str) -> str:
-#     filename = timestamped_filename(prefix)
-#     path = os.path.join(STATIC_DIR, filename)
-#     df.to_csv(path, index=False)
-#     return filename
-# @ SDS end
-
-
 
 def dataframe_payload(df: pd.DataFrame) -> dict:
     """Serialize a dataframe for JSON responses.
@@ -169,8 +155,6 @@ etf_file = file_service.get_etf_file_path()
 RAW_DF = data_service.load_csv(etf_file)
 RAW_DF["ym"] = RAW_DF["year"] * 100 + RAW_DF["month"]
 
-
-
 # Merge return data with factors
 # final_data = pd.merge(return_data, all_factors, on='date', how='outer').sort_values(by=['ticker_new', 'date'])
 final_data = data_service.get_final_data()
@@ -186,34 +170,6 @@ global_data = data_service.get_global_data()
 #log.info("global data")
 #print(str(global_data))
 # @SDS end
-
-##
-## This route receives the user's JWT token from the front-end, and sets it as a secure, HttpOnly cookie.
-##
-# @app.route("/auth/session", methods=["POST"])
-# def establish_session():
-#     log.info("/auth/session")
-#     """
-#     Receive a JWT from the frontend, set it as a secure cookie that
-#     your Authentication middleware will read on future requests.
-#     """
-#     data = request.get_json(silent=True) or {}
-#     jwt_token = data.get("jwt")
-#     if not jwt_token:
-#         return jsonify({"error": "missing JWT"}), 400
-
-#     cookie_name = Config.get_property("auth_cookie_name") or "fwjwt"
-
-#     resp = Response(status=204)
-#     resp.set_cookie(
-#         cookie_name,
-#         jwt_token,
-#         httponly=True,      # keep inaccessible to JS
-#         secure=True,        # HTTPS only
-#         samesite="Lax",     # include on normal navigation
-#         path="/"
-#     )
-#     return resp
 
 ##
 ## This is Flask's before_request decorator pattern.  
@@ -240,39 +196,18 @@ def authenticate_and_authorize():
     fwUser=FwUser(request.environ.get("claims"))
     if fwUser is None:
         log.error("FwUser is None")
+
+    # make available to all routes
+    g.fwUser = fwUser
     
-##
-## This route is called only when user starts up the app.
-##  It's purpose is to redirect the user to a login page, if the user is not already logged into FW.
-##
-# @app.route("/auth/check", methods=["GET"])
-# def auth_check():
-#     log.info("WE ARE IN auth_check")
-#     """
-#     Called by the front end to verify that we have a valid session.
-#     """
-#     status_code = request.environ.get("status_code", 500)
-#     log.info("status_code: " + str(status_code))
-#     if status_code != 200:
-#         # unauthenticated or invalid token → ask browser to redirect
-#         login_url = Config.get_property("fw.login.url")
-#         redirect_to = Config.get_property("home.page.redirect", "/")
-#         log.info("/auth/check: " + str(login_url) + str(redirect_to))
-#         return redirect(login_url + redirect_to, code=302)
-
-#     claims = request.environ.get("claims")
-#     log.info("claims: " + str(claims))
-#     return {"status": "ok", "claims": claims}, 200
-
 @app.route('/', methods=['GET'])
 def home():
     return 'home'
 
 @app.route("/run", methods=["POST"])
 def run_mv():
-    log.info(request.url)
     data = request.json or request.form
-    log.info("data: " + str(data))
+    log_user_activity(data)
     etfl = data.get("etflist", "").split(",") if data.get("etflist") else ["VOO","VXUS","AVUV","AVDV","AVEM"]
     short  = int(data.get("short", 0))
     maxuse = int(data.get("maxuse", 0))
@@ -318,7 +253,7 @@ def _parse_int(value, label, default=0):
 
 @app.route("/life-cycle/run", methods=["POST"])
 def run_life_cycle():
-    log.info(request.url)
+    log_user_activity()
     try:
         returns_file = request.files.get("returns_file")
         cashflows_file = request.files.get("cashflows_file")
@@ -355,8 +290,8 @@ def run_life_cycle():
 
 @app.route("/matrix/matret/generate", methods=["POST"])
 def matrix_generate_matret():
-    log.info(request.url)
     data = request.json or {}
+    log_user_activity(data)
     tickers = data.get("tickers", [])
     if isinstance(tickers, str):
         tickers = [t.strip() for t in tickers.split(",") if t.strip()]
@@ -384,7 +319,7 @@ def matrix_generate_matret():
 
 @app.route("/matrix/matret/upload", methods=["POST"])
 def matrix_upload_matret():
-    log.info(request.url)
+    log_user_activity()
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -520,9 +455,9 @@ def matrix_compute_portfolios():
 
 @app.route("/backtest", methods=["POST"])
 def run_backtest():
-    log.info(request.url)
     try:
         data = request.json
+        log_user_activity(data)
 
         start_date_str = data.get("start_date", "1970-01-01")
         end_date_str = data.get("end_date", "2023-12-31")
@@ -706,7 +641,6 @@ class RegressionInputError(Exception):
 
 @app.route("/regression", methods=["POST"])
 def run_regression():
-    log.info(request.url)
     try:
         # @SDS begin
         #global final_data # Ensure final_data is accessible if it's a global variable
@@ -714,6 +648,7 @@ def run_regression():
         # @SDS end
 
         data = request.json
+        log_user_activity(data)
         ticker = data.get("ticker")
         start_date_str = data.get("start_date", "1970-01-01")
         end_date_str = data.get("end_date", "2023-12-31")
@@ -1007,6 +942,10 @@ def serve_image(filename):
     # return send_from_directory(STATIC_DIR, filename)
     return send_from_directory(file_service.get_STATIC_DIR(), filename)
     # @SDS end
+
+def log_user_activity(data=None):
+    user = getattr(g, "fwUser", None)
+    log.info(user.get_dukeid() + " " + user.get_userid() + " " + user.get_name() + " -> " + request.url + " " + str(data))
 
 if __name__ == '__main__':
     # @SDS begin

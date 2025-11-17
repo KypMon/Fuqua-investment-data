@@ -24,11 +24,10 @@ class Authentication(object):
     def __init__(self, app) -> None:
         self.logger = AppLogger.get_logger()
         self.app = app
-        self.logger.info("authentication __init__ !")
-        self.logger.info(str(Authentication.auth_config))
+        #self.logger.info(str(Authentication.auth_config))
 
     def __call__(self, environ, start_response):
-        self.logger.info("-----------------------------------------------------------------")
+        # self.logger.info("-----------------------------------------------------------------")
         # for key,value in environ.items():
         #     self.logger.info(key + " -> " + str(value))
 
@@ -36,11 +35,11 @@ class Authentication(object):
 
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
         #self.logger.info("request.base_url " + str(request.base_url))
-        self.logger.info("request.path " + str(request.path))
+        #self.logger.info("request.path " + str(request.path))
         #self.logger.info("request.headers " + str(request.headers))
         #self.logger.info(str(request.headers.get("Cookie")))
         #self.logger.info("request.authorization " + str(request.authorization))
-        self.logger.info("request.host_url " + request.host_url)
+        #self.logger.info("request.host_url " + request.host_url)
         #self.logger.info("request.cookies -> " + str(request.cookies))
         #self.logger.info("request.args -> " + str(request.args))
         #self.logger.info("request.application -> " + str(request.application))
@@ -98,6 +97,7 @@ class Authentication(object):
                 return self.app(environ, start_response)
 
             #self.logger.info("claims")
+            self.logger.info(request.host_url + " " + claims["name"])
             #self.logger.info(str(claims))
 
             environ["status_code"] = 200

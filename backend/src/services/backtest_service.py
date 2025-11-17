@@ -218,7 +218,7 @@ class BacktestService(object):
 
         # Output results and generate plots
         summary_message = f'Portfolio Backtesting {start_date} - {end_date}'
-        self.logger.info(summary_message)
+        #self.logger.info(summary_message)
         info_messages.append(summary_message)
 
         # !!!
@@ -226,14 +226,14 @@ class BacktestService(object):
         for p in range(3):  # Iterate through the three main portfolios
             if ind_alloc[p] == 1:
                 # Keep print for existing text output
-                self.logger.info(f"{portfolio_name[p]} allocation:")
+                #self.logger.info(f"{portfolio_name[p]} allocation:")
                 # Create DataFrame for printing, ensure 'Allocation' column has a clear name
                 df_alloc_print = pd.DataFrame(
                     output[p]['allocation'], 
                     index=output[p]['tickers'], 
                     columns=["Allocation (%)"] 
                 )
-                self.logger.info(df_alloc_print.to_string()) # Use to_string() for better console formatting
+                #self.logger.info(df_alloc_print.to_string()) # Use to_string() for better console formatting
                 # Prepare allocation data for JSON return
                 allocation_data_for_json = []
                 for ticker_idx, ticker_name in enumerate(output[p]['tickers']):
@@ -395,16 +395,16 @@ class BacktestService(object):
 
         for p in range(4): # Including benchmark
             if ind_alloc[p] == 1 and 'drawdowns_tab2' in output[p] and not output[p]['drawdowns_tab2'].empty:
-                self.logger.info(f"\nTop 3 drawdowns {portfolio_name[p]}") # Stays for output_text
-                self.logger.info(output[p]['drawdowns_tab2'].to_string()) # Stays for output_text
+                #self.logger.info(f"\nTop 3 drawdowns {portfolio_name[p]}") # Stays for output_text
+                #self.logger.info(output[p]['drawdowns_tab2'].to_string()) # Stays for output_text
                 returned_structured_data["drawdown_tables"].append({
                     "portfolioName": portfolio_name[p],
                     "data": output[p]['drawdowns_tab2'].to_dict(orient='records')
                 })
         
         # !!! Performance Summary
-        self.logger.info("Performance Summary")
-        self.logger.info(ps_table)
+        #self.logger.info("Performance Summary")
+        #self.logger.info(ps_table)
 
         # !!! portfolio growth
         # Portfolio Growth Plot
@@ -462,17 +462,17 @@ class BacktestService(object):
 
         # !!!
         # Get top 3 drawdowns for each portfolio
-        for p in range(3):
-            if ind_alloc[p] == 1:
-                self.logger.info(f"Top 3 drawdowns {portfolio_name[p]}")
-                self.logger.info(output[p]['drawdowns_tab2']) 
+        # for p in range(3):
+        #     if ind_alloc[p] == 1:
+        #         self.logger.info(f"Top 3 drawdowns {portfolio_name[p]}")
+        #         self.logger.info(output[p]['drawdowns_tab2']) 
 
         # !!!
         # Regression analysis
         # Regression analysis (Example of how to structure it for return)
         for p in range(3): # Typically for portfolios 1-3 vs benchmark
             if ind_alloc[p] == 1 and ind_alloc[3] ==1: # Ensure benchmark (output[3]) exists
-                self.logger.info(f"\nRegression analysis {portfolio_name[p]}") # Stays for output_text
+                #self.logger.info(f"\nRegression analysis {portfolio_name[p]}") # Stays for output_text
                 
                 # Ensure p_returns and RF are aligned and valid for subtraction
                 portfolio_returns_excess = output[p]['p_returns'] - ff5['RF'].values[:len(output[p]['p_returns'])]
@@ -496,8 +496,8 @@ class BacktestService(object):
                     else:
                         self.logger.info("Warning: model.params is empty, cannot calculate alpha.")
 
-                    self.logger.info(f"R square {model.rsquared:.2f}")
-                    self.logger.info(f"Adjusted R square {model.rsquared_adj:.2f}")
+                    #self.logger.info(f"R square {model.rsquared:.2f}")
+                    #self.logger.info(f"Adjusted R square {model.rsquared_adj:.2f}")
                     
                     # Create the coefficients DataFrame using model.model.exog_names
                     # model.model.exog_names should be ['const', name_of_x_var]
@@ -513,12 +513,12 @@ class BacktestService(object):
                         'p-value': model.pvalues
                     })
 
-                    self.logger.info(coef_df.to_string())
+                    #self.logger.info(coef_df.to_string())
                     alpha_print_val = float(annualized_alpha_val) if not np.isnan(annualized_alpha_val) else 'N/A'
-                    if isinstance(alpha_print_val, float):
-                        self.logger.info(f'Annualized alpha {alpha_print_val:.4f}')
-                    else:
-                        self.logger.info(f'Annualized alpha {alpha_print_val}')
+                    # if isinstance(alpha_print_val, float):
+                    #     self.logger.info(f'Annualized alpha {alpha_print_val:.4f}')
+                    # else:
+                    #     self.logger.info(f'Annualized alpha {alpha_print_val}')
 
                     returned_structured_data["regression_summary_tables"].append({
                         "portfolioName": portfolio_name[p],

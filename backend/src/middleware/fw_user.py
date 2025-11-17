@@ -6,12 +6,12 @@ class FwUser(object):
         self.logger = AppLogger.get_logger()
 
         if claims is None:
-            self.logger.info("uh oh, no claims")
+            #self.logger.info("uh oh, no claims")
             return
         
         self.claims = claims 
         #self.logger.info(str(self.claims))
-        self.logger.info("Fuqua Finance Analyzer user: "  + self.claims["name"])
+        #self.logger.info("Fuqua Finance Analyzer user: "  + self.claims["name"])
 
     def get_claims(self) -> dict:
         return self.claims

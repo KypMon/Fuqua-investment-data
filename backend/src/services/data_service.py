@@ -53,7 +53,7 @@ class DataService(object):
 
 
     def load_csv(self, filename: str, **kwargs) -> pd.DataFrame:
-        self.logger.info("Loading csv file: " + filename)
+        #self.logger.info("Loading csv file: " + filename)
         """Load a CSV file from the backend directory with caching.
 
         Parameters
