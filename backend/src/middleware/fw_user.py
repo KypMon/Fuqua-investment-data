@@ -9,8 +9,12 @@ class FwUser(object):
             self.logger.info("uh oh, no claims")
             return
         
-        self.claims = claims
+        self.claims = claims 
+        #self.logger.info(str(self.claims))
+        self.logger.info("Fuqua Finance Analyzer user: "  + self.claims["name"])
 
+    def get_claims(self) -> dict:
+        return self.claims
 
     def get_attribute(self, key:str) -> Any:
         return self.claims.get(key) if self.claims is not None else None

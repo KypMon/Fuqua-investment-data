@@ -239,7 +239,6 @@ def authenticate_and_authorize():
     # verify user is authorized to use the application
     fwUser=FwUser(request.environ.get("claims"))
     if fwUser is None:
-        #return render_template('500.html', error_message="No fwUser object.") 
         log.error("FwUser is None")
     
 ##
