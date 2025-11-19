@@ -200,13 +200,6 @@ def authenticate_and_authorize():
     # make available to all routes
     g.fwUser = fwUser
 
-@app.route('/api/authenticate', methods=['GET'])
-def api_authenticate():
-    log.info("/api/authenticate")
-    user = getattr(g, "fwUser", None)
-    log.info(str(user))
-    return jsonify({"fwUser": user})
-    
 @app.route('/', methods=['GET'])
 def home():
     return 'home'
