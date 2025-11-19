@@ -201,7 +201,7 @@ def authenticate_and_authorize():
     g.fwUser = fwUser
 
 @app.route('/api/authenticate', methods=['GET'])
-def home():
+def api_authenticate():
     log.info("/api/authenticate")
     user = getattr(g, "fwUser", None)
     log.info(str(user))
