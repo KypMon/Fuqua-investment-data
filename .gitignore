@@ -22,5 +22,5 @@ Thumbs.db
 # image
 *.png
 
-local_cors_proxy/
 backend/data/
+react_build/

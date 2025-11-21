@@ -84,34 +84,39 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(__file__), "static")
 )
 
-app.wsgi_app = Authentication(DispatcherMiddleware(app.wsgi_app, {
-    #'/mv': app.wsgi_app
-    '/': app.wsgi_app
-    })
-    # ,config=config
-)
+# app.wsgi_app = Authentication(DispatcherMiddleware(app.wsgi_app, {
+#     #'/mv': app.wsgi_app
+#     '/': app.wsgi_app
+#     })
+#     # ,config=config
+# )
+app.wsgi_app = Authentication(app.wsgi_app)
 
 ## CORS(app, resources={r"/*": {"origins": "*"}})  won't work with credentials
 # http://localhost.fuqua.duke.edu:3000
-CORS(
-    app,
-    supports_credentials=True,
-    origins=[config.get("home.page.redirect")],
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "X-Requested-With",
-        "X-XSRF-TOKEN",
-    ],
-    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-)
+# CORS(
+#     app,
+#     supports_credentials=True,
+#     origins=[config.get("home.page.redirect")],
+#     allow_headers=[
+#         "Content-Type",
+#         "Authorization",
+#         "X-Requested-With",
+#         "X-XSRF-TOKEN",
+#     ],
+#     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+# )
 
 # @SDS begin
-# @SDS this logic moved to file_service.py
+# /static only handles user uploads/downloads
 # STATIC_DIR = "static"
 # os.makedirs(STATIC_DIR, exist_ok=True)
 file_service.make_static_dir()
 # @SDS end
+
+# this path handles all React frontend resources, css, js, img, etc.
+REACT_BUILD_PATH = os.path.join(os.path.dirname(__file__), config.get("react.build.dir"))
+log.info("REACT_BUILD_PATH: " + REACT_BUILD_PATH)
 
 def dataframe_payload(df: pd.DataFrame) -> dict:
     """Serialize a dataframe for JSON responses.
@@ -200,9 +205,9 @@ def authenticate_and_authorize():
     # make available to all routes
     g.fwUser = fwUser
 
-@app.route('/', methods=['GET'])
-def home():
-    return 'home'
+# @app.route('/', methods=['GET'])
+# def home():
+#     return 'home'
 
 @app.route("/run", methods=["POST"])
 def run_mv():
@@ -935,6 +940,7 @@ def run_regression():
         print(current_traceback) # Print to server logs
         return jsonify({"error": str(e), "trace": current_traceback}), 500
 
+# this is for user uploads/downloads
 @app.route('/static/<path:filename>')
 def serve_image(filename):
     log.info(request.url)
@@ -942,6 +948,38 @@ def serve_image(filename):
     # return send_from_directory(STATIC_DIR, filename)
     return send_from_directory(file_service.get_STATIC_DIR(), filename)
     # @SDS end
+
+@app.route("/appstatic/<path:filename>")
+def serve_react_static(filename):
+    """
+    Serve React JS/CSS/images from react_build.
+    React generates URLs like /appstatic/static/js/...,
+    so we strip the initial 'static/' here so Flask can find the file.
+    """
+    # If the request starts with 'static/', strip it for correct path resolution
+    if filename.startswith("static/"):
+        filename = filename[len("static/"):]
+        base_dir = os.path.join(REACT_BUILD_PATH, "static")
+    else:
+        # for files like /appstatic/favicon.ico, manifest.json, etc.
+        base_dir = REACT_BUILD_PATH
+
+    return send_from_directory(base_dir, filename)
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_react_app(path):
+    # Empty path (root URL) -> serve index.html
+    if path == "":
+        return send_from_directory(REACT_BUILD_PATH, "index.html")
+
+    # If it's a real file, serve it
+    possible_file = os.path.join(REACT_BUILD_PATH, path)
+    if os.path.exists(possible_file) and os.path.isfile(possible_file):
+        return send_from_directory(REACT_BUILD_PATH, path)
+
+    # Otherwise return index.html for React Router to handle
+    return send_from_directory(REACT_BUILD_PATH, "index.html")
 
 def log_user_activity(data=None):
     user = getattr(g, "fwUser", None)
