@@ -16,3 +16,26 @@ Rename the build folder to 'react_build', copy it in at the project_home level i
 Only port 5001 is referenced now.
 
 http://localhost.fuqua.duke.edu:5001
+
+
+
+
+If on Windows system, must edit this file:
+C:\Windows\System32\drivers\etc\hosts
+
+Add this entry at the end of the file:
+
+127.0.0.1           localhost.fuqua.duke.edu
+
+
+If on Windows system:
+Need npm installed.
+In your home directory (C:\Users\you): add this file, called ".npmrc".
+Include this content:
+
+registry=https://beergame.vm.duke.edu:4873/
+access=public
+max_body_size=100mb
+strict-ssl=false
+scope=@fuquaschoolofbusiness
+@fuquaschoolofbusiness:registry=https://beergame.vm.duke.edu:4873/
