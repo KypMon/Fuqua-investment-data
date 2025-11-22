@@ -5,7 +5,6 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-
 import BacktestForm from "./components/BacktestForm";
 import BacktestResult from "./components/BacktestResult";
 import FormSection from "./components/FormSection";
-//import FwAuthWrapper from "./components/FwAuthWrapper";
 import LifeCycleSimulationPage from "./components/LifeCycleSimulationPage";
 import MatrixPage from "./components/MatrixPage";
 import RegressionPage from "./components/RegressionPage";
