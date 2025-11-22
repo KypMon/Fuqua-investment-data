@@ -38,29 +38,18 @@ def create_app(config_file=None, log_file=None):
 
     return app
 
-# if __name__ == "__main__": 
-#     # for local development ("python app.py ....")
-#     app = create_app()
-
-#     app.run(
-#         host=Config.get_property("HOST"),
-#         port=Config.get_property("PORT"),
-#         debug=False
-#     )
-# else:  # For gunicorn server threads 
-#     print("FOR Gunicorn?")
-#     app = create_app()
-
 app = create_app()
 if __name__ == "__main__": 
-    # have Flask serve resources
-    # for local development ("python app.py ....")
+    # have Flask serve backend resources
+    # for local development ("python app.py" and "localhost:5001")
     app.run(
         host=Config.get_property("HOST"),
         port=Config.get_property("PORT"),
         debug=False
     )
 else:
-    # gunicorn is the server, no flask
+    # gunicorn serving resources ...
+    # see wsgi.py for gunicorn entry point
+    # for running this app on Linux servers in Fuqua domain somewhere
     pass
 
