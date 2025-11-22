@@ -1,4 +1,4 @@
-#import os 
+import os 
 import socket
 import sys
 from dotenv import dotenv_values
@@ -19,6 +19,9 @@ class Config(object):
             sys.exit(99)
 
         config = dotenv_values(config_file_path)
+        #
+        # merge
+        # config = {**config, **os.environ}  # environment wins
 
         logger.info("CONFIGURATION BEGIN : ******************************************************")
         logger.info("These are the configuration values")

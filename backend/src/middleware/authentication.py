@@ -51,13 +51,13 @@ class Authentication(object):
         #         self.logger.info(key + " -> " + str(value))
 
         # ---- skip static assets early ----
-        path = request.path
-        if (
-            path.startswith("/static/")
-            or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
-        ):
-            self.logger.info(f"Skipping auth for static resource: {path}")
-            return self.app(environ, start_response)
+        # path = request.path
+        # if (
+        #     path.startswith("/static/")
+        #     or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
+        # ):
+        #     self.logger.info(f"Skipping auth for static resource: {path}")
+        #     return self.app(environ, start_response)
         # ---- end static skip ----
 
         # skip all authentication logic for OPTIONS
@@ -96,9 +96,14 @@ class Authentication(object):
                 environ["status_code"] = 401
                 return self.app(environ, start_response)
 
-            #self.logger.info("claims")
-            self.logger.info(request.host_url + " " + claims["name"])
             #self.logger.info(str(claims))
+
+            # path = request.path
+            # if not (
+            #     path.startswith("/static/")
+            #     or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
+            # ):
+            #     self.logger.info(request.host_url + " " + claims["name"])
 
             environ["status_code"] = 200
             environ["claims"] = claims

@@ -11,7 +11,7 @@ To build the project:
 From the frontend folder:
 npm run build
 
-Rename the build folder to 'react_build', copy it in at the project_home level in the backend
+Rename the build folder to 'react_build', copy it in at the project_home level in the backend folder
 
 Only port 5001 is referenced now.
 
