@@ -2,19 +2,24 @@
 # we complete the node build stage first (React frontend artifacts). 
 FROM node:24-alpine AS node-build
 
+RUN npm install -g npm@10.9.2
+RUN npm --version
+
 # Duke FSB NPM registry
 ARG NPM_REGISTRY
 ENV NPM_REGISTRY=${NPM_REGISTRY}
 
+RUN mkdir -p /fa
 WORKDIR /fa
-COPY frontend/package.json ./
+#COPY frontend/package.json ./
+COPY frontend/ /fa
 
 RUN npm config set registry=${NPM_REGISTRY}
 RUN npm config set access=public
 RUN npm config set strict-ssl=false
 RUN npm config set scope=@fuquaschoolofbusiness
 RUN npm config set @fuquaschoolofbusiness:registry=${NPM_REGISTRY}
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 RUN npm run build
 
@@ -22,7 +27,7 @@ RUN npm run build
 
 
 
-FROM python:3.13-alpine
+#FROM python:3.13-alpine
 
 # ## the ENV environment variable exists for backward compatibility reasons 
 # ##  (we want Geetha to be able to continue to develop in her local, non-Docker environment)

@@ -2,18 +2,29 @@ When developing the fa.Dockerfile content:
 
 Reference: engage_sync / dev_tools / go_docker.sh
 
+To fix Windows-style line endings (CRLF) to Linux-style (LF) in shell scripts:
+
+sed -i 's/\r$//' deploy.sh
+
 
 To build the docker image "financial_analyzer_image":
 
 docker build  \
--f fs.Dockerfile \
+-f fa.Dockerfile \
 --build-arg http_proxy=$HTTP_PROXY \
 --build-arg https_proxy=$HTTPS_PROXY \
---build-arg NPM_REGISTRY="https://beergame.vm.duke.edu:4873/"
+--build-arg NPM_REGISTRY="https://beergame.vm.duke.edu:4873/" \
 -t financial_analyzer_image \
 .
 
 Note: $HTTP_PROXY and $HTTPS_PROXY are already set in the server environment.
+
+To enter an interactive shell for an image container:
+
+docker run -it --entrypoint /bin/sh financial_analyzer_image
+
+
+
 
 
 To start a running container from the image:
