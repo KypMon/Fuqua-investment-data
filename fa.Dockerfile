@@ -11,7 +11,6 @@ ENV NPM_REGISTRY=${NPM_REGISTRY}
 
 RUN mkdir -p /fa
 WORKDIR /fa
-#COPY frontend/package.json ./
 COPY frontend/ /fa
 
 RUN npm config set registry=${NPM_REGISTRY}
@@ -24,10 +23,7 @@ RUN npm install --legacy-peer-deps
 RUN npm run build
 
 
-
-
-
-#FROM python:3.13-alpine
+FROM python:3.13-alpine
 
 # ## the ENV environment variable exists for backward compatibility reasons 
 # ##  (we want Geetha to be able to continue to develop in her local, non-Docker environment)
@@ -37,15 +33,10 @@ RUN npm run build
 # ARG http_proxy
 # ARG https_proxy
 
-# # Oracle database access
-# ARG DB_USER
-# ARG DB_PWD
-# ARG DB_DSN
-
-# # app will run as root and listen on container port 80 (mapped to host port 5001)
-# ARG PORT
-# # container listens on 0.0.0.0
-# ARG HOST
+# app will run as root and listen on container port 80 (mapped to host port 5001)
+ARG PORT
+# container listens on 0.0.0.0
+ARG HOST
 
 # # for authentication
 # ARG AUTH_COOKIE_NAME
@@ -56,22 +47,12 @@ RUN npm run build
 # ARG FW_LOGIN_URL
 # ARG HOME_PAGE_REDIRECT
 
-# # email support
-# ARG MAIL_SERVER
-# ARG MAIL_PORT
-# ARG MAIL_USERNAME
-# #ARG MAIL_PASSWORD
-# ARG EMAIL_TESTER
-
-# # application name in Oracle CMLEDB.APP_ACCESS (column name is APP_NAME)
-# ARG APP_NAME
-
 # ENV ENV=${ENV}
 # ENV DB_USER=${DB_USER}
 # ENV DB_PWD=${DB_PWD}
 # ENV DB_DSN=${DB_DSN}
-# ENV PORT=${PORT}
-# ENV HOST=${HOST}
+ENV PORT=${PORT}
+ENV HOST=${HOST}
 # ENV AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME}
 # ENV ISSUER=${ISSUER}
 # ENV JWKS_URI=${JWKS_URI}
@@ -85,21 +66,22 @@ RUN npm run build
 # ENV EMAIL_TESTER=${EMAIL_TESTER}
 # ENV APP_NAME=${APP_NAME}
 
-# ENV HOME=/app
+ENV HOME=/app
 
-# # /app/ais_coursepacks
-# ENV APP_HOME=ais_coursepacks
-# ENV APP_PATH=${HOME}/${APP_HOME} 
+# /app/fa
+ENV APP_HOME=fa
+ENV APP_PATH=${HOME}/${APP_HOME} 
 
-# #RUN apt-get update && \
-# #    apt-get install -y  python3.12  python3.12-venv  python3-pip  && \
-# #    rm -rf /var/lib/apt/lists/*
+RUN apk add  --no-cache  gcc musl-dev python3-dev libffi-dev openssl-dev make
 
-# RUN apk add  --no-cache  gcc musl-dev python3-dev libffi-dev openssl-dev make
+WORKDIR ${APP_PATH}
+COPY backend ${APP_PATH}/backend
+RUN mkdir -p  ${APP_PATH}
+COPY --from=node-build /fa/build  ${APP_PATH}/backend/react_build
 
-# RUN mkdir -p ${APP_PATH}
-# RUN mkdir -p ${APP_PATH}/src  
-# RUN mkdir -p ${APP_PATH}/resources  
+
+# RUN mkdir -p ${APP_PATH}/public  
+# RUN mkdir -p ${APP_PATH}/src
 # RUN mkdir -p ${APP_PATH}/static
 # RUN mkdir -p ${APP_PATH}/templates
 # RUN mkdir -p ${APP_PATH}/log
