@@ -5,10 +5,14 @@ echo "$(date) Financial Analyzer is running...."
 export HTTP_PROXY=http://ha-proxy.fuqua.duke.edu:3128
 export HTTPS_PROXY=$HTTP_PROXY
 
-APP_HOME=/app/financial_analyzer
+#APP_HOME=/app/financial_analyzer
+APP_HOME=/app/fa/backend
 
-export APP_CONFIG_FILE="$APP_HOME/config/.env"
-export APP_LOG_FILE="$APP_HOME/log/app.log"
+cd $APP_HOME
+export PYTHONPATH=$APP_HOME
+
+#export APP_CONFIG_FILE="$APP_HOME/config/.env"
+#export APP_LOG_FILE="$APP_HOME/log/app.log"
 
 VIRTUAL_ENV=${APP_HOME}/.venv
 PATH="$VIRTUAL_ENV/bin:$PATH"

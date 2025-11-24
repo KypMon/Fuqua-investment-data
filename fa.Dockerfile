@@ -79,7 +79,13 @@ ENV STOCKER_ETF=${STOCKER_ETF}
 ENV STATIC_DIR=${STATIC_DIR}
 ENV REACT_BUILD_DIR=${REACT_BUILD_DIR}
 
-RUN apk add  --no-cache  gcc musl-dev python3-dev libffi-dev openssl-dev make
+#RUN apk add  --no-cache  gcc g++ musl-dev python3-dev libffi-dev openssl-dev make
+#RUN apk add --no-cache \
+#    gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
+#    lapack-dev blas-dev rust cargo
+RUN apk add --no-cache \
+    gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
+    lapack-dev blas-dev rust cargo git cmake
 
 # /app/fa
 ENV HOME=/app
@@ -89,12 +95,8 @@ ENV APP_PATH=${HOME}/${APP_HOME}
 RUN mkdir -p  ${APP_PATH}
 WORKDIR ${APP_PATH}
 COPY backend ${APP_PATH}/backend
-
 COPY --from=node-build /fa/build  ${APP_PATH}/backend/react_build
-
-# COPY ${APP_PATH}/backend/config/.env_docker   ${APP_PATH}/backend/config/.env
 COPY backend/config/.env_docker   backend/config/.env
-
 
 RUN sed -i "s/__port/${PORT}/g"                                                           ${APP_PATH}/backend/config/.env
 RUN sed -i "s/__host/${HOST}/g"                                                           ${APP_PATH}/backend/config/.env
@@ -117,18 +119,17 @@ RUN sed -i "s/__audience/${AUDIENCE}/g"                                         
 RUN sed -i "s@__fw_login_url@${FW_LOGIN_URL}@g"                                           ${APP_PATH}/backend/config/.env
 RUN sed -i "s@__home_page_redirect@${HOME_PAGE_REDIRECT}@g"                               ${APP_PATH}/backend/config/.env
 
+EXPOSE 80
 
-# EXPOSE 80
+ENV VIRTUAL_ENV=${APP_PATH}/backend/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# ENV VIRTUAL_ENV=${APP_PATH}/.venv
-# ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
-# RUN python3 -m venv ${APP_PATH}/.venv
-# RUN ${APP_PATH}/.venv/bin/pip install  --no-cache-dir   -r ${APP_PATH}/requirements.txt
+RUN python3 -m venv ${APP_PATH}/backend/.venv
+RUN ${APP_PATH}/backend/.venv/bin/pip install  --no-cache-dir   -r ${APP_PATH}/backend/requirements.txt
 
 # WORKDIR ${APP_PATH}
-RUN chmod +x ${APP_PATH}/backend/*.sh
-# #ENTRYPOINT ["tail", "-f", "/dev/null"]
-# CMD ["/bin/sh", "go.sh"]
+RUN chmod +x ${APP_PATH}/backend/go.sh
+#ENTRYPOINT ["tail", "-f", "/dev/null"]
+CMD ["/bin/sh", "/app/fa/backend/go.sh"]
 
 

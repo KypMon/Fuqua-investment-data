@@ -3,6 +3,7 @@
 HOST=0.0.0.0
 PORT=5001
 IMAGE=financial_analyzer_image
+CONTAINER=fa
 NPM_REGISTRY=https://beergame.vm.duke.edu:4873/
 AUTH_COOKIE_NAME=_FSB_G
 ISSUER=https://go-dev.fuqua.duke.edu/auth
@@ -20,10 +21,10 @@ STOCKER_ETF=stocks_mf_ETF_data_final.csv
 STATIC_DIR=static
 REACT_BUILD_DIR=react_build
 
-# docker stop $NODE_CONTAINER 2>/dev/null || true
-# docker rm $NODE_CONTAINER 2>/dev/null || true
+docker stop $CONTAINER 2>/dev/null || true
+docker rm $CONTAINER 2>/dev/null || true
 
-# docker rmi -f $NODE_IMAGE 2>/dev/null || true
+docker rmi -f $IMAGE 2>/dev/null || true
 
 docker build  \
 -f fa.Dockerfile \
@@ -51,4 +52,6 @@ docker build  \
 .
 
 #docker run -it -w /fa --entrypoint /bin/sh $NODE_IMAGE
-docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
+#docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
+
+docker run  --detach  --name fa  $IMAGE

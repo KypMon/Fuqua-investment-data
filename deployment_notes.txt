@@ -6,6 +6,10 @@ To fix Windows-style line endings (CRLF) to Linux-style (LF) in shell scripts:
 
 sed -i 's/\r$//' deploy.sh
 
+When the container won't start because of errors, can enter it this way, for debugging:
+
+docker run -it --rm --name fa_debug financial_analyzer_image /bin/sh
+
 
 To build the docker image "financial_analyzer_image":
 
