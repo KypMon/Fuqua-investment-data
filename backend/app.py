@@ -33,8 +33,9 @@ def create_app(config_file=None, log_file=None):
 
     BeforeRequestHook().register_hooks(app)
 
-    api_routes = ApiRoutes()
-    app.register_blueprint(api_routes.blueprint)
+    #api_routes = ApiRoutes()
+    #app.register_blueprint(api_routes.blueprint)
+    app.register_blueprint(ApiRoutes().blueprint)
 
     return app
 

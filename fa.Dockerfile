@@ -1,62 +1,157 @@
-# ---- Stage 1: build React frontend ----
+# So that our final FA image is smaller,
+# we complete the node build stage first (React frontend artifacts). 
 FROM node:24-alpine AS node-build
 
-# Build arguments for your private registry if needed
+# Duke FSB NPM registry
 ARG NPM_REGISTRY
 ENV NPM_REGISTRY=${NPM_REGISTRY}
 
-WORKDIR /frontend
-COPY ../frontend/package*.json ./   # adjust this path if your React project is elsewhere
+WORKDIR /fa
+COPY frontend/package.json ./
 
-# Optional: configure registry the same way as your other Dockerfile
-RUN if [ -n "$NPM_REGISTRY" ]; then \
-    npm config set registry=${NPM_REGISTRY}; \
-    fi
-
+RUN npm config set registry=${NPM_REGISTRY}
+RUN npm config set access=public
+RUN npm config set strict-ssl=false
+RUN npm config set scope=@fuquaschoolofbusiness
+RUN npm config set @fuquaschoolofbusiness:registry=${NPM_REGISTRY}
 RUN npm install
-COPY ../frontend/ ./                 # copy the rest of the React source
-RUN npm run build                    # create /frontend/build
 
-# ---- Stage 2: Flask backend ----
-FROM python:3.12-alpine
+RUN npm run build
 
-# Environment / proxy / DB / auth args (same pattern you already use)
-ARG http_proxy
-ARG https_proxy
 
-# Flask & app details
-ARG PORT=5001
-ARG HOST=0.0.0.0
 
-ENV PORT=${PORT}
-ENV HOST=${HOST}
 
-# same environment structure as your other project
-ENV HOME=/app
-ENV APP_HOME=finance_analyzer
-ENV APP_PATH=${HOME}/${APP_HOME}
 
-RUN apk add --no-cache gcc musl-dev python3-dev libffi-dev openssl-dev make
+FROM python:3.13-alpine
 
-# create directories
-RUN mkdir -p ${APP_PATH}/src ${APP_PATH}/react_build ${APP_PATH}/static ${APP_PATH}/log
+# ## the ENV environment variable exists for backward compatibility reasons 
+# ##  (we want Geetha to be able to continue to develop in her local, non-Docker environment)
+# ARG ENV
 
-WORKDIR ${APP_PATH}
+# ## need the proxy URL to successfully build the image (when outside of gitlab ci/cd environment)
+# ARG http_proxy
+# ARG https_proxy
 
-# Copy backend code
-COPY app.py requirements.txt gunicorn.conf.py wsgi.py ./   # include any that exist
-COPY src/ ./src
-COPY static/ ./static
+# # Oracle database access
+# ARG DB_USER
+# ARG DB_PWD
+# ARG DB_DSN
 
-# --- Copy React build output from Node stage ---
-COPY --from=node-build /frontend/build/ ./react_build
+# # app will run as root and listen on container port 80 (mapped to host port 5001)
+# ARG PORT
+# # container listens on 0.0.0.0
+# ARG HOST
 
-# Install dependencies
-RUN python3 -m venv ${APP_PATH}/.venv
-ENV PATH="${APP_PATH}/.venv/bin:$PATH"
-RUN pip install --no-cache-dir -r requirements.txt
+# # for authentication
+# ARG AUTH_COOKIE_NAME
+# ARG ISSUER
+# ARG JWKS_URI
+# ARG ALGORITHM
+# ARG AUDIENCE
+# ARG FW_LOGIN_URL
+# ARG HOME_PAGE_REDIRECT
 
-EXPOSE 5001
+# # email support
+# ARG MAIL_SERVER
+# ARG MAIL_PORT
+# ARG MAIL_USERNAME
+# #ARG MAIL_PASSWORD
+# ARG EMAIL_TESTER
 
-# optional: use Gunicorn instead of flask run
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "app:app"]
+# # application name in Oracle CMLEDB.APP_ACCESS (column name is APP_NAME)
+# ARG APP_NAME
+
+# ENV ENV=${ENV}
+# ENV DB_USER=${DB_USER}
+# ENV DB_PWD=${DB_PWD}
+# ENV DB_DSN=${DB_DSN}
+# ENV PORT=${PORT}
+# ENV HOST=${HOST}
+# ENV AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME}
+# ENV ISSUER=${ISSUER}
+# ENV JWKS_URI=${JWKS_URI}
+# ENV ALGORITHM=${ALGORITHM}
+# ENV AUDIENCE=${AUDIENCE}
+# ENV FW_LOGIN_URL=${FW_LOGIN_URL}
+# ENV HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
+# ENV MAIL_SERVER=${MAIL_SERVER}
+# ENV MAIL_PORT=${MAIL_PORT}
+# ENV MAIL_USERNAME=${MAIL_USERNAME}
+# ENV EMAIL_TESTER=${EMAIL_TESTER}
+# ENV APP_NAME=${APP_NAME}
+
+# ENV HOME=/app
+
+# # /app/ais_coursepacks
+# ENV APP_HOME=ais_coursepacks
+# ENV APP_PATH=${HOME}/${APP_HOME} 
+
+# #RUN apt-get update && \
+# #    apt-get install -y  python3.12  python3.12-venv  python3-pip  && \
+# #    rm -rf /var/lib/apt/lists/*
+
+# RUN apk add  --no-cache  gcc musl-dev python3-dev libffi-dev openssl-dev make
+
+# RUN mkdir -p ${APP_PATH}
+# RUN mkdir -p ${APP_PATH}/src  
+# RUN mkdir -p ${APP_PATH}/resources  
+# RUN mkdir -p ${APP_PATH}/static
+# RUN mkdir -p ${APP_PATH}/templates
+# RUN mkdir -p ${APP_PATH}/log
+
+# WORKDIR ${APP_PATH}
+
+# COPY app.py ./
+# COPY requirements.txt ./
+# COPY gunicorn.conf.py ./
+# COPY wsgi.py ./
+# COPY src/ ${APP_PATH}/src
+# COPY resources/.env_docker ${APP_PATH}/resources/.env
+# #COPY static/ ${APP_PATH}/static
+# COPY static/css/  ${APP_PATH}/static/css
+# COPY static/js/  ${APP_PATH}/static/js
+# COPY --from=node-build  /coursepacks/lib  ${APP_PATH}/static/lib
+# COPY --from=node-build  /coursepacks/node_modules  ${APP_PATH}/static/node_modules
+# COPY templates/ ${APP_PATH}/templates
+# COPY go.sh ./
+
+# RUN chmod +x ${APP_PATH}/*.sh
+
+# #WORKDIR ${APP_PATH}/static
+# #RUN tar -xvf lib.tar -C .  
+
+# RUN sed -i "s/__env/${ENV}/g"                               ${APP_PATH}/resources/.env
+# RUN sed -i "s/__db_user/${DB_USER}/g"                       ${APP_PATH}/resources/.env
+# RUN sed -i "s/__db_pwd/${DB_PWD}/g"                         ${APP_PATH}/resources/.env
+# RUN sed -i "s@__db_dsn@${DB_DSN}@g"                         ${APP_PATH}/resources/.env
+# RUN sed -i "s/__port/${PORT}/g"                             ${APP_PATH}/resources/.env
+# RUN sed -i "s/__host/${HOST}/g"                             ${APP_PATH}/resources/.env
+# RUN sed -i "s/__auth_cookie_name/${AUTH_COOKIE_NAME}/g"     ${APP_PATH}/resources/.env
+# RUN sed -i "s@__issuer@${ISSUER}@g"                         ${APP_PATH}/resources/.env
+# RUN sed -i "s@__jwks_uri@${JWKS_URI}@g"                     ${APP_PATH}/resources/.env
+# RUN sed -i "s/__algorithm/${ALGORITHM}/g"                   ${APP_PATH}/resources/.env
+# RUN sed -i "s/__audience/${AUDIENCE}/g"                     ${APP_PATH}/resources/.env
+# RUN sed -i "s@__fw_login_url@${FW_LOGIN_URL}@g"             ${APP_PATH}/resources/.env
+# RUN sed -i "s@__home_page_redirect@${HOME_PAGE_REDIRECT}@g" ${APP_PATH}/resources/.env
+# RUN sed -i "s/__mail_server/${MAIL_SERVER}/g"               ${APP_PATH}/resources/.env
+# RUN sed -i "s/__mail_port/${MAIL_PORT}/g"                   ${APP_PATH}/resources/.env
+# RUN sed -i "s/__mail_username/${MAIL_USERNAME}/g"           ${APP_PATH}/resources/.env
+# RUN sed -i "s/__mail_password//g"                           ${APP_PATH}/resources/.env
+# RUN sed -i "s/__email_tester/${EMAIL_TESTER}/g"             ${APP_PATH}/resources/.env
+# RUN sed -i "s/__app_name/${APP_NAME}/g"                     ${APP_PATH}/resources/.env
+# RUN sed -i "s@__app_path@${APP_PATH}@g"                     ${APP_PATH}/resources/.env
+
+# EXPOSE 80
+
+# ENV VIRTUAL_ENV=${APP_PATH}/.venv
+# ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# RUN python3 -m venv ${APP_PATH}/.venv
+# RUN ${APP_PATH}/.venv/bin/pip install  --no-cache-dir   -r ${APP_PATH}/requirements.txt
+
+# WORKDIR ${APP_PATH}
+
+# #ENTRYPOINT ["tail", "-f", "/dev/null"]
+# CMD ["/bin/sh", "go.sh"]
+
+

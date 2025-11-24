@@ -1,0 +1,45 @@
+When developing the fa.Dockerfile content:
+
+Reference: engage_sync / dev_tools / go_docker.sh
+
+
+To build the docker image "financial_analyzer_image":
+
+docker build  \
+-f fs.Dockerfile \
+--build-arg http_proxy=$HTTP_PROXY \
+--build-arg https_proxy=$HTTPS_PROXY \
+--build-arg NPM_REGISTRY="https://beergame.vm.duke.edu:4873/"
+-t financial_analyzer_image \
+.
+
+Note: $HTTP_PROXY and $HTTPS_PROXY are already set in the server environment.
+
+
+To start a running container from the image:
+
+docker run \
+--restart=unless-stopped
+--detach  \
+-v $VOLUME_NAME:/data   ---- will circle back to this
+--name=financial_analyzer_container \
+financial_analyzer_image \
+
+
+!! !!
+To clean up before another run:
+
+docker volume rm $VOLUME_NAME
+docker volume create --driver local $VOLUME_NAME
+
+DIR=/data
+echo "Initializing volume subdirectories: " $VOLUME_NAME
+docker run --rm \
+-v $VOLUME_NAME:$DIR \
+alpine mkdir -p $DIR/files/input $DIR/files/output $DIR/files/logs
+
+
+docker image rmi -f $IMAGE
+
+... then re-run the 'docker build'
+... then re-run the 'docker run'
