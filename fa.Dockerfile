@@ -38,95 +38,83 @@ ARG PORT
 # container listens on 0.0.0.0
 ARG HOST
 
-# # for authentication
-# ARG AUTH_COOKIE_NAME
-# ARG ISSUER
-# ARG JWKS_URI
-# ARG ALGORITHM
-# ARG AUDIENCE
-# ARG FW_LOGIN_URL
-# ARG HOME_PAGE_REDIRECT
+# for authentication
+ARG AUTH_COOKIE_NAME
+ARG ISSUER
+ARG JWKS_URI
+ARG ALGORITHM
+ARG AUDIENCE
+ARG FW_LOGIN_URL
+ARG HOME_PAGE_REDIRECT
 
-# ENV ENV=${ENV}
-# ENV DB_USER=${DB_USER}
-# ENV DB_PWD=${DB_PWD}
-# ENV DB_DSN=${DB_DSN}
+# data files (not sure if I will need to rework this for volumes)
+ARG DATA_DIRECTORY
+ARG CONFIG_DIRECTORY
+ARG F_F_MOMENTUM_FACTOR
+ARG F_F_RESEARCH_DATA_5_FACTORS_2BY3
+ARG F_F_RESEARCH_DATA_FACTORS
+ARG STOCKER_ETF
+
+# for user uploads and downloads (not sure if I will need to rework this for volumes)
+ARG STATIC_DIR
+
+# location for React artifacts
+ARG REACT_BUILD_DIR
+
 ENV PORT=${PORT}
 ENV HOST=${HOST}
-# ENV AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME}
-# ENV ISSUER=${ISSUER}
-# ENV JWKS_URI=${JWKS_URI}
-# ENV ALGORITHM=${ALGORITHM}
-# ENV AUDIENCE=${AUDIENCE}
-# ENV FW_LOGIN_URL=${FW_LOGIN_URL}
-# ENV HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
-# ENV MAIL_SERVER=${MAIL_SERVER}
-# ENV MAIL_PORT=${MAIL_PORT}
-# ENV MAIL_USERNAME=${MAIL_USERNAME}
-# ENV EMAIL_TESTER=${EMAIL_TESTER}
-# ENV APP_NAME=${APP_NAME}
-
-ENV HOME=/app
-
-# /app/fa
-ENV APP_HOME=fa
-ENV APP_PATH=${HOME}/${APP_HOME} 
+ENV AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME}
+ENV ISSUER=${ISSUER}
+ENV JWKS_URI=${JWKS_URI}
+ENV ALGORITHM=${ALGORITHM}
+ENV AUDIENCE=${AUDIENCE}
+ENV FW_LOGIN_URL=${FW_LOGIN_URL}
+ENV HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
+ENV DATA_DIRECTORY=${DATA_DIRECTORY}
+ENV CONFIG_DIRECTORY=${CONFIG_DIRECTORY}
+ENV F_F_MOMENTUM_FACTOR=${F_F_MOMENTUM_FACTOR}
+ENV F_F_RESEARCH_DATA_5_FACTORS_2BY3=${F_F_RESEARCH_DATA_5_FACTORS_2BY3}
+ENV F_F_RESEARCH_DATA_FACTORS=${F_F_RESEARCH_DATA_FACTORS}
+ENV STOCKER_ETF=${STOCKER_ETF}
+ENV STATIC_DIR=${STATIC_DIR}
+ENV REACT_BUILD_DIR=${REACT_BUILD_DIR}
 
 RUN apk add  --no-cache  gcc musl-dev python3-dev libffi-dev openssl-dev make
+
+# /app/fa
+ENV HOME=/app
+ENV APP_HOME=fa
+ENV APP_PATH=${HOME}/${APP_HOME} 
 
 WORKDIR ${APP_PATH}
 COPY backend ${APP_PATH}/backend
 RUN mkdir -p  ${APP_PATH}
 COPY --from=node-build /fa/build  ${APP_PATH}/backend/react_build
 
+COPY config/.env_docker ${APP_PATH}/config/.env
 
-# RUN mkdir -p ${APP_PATH}/public  
-# RUN mkdir -p ${APP_PATH}/src
-# RUN mkdir -p ${APP_PATH}/static
-# RUN mkdir -p ${APP_PATH}/templates
-# RUN mkdir -p ${APP_PATH}/log
 
-# WORKDIR ${APP_PATH}
+RUN sed -i "s/__port/${PORT}/g"                                                           ${APP_PATH}/resources/.env
+RUN sed -i "s/__host/${HOST}/g"                                                           ${APP_PATH}/resources/.env
+#
+RUN sed -i "s@__data_directory@${DATA_DIRECTORY}@g"                                       ${APP_PATH}/resources/.env
+RUN sed -i "s@__config_directory@${CONFIG_DIRECTORY}@g"                                   ${APP_PATH}/resources/.env
+RUN sed -i "s@__f_f_momentum_factor@${F_F_MOMENTUM_FACTOR}@g"                             ${APP_PATH}/resources/.env
+RUN sed -i "s@__f_f_research_data_5_factors_2by3@${F_F_RESEARCH_DATA_5_FACTORS_2BY3}@g"  ${APP_PATH}/resources/.env
+RUN sed -i "s@__f_f_research_data_factors@${F_F_RESEARCH_DATA_FACTORS}@g"                 ${APP_PATH}/resources/.env
+RUN sed -i "s@__stocker_etf@${STOCKER_ETF}@g"                                             ${APP_PATH}/resources/.env
+#
+RUN sed -i "s@__static_dir@${STATIC_DIR}@g"                                               ${APP_PATH}/resources/.env
+RUN sed -i "s@__react_build_dir@${REACT_BUILD_DIR}@g"                                     ${APP_PATH}/resources/.env
+#
+RUN sed -i "s/__auth_cookie_name/${AUTH_COOKIE_NAME}/g"                                   ${APP_PATH}/resources/.env
+RUN sed -i "s@__issuer@${ISSUER}@g"                                                       ${APP_PATH}/resources/.env
+RUN sed -i "s@__jwks_uri@${JWKS_URI}@g"                                                   ${APP_PATH}/resources/.env
+RUN sed -i "s/__algorithm/${ALGORITHM}/g"                                                 ${APP_PATH}/resources/.env
+RUN sed -i "s/__audience/${AUDIENCE}/g"                                                   ${APP_PATH}/resources/.env
+RUN sed -i "s@__fw_login_url@${FW_LOGIN_URL}@g"                                           ${APP_PATH}/resources/.env
+RUN sed -i "s@__home_page_redirect@${HOME_PAGE_REDIRECT}@g"                               ${APP_PATH}/resources/.env
 
-# COPY app.py ./
-# COPY requirements.txt ./
-# COPY gunicorn.conf.py ./
-# COPY wsgi.py ./
-# COPY src/ ${APP_PATH}/src
-# COPY resources/.env_docker ${APP_PATH}/resources/.env
-# #COPY static/ ${APP_PATH}/static
-# COPY static/css/  ${APP_PATH}/static/css
-# COPY static/js/  ${APP_PATH}/static/js
-# COPY --from=node-build  /coursepacks/lib  ${APP_PATH}/static/lib
-# COPY --from=node-build  /coursepacks/node_modules  ${APP_PATH}/static/node_modules
-# COPY templates/ ${APP_PATH}/templates
-# COPY go.sh ./
-
-# RUN chmod +x ${APP_PATH}/*.sh
-
-# #WORKDIR ${APP_PATH}/static
-# #RUN tar -xvf lib.tar -C .  
-
-# RUN sed -i "s/__env/${ENV}/g"                               ${APP_PATH}/resources/.env
-# RUN sed -i "s/__db_user/${DB_USER}/g"                       ${APP_PATH}/resources/.env
-# RUN sed -i "s/__db_pwd/${DB_PWD}/g"                         ${APP_PATH}/resources/.env
-# RUN sed -i "s@__db_dsn@${DB_DSN}@g"                         ${APP_PATH}/resources/.env
-# RUN sed -i "s/__port/${PORT}/g"                             ${APP_PATH}/resources/.env
-# RUN sed -i "s/__host/${HOST}/g"                             ${APP_PATH}/resources/.env
-# RUN sed -i "s/__auth_cookie_name/${AUTH_COOKIE_NAME}/g"     ${APP_PATH}/resources/.env
-# RUN sed -i "s@__issuer@${ISSUER}@g"                         ${APP_PATH}/resources/.env
-# RUN sed -i "s@__jwks_uri@${JWKS_URI}@g"                     ${APP_PATH}/resources/.env
-# RUN sed -i "s/__algorithm/${ALGORITHM}/g"                   ${APP_PATH}/resources/.env
-# RUN sed -i "s/__audience/${AUDIENCE}/g"                     ${APP_PATH}/resources/.env
-# RUN sed -i "s@__fw_login_url@${FW_LOGIN_URL}@g"             ${APP_PATH}/resources/.env
-# RUN sed -i "s@__home_page_redirect@${HOME_PAGE_REDIRECT}@g" ${APP_PATH}/resources/.env
-# RUN sed -i "s/__mail_server/${MAIL_SERVER}/g"               ${APP_PATH}/resources/.env
-# RUN sed -i "s/__mail_port/${MAIL_PORT}/g"                   ${APP_PATH}/resources/.env
-# RUN sed -i "s/__mail_username/${MAIL_USERNAME}/g"           ${APP_PATH}/resources/.env
-# RUN sed -i "s/__mail_password//g"                           ${APP_PATH}/resources/.env
-# RUN sed -i "s/__email_tester/${EMAIL_TESTER}/g"             ${APP_PATH}/resources/.env
-# RUN sed -i "s/__app_name/${APP_NAME}/g"                     ${APP_PATH}/resources/.env
-# RUN sed -i "s@__app_path@${APP_PATH}@g"                     ${APP_PATH}/resources/.env
 
 # EXPOSE 80
 
@@ -137,7 +125,7 @@ COPY --from=node-build /fa/build  ${APP_PATH}/backend/react_build
 # RUN ${APP_PATH}/.venv/bin/pip install  --no-cache-dir   -r ${APP_PATH}/requirements.txt
 
 # WORKDIR ${APP_PATH}
-
+RUN chmod +x ${APP_PATH}/*.sh
 # #ENTRYPOINT ["tail", "-f", "/dev/null"]
 # CMD ["/bin/sh", "go.sh"]
 
