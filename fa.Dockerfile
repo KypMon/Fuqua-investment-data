@@ -86,34 +86,36 @@ ENV HOME=/app
 ENV APP_HOME=fa
 ENV APP_PATH=${HOME}/${APP_HOME} 
 
+RUN mkdir -p  ${APP_PATH}
 WORKDIR ${APP_PATH}
 COPY backend ${APP_PATH}/backend
-RUN mkdir -p  ${APP_PATH}
+
 COPY --from=node-build /fa/build  ${APP_PATH}/backend/react_build
 
-COPY config/.env_docker ${APP_PATH}/config/.env
+# COPY ${APP_PATH}/backend/config/.env_docker   ${APP_PATH}/backend/config/.env
+COPY backend/config/.env_docker   backend/config/.env
 
 
-RUN sed -i "s/__port/${PORT}/g"                                                           ${APP_PATH}/resources/.env
-RUN sed -i "s/__host/${HOST}/g"                                                           ${APP_PATH}/resources/.env
+RUN sed -i "s/__port/${PORT}/g"                                                           ${APP_PATH}/backend/config/.env
+RUN sed -i "s/__host/${HOST}/g"                                                           ${APP_PATH}/backend/config/.env
 #
-RUN sed -i "s@__data_directory@${DATA_DIRECTORY}@g"                                       ${APP_PATH}/resources/.env
-RUN sed -i "s@__config_directory@${CONFIG_DIRECTORY}@g"                                   ${APP_PATH}/resources/.env
-RUN sed -i "s@__f_f_momentum_factor@${F_F_MOMENTUM_FACTOR}@g"                             ${APP_PATH}/resources/.env
-RUN sed -i "s@__f_f_research_data_5_factors_2by3@${F_F_RESEARCH_DATA_5_FACTORS_2BY3}@g"  ${APP_PATH}/resources/.env
-RUN sed -i "s@__f_f_research_data_factors@${F_F_RESEARCH_DATA_FACTORS}@g"                 ${APP_PATH}/resources/.env
-RUN sed -i "s@__stocker_etf@${STOCKER_ETF}@g"                                             ${APP_PATH}/resources/.env
+RUN sed -i "s@__data_directory@${DATA_DIRECTORY}@g"                                       ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__config_directory@${CONFIG_DIRECTORY}@g"                                   ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__f_f_momentum_factor@${F_F_MOMENTUM_FACTOR}@g"                             ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__f_f_research_data_5_factors_2by3@${F_F_RESEARCH_DATA_5_FACTORS_2BY3}@g"   ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__f_f_research_data_factors@${F_F_RESEARCH_DATA_FACTORS}@g"                 ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__stocker_etf@${STOCKER_ETF}@g"                                             ${APP_PATH}/backend/config/.env
 #
-RUN sed -i "s@__static_dir@${STATIC_DIR}@g"                                               ${APP_PATH}/resources/.env
-RUN sed -i "s@__react_build_dir@${REACT_BUILD_DIR}@g"                                     ${APP_PATH}/resources/.env
+RUN sed -i "s@__static_dir@${STATIC_DIR}@g"                                               ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__react_build_dir@${REACT_BUILD_DIR}@g"                                     ${APP_PATH}/backend/config/.env
 #
-RUN sed -i "s/__auth_cookie_name/${AUTH_COOKIE_NAME}/g"                                   ${APP_PATH}/resources/.env
-RUN sed -i "s@__issuer@${ISSUER}@g"                                                       ${APP_PATH}/resources/.env
-RUN sed -i "s@__jwks_uri@${JWKS_URI}@g"                                                   ${APP_PATH}/resources/.env
-RUN sed -i "s/__algorithm/${ALGORITHM}/g"                                                 ${APP_PATH}/resources/.env
-RUN sed -i "s/__audience/${AUDIENCE}/g"                                                   ${APP_PATH}/resources/.env
-RUN sed -i "s@__fw_login_url@${FW_LOGIN_URL}@g"                                           ${APP_PATH}/resources/.env
-RUN sed -i "s@__home_page_redirect@${HOME_PAGE_REDIRECT}@g"                               ${APP_PATH}/resources/.env
+RUN sed -i "s/__auth_cookie_name/${AUTH_COOKIE_NAME}/g"                                   ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__issuer@${ISSUER}@g"                                                       ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__jwks_uri@${JWKS_URI}@g"                                                   ${APP_PATH}/backend/config/.env
+RUN sed -i "s/__algorithm/${ALGORITHM}/g"                                                 ${APP_PATH}/backend/config/.env
+RUN sed -i "s/__audience/${AUDIENCE}/g"                                                   ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__fw_login_url@${FW_LOGIN_URL}@g"                                           ${APP_PATH}/backend/config/.env
+RUN sed -i "s@__home_page_redirect@${HOME_PAGE_REDIRECT}@g"                               ${APP_PATH}/backend/config/.env
 
 
 # EXPOSE 80
@@ -125,7 +127,7 @@ RUN sed -i "s@__home_page_redirect@${HOME_PAGE_REDIRECT}@g"                     
 # RUN ${APP_PATH}/.venv/bin/pip install  --no-cache-dir   -r ${APP_PATH}/requirements.txt
 
 # WORKDIR ${APP_PATH}
-RUN chmod +x ${APP_PATH}/*.sh
+RUN chmod +x ${APP_PATH}/backend/*.sh
 # #ENTRYPOINT ["tail", "-f", "/dev/null"]
 # CMD ["/bin/sh", "go.sh"]
 
