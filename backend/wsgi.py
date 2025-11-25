@@ -6,6 +6,6 @@ from src.config.config import Config
 # First consideration: gunicorn is not supported on Windows.
 # Second consideration: Flask server is not intended for production use -- only for local development.
 #
-# gunicorn --workers=1 --bind localhost.fuqua.duke.edu:5001 --access-logfile gunicorn.log wsgi:app
+# gunicorn --workers=1 --bind localhost.fuqua.duke.edu:5002 --access-logfile gunicorn.log wsgi:app
 if __name__ == "__main__":
     app.run(host=Config.get_property("HOST"), port=Config.get_property("PORT"))

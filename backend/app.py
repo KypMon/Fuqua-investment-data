@@ -42,7 +42,7 @@ def create_app(config_file=None, log_file=None):
 app = create_app()
 if __name__ == "__main__": 
     # have Flask serve backend resources
-    # for local development ("python app.py" and "localhost:5001")
+    # for local development ("python app.py" and "localhost:5002")
     app.run(
         host=Config.get_property("HOST"),
         port=Config.get_property("PORT"),

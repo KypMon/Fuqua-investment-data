@@ -1,7 +1,7 @@
 #!/bin/bash
 
 HOST=0.0.0.0
-PORT=5001
+PORT=5002
 IMAGE=financial_analyzer_image
 CONTAINER=fa
 NPM_REGISTRY=https://beergame.vm.duke.edu:4873/
@@ -11,7 +11,7 @@ JWKS_URI=https://go-dev.fuqua.duke.edu/auth/jwks
 ALGORITHM=RS256
 AUDIENCE=FuquaWorld
 FW_LOGIN_URL=https://authdev.fuqua.duke.edu/auth/duke?service=
-HOME_PAGE_REDIRECT=http://go-dev.fuqua.duke.edu:5001
+HOME_PAGE_REDIRECT=http://go-dev.fuqua.duke.edu:5002
 DATA_DIRECTORY=data
 CONFIG_DIRECTORY=config
 F_F_MOMENTUM_FACTOR=F-F_Momentum_Factor.csv

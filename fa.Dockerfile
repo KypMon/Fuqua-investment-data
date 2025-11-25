@@ -33,7 +33,7 @@ FROM python:3.13-alpine
 # ARG http_proxy
 # ARG https_proxy
 
-# app will run as root and listen on container port 80 (mapped to host port 5001)
+# app will run as root and listen on container port 80 (mapped to host port 5002)
 ARG PORT
 # container listens on 0.0.0.0
 ARG HOST

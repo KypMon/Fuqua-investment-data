@@ -2,7 +2,7 @@ We combine the frontend and backend.
 
 We no longer reference localhost:3000 for the home page.
 
-Instead: we reference localhost.fuqua.duke.edu:5001 for the home page.
+Instead: we reference localhost.fuqua.duke.edu:5002 for the home page.
 
 
 
@@ -13,9 +13,9 @@ npm run build
 
 Rename the build folder to 'react_build', copy it in at the project_home level in the backend folder
 
-Only port 5001 is referenced now.
+Only port 5002 is referenced now.
 
-http://localhost.fuqua.duke.edu:5001
+http://localhost.fuqua.duke.edu:5002
 
 
 
