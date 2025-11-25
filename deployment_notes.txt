@@ -75,3 +75,4 @@ and re-attach it to the application container.
 See: deploy_upload_download_volume.sh
 How to handle the user uploads and downloads (in localhost environment, these are the files that go to the static folder).
 These files are not stored in gitlab, so we'll need to use a separate volume.
+Ask professors how long these files should be kept.  A term?  For course duration?

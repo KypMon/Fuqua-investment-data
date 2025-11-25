@@ -12,7 +12,7 @@ ALGORITHM=RS256
 AUDIENCE=FuquaWorld
 FW_LOGIN_URL=https://authdev.fuqua.duke.edu/auth/duke?service=
 HOME_PAGE_REDIRECT=http://go-dev.fuqua.duke.edu/financial_analyzer/
-DATA_DIRECTORY=data
+DATA_DIRECTORY=/data/input
 CONFIG_DIRECTORY=config
 F_F_MOMENTUM_FACTOR=F-F_Momentum_Factor.csv
 F_F_RESEARCH_DATA_5_FACTORS_2BY3=F-F_Research_Data_5_Factors_2x3.csv
@@ -20,13 +20,13 @@ F_F_RESEARCH_DATA_FACTORS=F-F_Research_Data_Factors.CSV
 STOCKER_ETF=stocks_mf_ETF_data_final.csv
 STATIC_DIR=/data/static
 REACT_BUILD_DIR=react_build
-VOLUME_UPLOADS_DOWNLOADS=fa_volume_uploads_downloads
+VOLUME_UPLOAD_DOWNLOAD=fa_volume_upload_download   # See deploy_upload_download_volume.sh
 VOLUME_CSV_INPUT=fa_volume_csv_input  # read-only!  See deploy_csv_volume.sh
 
 docker stop $CONTAINER 2>/dev/null || true
 docker rm $CONTAINER 2>/dev/null || true
 
-docker volume rm $VOLUME_UPLOADS_DOWNLOADS 2>/dev/null || true
+# docker volume rm $VOLUME_UPLOADS_DOWNLOADS 2>/dev/null || true  NO ! ! ! !
 
 docker rmi -f $IMAGE 2>/dev/null || true
 
@@ -55,13 +55,11 @@ docker build  \
 -t $IMAGE \
 .
 
-# /data/logs for application log
-# /data/static for user uploads/downloads
-docker volume create --driver local $VOLUME_UPLOADS_DOWNLOADS;
-docker run --rm -v $VOLUME_UPLOADS_DOWNLOADS:/data alpine mkdir -p  /data/static; # /data/input  /data/logs
-
 
 #docker run -it -w /fa --entrypoint /bin/sh $NODE_IMAGE
 #docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
 
-docker run  --detach  -v $VOLUME_UPLOADS_DOWNLOADS:/data  --name fa  $IMAGE
+docker run  --detach  \
+-v $VOLUME_UPLOAD_DOWNLOAD:/data/static \
+-v $VOLUME_CSV_INPUT:/data/input \
+--name $CONTAINER  $IMAGE
