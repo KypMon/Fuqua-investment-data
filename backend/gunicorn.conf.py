@@ -19,6 +19,7 @@ HOST = os.getenv("HOST", "0.0.0.0")
 PORT = os.getenv("PORT", "80")
 
 bind = f"{HOST}:{PORT}"
+print("bind: " + str(bind))
 
 # workers = multiprocessing.cpu_count() * 2 + 1
 workers = 4
