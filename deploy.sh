@@ -20,12 +20,13 @@ F_F_RESEARCH_DATA_FACTORS=F-F_Research_Data_Factors.CSV
 STOCKER_ETF=stocks_mf_ETF_data_final.csv
 STATIC_DIR=/data/static
 REACT_BUILD_DIR=react_build
-VOLUME=fa_volume
+VOLUME_UPLOADS_DOWNLOADS=fa_volume_uploads_downloads
+VOLUME_CSV_INPUT=fa_volume_csv_input
 
 docker stop $CONTAINER 2>/dev/null || true
 docker rm $CONTAINER 2>/dev/null || true
 
-docker volume rm $VOLUME 2>/dev/null || true
+docker volume rm $VOLUME_UPLOADS_DOWNLOADS 2>/dev/null || true
 
 docker rmi -f $IMAGE 2>/dev/null || true
 
@@ -54,10 +55,21 @@ docker build  \
 -t $IMAGE \
 .
 
-docker volume create --driver local $VOLUME;
-docker run --rm -v $VOLUME:/data alpine mkdir -p /data/logs  /data/static;
+# /data/logs for application log
+# /data/static for user uploads/downloads
+# /data/input for the 4 CSV files
+docker volume create --driver local $VOLUME_UPLOADS_DOWNLOADS;
+docker run --rm -v $VOLUME_UPLOADS_DOWNLOADS:/data alpine mkdir -p  /data/static; # /data/input  /data/logs
+
+docker container create --name temp-container -v $VOLUME_UPLOADS_DOWNLOADS:/data alpine
+docker cp backend/data/F-F_Momentum_Factor.csv temp-container:/data/input
+docker cp backend/data/F-F_Research_Data_5_Factors_2x3.csv temp-container:/data/input
+docker cp backend/data/F-F_Research_Data_Factors.CSV temp-container:/data/input
+docker cp backend/data/stocks_mf_ETF_data_final.csv temp-container:/data/input
+docker rm temp-container
+
 
 #docker run -it -w /fa --entrypoint /bin/sh $NODE_IMAGE
 #docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
 
-docker run  --detach  -v $VOLUME:/data  --name fa  $IMAGE
+docker run  --detach  -v $VOLUME_UPLOADS_DOWNLOADS:/data  --name fa  $IMAGE
