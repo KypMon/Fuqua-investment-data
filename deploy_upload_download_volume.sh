@@ -14,15 +14,6 @@ VOLUME=fa_volume_upload_download
 docker volume create --driver local $VOLUME;
 docker run --rm -v $VOLUME:/data alpine mkdir -p /data/static;
 
-# Change ownership and permissions inside the volume
-# Not necessary.  Docker will handle this when a file gets created.
-# docker run --rm -v $VOLUME:/data alpine sh -c \
-# " \
-# chown root:root /data/input/* \
-# && \
-# chmod 644 /data/input/*  \
-# "
-
 # inspect
 docker run --rm -it -v $VOLUME:/data alpine sh
 

@@ -1,7 +1,7 @@
 from flask import Flask
 import matplotlib.pyplot as plt
 import os
-
+from datetime import datetime
 from src.logging.app_logger import AppLogger
 from src.config.config import Config
 from src.services.file_service import FileService
@@ -13,10 +13,12 @@ from src.routes.api_routes import ApiRoutes
 Application factory: used both by Flask (dev) and Gunicorn (prod)
 """
 def create_app(config_file=None, log_file=None):
-    config_file = config_file or os.environ.get("APP_CONFIG_FILE", "config/.env")
-    log_file = log_file or os.environ.get("APP_LOG_FILE", "app.log")
 
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = "app.log_" + timestamp + ".log"
     AppLogger.set_up_logger(log_file)
+
+    config_file = config_file or os.environ.get("APP_CONFIG_FILE", "config/.env")
     Config.set_up_config(config_file)
 
     app = Flask(
@@ -31,13 +33,12 @@ def create_app(config_file=None, log_file=None):
 
     BeforeRequestHook().register_hooks(app)
 
-    #api_routes = ApiRoutes()
-    #app.register_blueprint(api_routes.blueprint)
     app.register_blueprint(ApiRoutes().blueprint)
 
     return app
 
 app = create_app()
+
 if __name__ == "__main__": 
     # have Flask serve backend resources
     # for local development ("python app.py" and "localhost:5002")

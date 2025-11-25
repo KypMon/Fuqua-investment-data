@@ -60,6 +60,6 @@ docker build  \
 #docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
 
 docker run  --detach  \
--v $VOLUME_UPLOAD_DOWNLOAD:/data/static \
--v $VOLUME_CSV_INPUT:/data/input \
+-v $VOLUME_UPLOAD_DOWNLOAD:/data/ \
+-v $VOLUME_CSV_INPUT:/data \
 --name $CONTAINER  $IMAGE
