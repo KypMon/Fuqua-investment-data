@@ -62,6 +62,7 @@ docker image rmi -f $IMAGE
 
 
 
+See: deploy_csv_volume.sh
 How to handle the 4 input csv files.
 Put them on their own volume.
 The problem is: the 4 csv files are not included in gitlab (nor should they be).
@@ -69,3 +70,8 @@ So we need a mechanism for storing these files.
 
 When there are changes to the files, it will be necessary to recreate the csv volume
 and re-attach it to the application container.  
+
+
+See: deploy_upload_download_volume.sh
+How to handle the user uploads and downloads (in localhost environment, these are the files that go to the static folder).
+These files are not stored in gitlab, so we'll need to use a separate volume.
