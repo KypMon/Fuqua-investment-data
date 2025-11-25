@@ -18,7 +18,8 @@ F_F_MOMENTUM_FACTOR=F-F_Momentum_Factor.csv
 F_F_RESEARCH_DATA_5_FACTORS_2BY3=F-F_Research_Data_5_Factors_2x3.csv
 F_F_RESEARCH_DATA_FACTORS=F-F_Research_Data_Factors.CSV
 STOCKER_ETF=stocks_mf_ETF_data_final.csv
-STATIC_DIR=/data/static
+#STATIC_DIR=/data/static
+STATIC_DIR=/static
 REACT_BUILD_DIR=react_build
 VOLUME_UPLOAD_DOWNLOAD=fa_volume_upload_download   # See deploy_upload_download_volume.sh
 VOLUME_CSV_INPUT=fa_volume_csv_input  # read-only!  See deploy_csv_volume.sh
@@ -60,6 +61,6 @@ docker build  \
 #docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
 
 docker run  --detach  \
--v $VOLUME_UPLOAD_DOWNLOAD:/data/ \
+-v $VOLUME_UPLOAD_DOWNLOAD:/static \
 -v $VOLUME_CSV_INPUT:/data \
 --name $CONTAINER  $IMAGE
