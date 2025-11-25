@@ -19,8 +19,6 @@ def create_app(config_file=None, log_file=None):
     AppLogger.set_up_logger(log_file)
     Config.set_up_config(config_file)
 
-    FileService().make_static_dir()
-    
     app = Flask(
         __name__,
         static_url_path="/static",
@@ -43,14 +41,16 @@ app = create_app()
 if __name__ == "__main__": 
     # have Flask serve backend resources
     # for local development ("python app.py" and "localhost:5002")
+    FileService().make_static_dir()
+
     app.run(
         host=Config.get_property("HOST"),
         port=Config.get_property("PORT"),
         debug=False
     )
 else:
-    # gunicorn serving resources ...
+    # gunicorn is our server ...
     # see wsgi.py for gunicorn entry point
-    # for running this app on Linux servers in Fuqua domain somewhere
+    # (for running this app on Linux servers in Fuqua domain somewhere)
     pass
 

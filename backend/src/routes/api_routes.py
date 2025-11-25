@@ -140,7 +140,8 @@ class ApiRoutes(object):
                 return jsonify({"error": str(exc)}), 400
 
             # filename = save_dataframe(matret_df, "matret")
-            filename = self.file_service.save_dataframe(matret_df, "matret")
+            user = getattr(g, "fwUser", None)
+            filename = self.file_service.save_dataframe(user, matret_df, "matret")
             return jsonify(
                 {
                     "matrix": self.dataframe_payload(matret_df),
@@ -169,7 +170,8 @@ class ApiRoutes(object):
 
             # @SDS begin
             # filename = save_dataframe(df, "matret_upload")
-            filename = self.file_service.save_dataframe(df, "matret_upload")
+            user = getattr(g, "fwUser", None)
+            filename = self.file_service.save_dataframe(user, df, "matret_upload")
             # @SDS end
 
             return jsonify(
@@ -205,7 +207,8 @@ class ApiRoutes(object):
 
             # @SDS begin
             # filename = save_dataframe(mat_er_covr_df, "mat_er_covr")
-            filename = self.file_service.save_dataframe(mat_er_covr_df, "mat_er_covr")
+            user = getattr(g, "fwUser", None)
+            filename = self.file_service.save_dataframe(user, mat_er_covr_df, "mat_er_covr")
             # @SDS end
             return jsonify(
                 {
@@ -246,7 +249,8 @@ class ApiRoutes(object):
 
             # @SDS begin
             # filename = save_dataframe(df, "mat_er_covr_upload")
-            filename = self.file_service.save_dataframe(df, "mat_er_covr_upload")
+            user = getattr(g, "fwUser", None)
+            filename = self.file_service.save_dataframe(user, df, "mat_er_covr_upload")
             # @ SDS end
             return jsonify(
                 {
