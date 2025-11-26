@@ -1,7 +1,8 @@
 #!/bin/bash
 
 HOST=0.0.0.0
-PORT=5002
+HOST_PORT=5002
+CONTAINER_PORT=80
 IMAGE=financial_analyzer_image
 CONTAINER=fa
 NPM_REGISTRY=https://beergame.vm.duke.edu:4873/
@@ -36,7 +37,7 @@ docker build  \
 --build-arg http_proxy=$HTTP_PROXY \
 --build-arg https_proxy=$HTTPS_PROXY \
 --build-arg NPM_REGISTRY=$NPM_REGISTRY \
---build-arg PORT=$PORT \
+--build-arg PORT=$CONTAINER_PORT \
 --build-arg HOST=$HOST \
 --build-arg AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME} \
 --build-arg ISSUER=${ISSUER} \
@@ -61,6 +62,7 @@ docker build  \
 #docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
 
 docker run  --detach  \
+-p ${HOST_PORT}:${CONTAINER_PORT} \
 -v $VOLUME_UPLOAD_DOWNLOAD:/static \
 -v $VOLUME_CSV_INPUT:/data \
 --name $CONTAINER  $IMAGE
