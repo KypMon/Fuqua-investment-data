@@ -14,7 +14,7 @@ WORKDIR /fa
 COPY frontend/ /fa
 
 # we do this so static resources will properly be served in non-localhost environment
-RUN sed -i "s@/appstatic@/financial_analyzer/appstatic@g" /fa/frontend/package.json 
+RUN sed -i "s@/appstatic@/financial_analyzer/appstatic@g" /fa/package.json 
 
 RUN npm config set registry=${NPM_REGISTRY}
 RUN npm config set access=public
