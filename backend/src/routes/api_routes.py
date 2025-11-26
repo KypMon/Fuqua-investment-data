@@ -700,6 +700,7 @@ class ApiRoutes(object):
 
         @bp.route("/appstatic/<path:filename>")
         def serve_react_static(filename):
+            self.logger.info("/appstatic/<path:filename>")
             """
             Serve React JS/CSS/images from react_build.
             React generates URLs like /appstatic/static/js/...,
@@ -716,11 +717,27 @@ class ApiRoutes(object):
                 base_dir = self.REACT_BUILD_PATH
 
             return send_from_directory(base_dir, filename)
+        
+        @bp.route("/fa_static/<path:filename>")
+        def serve_react_static_alt(filename):
+            """
+            Serve React JS/CSS/images from react_build under a new URL prefix (/fa_static).
+            This allows us to serve React's build artifacts without clashing with /static.
+            """
+            self.logger.info("route /fa_static/<path:filename>")
+            self.logger.info("request.path: " + str(request.path))
+
+            # Find the top of the React build
+            base_dir = os.path.join(self.REACT_BUILD_PATH, "static")
+
+            # Just serve the file directly, no prefix stripping
+            return send_from_directory(base_dir, filename)
 
         @bp.route("/", defaults={"path": ""})
         @bp.route("/<path:path>")
         def serve_react_app(path):
             # Empty path (root URL) -> serve index.html
+            self.logger.info("/<path:path>")
             if path == "":
                 return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
