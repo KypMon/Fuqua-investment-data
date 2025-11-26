@@ -700,7 +700,8 @@ class ApiRoutes(object):
 
         @bp.route("/appstatic/<path:filename>")
         def serve_react_static(filename):
-            self.logger.info("/appstatic/<path:filename>")
+            self.logger.info("filename: " + str(filename))
+
             """
             Serve React JS/CSS/images from react_build.
             React generates URLs like /appstatic/static/js/...,
@@ -710,43 +711,37 @@ class ApiRoutes(object):
             #REACT_BUILD_PATH = os.path.join(os.path.dirname(__file__), Config.get_property("react.build.dir"))
             # If the request starts with 'static/', strip it for correct path resolution
             if filename.startswith("static/"):
+                self.logger.info("Stripping out static/ from filename")
                 filename = filename[len("static/"):]
                 base_dir = os.path.join(self.REACT_BUILD_PATH, "static")
+                self.logger.info("base_dir: " + str(base_dir))
             else:
                 # for files like /appstatic/favicon.ico, manifest.json, etc.
                 base_dir = self.REACT_BUILD_PATH
+                self.logger.info("base_dir: " + str(base_dir))
+
+            self.logger.info("Serving: " + str(base_dir) + " " + str(filename))
 
             return send_from_directory(base_dir, filename)
         
-        @bp.route("/fa_static/<path:filename>")
-        def serve_react_static_alt(filename):
-            """
-            Serve React JS/CSS/images from react_build under a new URL prefix (/fa_static).
-            This allows us to serve React's build artifacts without clashing with /static.
-            """
-            self.logger.info("route /fa_static/<path:filename>")
-            self.logger.info("request.path: " + str(request.path))
-
-            # Find the top of the React build
-            base_dir = os.path.join(self.REACT_BUILD_PATH, "static")
-
-            # Just serve the file directly, no prefix stripping
-            return send_from_directory(base_dir, filename)
-
         @bp.route("/", defaults={"path": ""})
         @bp.route("/<path:path>")
         def serve_react_app(path):
             # Empty path (root URL) -> serve index.html
-            self.logger.info("/<path:path>")
+            self.logger.info("path: " + str(path))
             if path == "":
+                self.logger.info("path is blank, so sending from directory: " +  self.REACT_BUILD_PATH + " index.html")
                 return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
             # If it's a real file, serve it
             possible_file = os.path.join(self.REACT_BUILD_PATH, path)
+            self.logger.info("possible_file: " + str(possible_file))
             if os.path.exists(possible_file) and os.path.isfile(possible_file):
+                self.logger.info("Serving: " + str(self.REACT_BUILD_PATH) + " " + str(path))
                 return send_from_directory(self.REACT_BUILD_PATH, path)
 
             # Otherwise return index.html for React Router to handle
+            self.logger.info("just returning index.html")
             return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
 
