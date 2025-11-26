@@ -24,6 +24,9 @@ STATIC_DIR=/static
 REACT_BUILD_DIR=react_build
 VOLUME_UPLOAD_DOWNLOAD=fa_volume_upload_download   # See deploy_upload_download_volume.sh
 VOLUME_CSV_INPUT=fa_volume_csv_input  # read-only!  See deploy_csv_volume.sh
+#
+REACT_APP_VALIDATE_URL=https://authdev.fuqua.duke.edu/auth/getjwt
+REACT_APP_AUTH_URL=https://authdev.fuqua.duke.edu/auth/duke?service=
 
 docker stop $CONTAINER 2>/dev/null || true
 docker rm $CONTAINER 2>/dev/null || true
@@ -54,6 +57,9 @@ docker build  \
 --build-arg STOCKER_ETF=${STOCKER_ETF} \
 --build-arg STATIC_DIR=${STATIC_DIR} \
 --build-arg REACT_BUILD_DIR=${REACT_BUILD_DIR} \
+--build-arg REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL} \
+--build-arg REACT_APP_VALIDATE_URL=${REACT_APP_VALIDATE_URL} \
+--no-cache \
 -t $IMAGE \
 .
 
