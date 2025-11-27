@@ -9,12 +9,12 @@ from src.middleware.authentication import Authentication
 from src.middleware.before_request_hook import BeforeRequestHook
 from src.routes.api_routes import ApiRoutes
 
-# timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-# log_file = "app.log_" + timestamp + ".log"
-# AppLogger.set_up_logger(log_file)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+log_file = "app.log_" + timestamp + ".log"
+AppLogger.set_up_logger(log_file)
 
-# config_file = os.environ.get("APP_CONFIG_FILE", "config/.env")
-# Config.set_up_config(config_file)
+config_file = os.environ.get("APP_CONFIG_FILE", "config/.env")
+Config.set_up_config(config_file)
 
 def get_app():
     app = Flask(
