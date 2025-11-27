@@ -25,7 +25,8 @@ REACT_BUILD_DIR=react_build
 VOLUME_UPLOAD_DOWNLOAD=fa_volume_upload_download   # See deploy_upload_download_volume.sh
 VOLUME_CSV_INPUT=fa_volume_csv_input  # read-only!  See deploy_csv_volume.sh
 #
-REACT_APP_API_BASE_URL=http://go-dev.fuqua.duke.edu:5002/financial_analyzer
+# REACT_APP_API_BASE_URL=http://go-dev.fuqua.duke.edu:5002/financial_analyzer
+REACT_APP_API_BASE_URL=http://go-dev.fuqua.duke.edu:5002
 REACT_APP_VALIDATE_URL=https://authdev.fuqua.duke.edu/auth/getjwt
 REACT_APP_AUTH_URL=https://authdev.fuqua.duke.edu/auth/duke?service=
 

@@ -2,6 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 import os
 from datetime import datetime
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from src.logging.app_logger import AppLogger
 from src.config.config import Config
 from src.middleware.authentication import Authentication
@@ -32,7 +33,11 @@ def register_routes(app):
 def create_app_server(config_file=None, log_file=None):
     app = get_app()
     app.config["LOG_FILE"] = log_file
-    app.wsgi_app = Authentication(app.wsgi_app)
+    #app.wsgi_app = Authentication(app.wsgi_app)
+    app.wsgi_app = Authentication(DispatcherMiddleware(app.wsgi_app, {
+        '/financial_analyzer': app.wsgi_app
+    }))
+
     BeforeRequestHook().register_hooks(app)
     register_routes(app)
     return app
