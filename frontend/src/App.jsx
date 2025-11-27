@@ -44,9 +44,14 @@ function App() {
     navigate(`/${newValue}`);
   };
 
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "";
+  const isLocalhost = apiBaseUrl.includes("localhost");
+
   return (
     <>
-      <fw-auth auto></fw-auth>
+      {/* Conditionally render fw-auth only if NOT localhost */}
+      {!isLocalhost && <fw-auth auto></fw-auth>}
+
       <AppBar position="static" color="primary">
         <Toolbar>
           <Typography

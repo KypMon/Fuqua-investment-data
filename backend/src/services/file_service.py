@@ -26,6 +26,8 @@ class FileService(object):
         # F-F_Momentum_Factor.csv
         self.mom_file = os.path.join(data_dir, config.get("f.f.momentum.factor"))
 
+        self.is_local_host = True if config.get("HOST") == "localhost" else False
+
         self.STATIC_DIR = config.get("static.dir")
 
     def get_etf_file_path(self) -> str:
@@ -45,9 +47,10 @@ class FileService(object):
     
     def save_dataframe(self, user, df: pd.DataFrame, prefix: str) -> str:
         filename = self.timestamped_filename(prefix)
-        filename = self.user_timestamped_filename(filename, user) # embed userId
+        if self.is_local_host is False:
+            filename = self.user_timestamped_filename(filename, user) # embed userId
         path = os.path.join(self.STATIC_DIR, filename)
-        self.logger.info("Saving " + path + " to dataframe")
+        #self.logger.info("Saving " + path + " to dataframe")
         df.to_csv(path, index=False)
         return filename
     
