@@ -64,6 +64,8 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=False
     )
 else:
+    log = AppLogger.get_logger()
+    log.info("SERVER")
     # gunicorn is our server ...
     # see wsgi.py for gunicorn entry point
     app = create_app_server()
