@@ -62,7 +62,7 @@ def create_app_localhost(config_file=None, log_file=None):
     register_routes(app)
     return app
 
-if __name__ == "__main__": 
+if __name__ == "__main__": # only runs if executing "python app.py"
     ###
     ### Flask entry point for localhost:3000
     ###
@@ -92,6 +92,6 @@ else:
     log.info("SERVER")
 
     app = create_app_server()
-    log.info(str(Config.get_property("HOST")) + ":" + str(Config.get_property("PORT")))
-    app.run(host=Config.get_property("HOST"), port=int(Config.get_property("PORT")))
+    # gunicorn starts the server here, so we do not say 'app.run' 
+    #app.run(host=Config.get_property("HOST"), port=int(Config.get_property("PORT")))
 
