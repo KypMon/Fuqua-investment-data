@@ -54,14 +54,14 @@ class ApiRoutes(object):
         @bp.route("/<path:path>")
         def serve_react_app(path):
             """Serve React build files or index.html for SPA routes"""
-            self.logger.info(f"serve_react_app: path={path}")
+            #self.logger.info(f"serve_react_app: path={path}")
 
             # full path to possible file inside your React build
             possible_file = os.path.join(self.REACT_BUILD_PATH, path)
 
             # Case 1 – empty path or nonexistent file → serve index.html
             if path == "" or not os.path.exists(possible_file):
-                self.logger.info(f"Serving index.html from {self.REACT_BUILD_PATH}")
+                #self.logger.info(f"Serving index.html from {self.REACT_BUILD_PATH}")
                 return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
             # Case 2 – existing file → serve that file (js, css, etc.)
@@ -540,53 +540,6 @@ class ApiRoutes(object):
             # return send_from_directory(STATIC_DIR, filename)
             return send_from_directory(self.file_service.get_STATIC_DIR(), filename)
             # @SDS end
-
-        # @bp.route("/appstatic/<path:filename>")
-        # def serve_react_static(filename):
-        #     self.logger.info("serve_react_static: filename: " + str(filename))
-
-        #     """
-        #     Serve React JS/CSS/images from react_build.
-        #     React generates URLs like /appstatic/static/js/...,
-        #     so we strip the initial 'static/' here so Flask can find the file.
-        #     """
-        #     self.log_user_activity()
-        #     #REACT_BUILD_PATH = os.path.join(os.path.dirname(__file__), Config.get_property("react.build.dir"))
-        #     # If the request starts with 'static/', strip it for correct path resolution
-        #     if filename.startswith("static/"):
-        #         #self.logger.info("Stripping out static/ from filename")
-        #         filename = filename[len("static/"):]
-        #         base_dir = os.path.join(self.REACT_BUILD_PATH, "static")
-        #         #self.logger.info("base_dir: " + str(base_dir))
-        #     else:
-        #         # for files like /appstatic/favicon.ico, manifest.json, etc.
-        #         base_dir = self.REACT_BUILD_PATH
-        #         #self.logger.info("base_dir: " + str(base_dir))
-
-        #     self.logger.info("serve_react_static: Serving: " + str(base_dir) + " " + str(filename))
-
-        #     return send_from_directory(base_dir, filename)
-        
-        # @bp.route("/", defaults={"path": ""})
-        # @bp.route("/<path:path>")
-        # def serve_react_app(path):
-        #     # Empty path (root URL) -> serve index.html
-        #     self.logger.info("serve_react_app: path: " + str(path))
-
-        #     if path == "":
-        #         self.logger.info("serve_react_app: Serving: " + str(self.REACT_BUILD_PATH) + " index.html")
-        #         return send_from_directory(self.REACT_BUILD_PATH, "index.html")
-
-        #     # If it's a real file, serve it
-        #     possible_file = os.path.join(self.REACT_BUILD_PATH, path)
-        #     self.logger.info("possible_file: " + str(possible_file))
-        #     #if os.path.exists(possible_file) and os.path.isfile(possible_file):
-        #         #self.logger.info("serve_react_app: Serving: " + str(self.REACT_BUILD_PATH) + " " + str(path))
-        #     return send_from_directory(self.REACT_BUILD_PATH, path)
-
-        #     # Otherwise return index.html for React Router to handle
-        #     #self.logger.info("serve_react_app:  just returning index.html")
-        #     #return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
     def convert_numpy(self, obj):
         """Helper function to convert numpy types to native Python."""

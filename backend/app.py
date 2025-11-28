@@ -20,7 +20,8 @@ def get_app():
     app = Flask(
         __name__,
         static_url_path="/static",
-        static_folder=os.path.join(BASE_DIR, "react_build", "static")
+        # static_folder=os.path.join(BASE_DIR, "react_build", "static")
+        static_folder=os.path.join(BASE_DIR, Config.get_property("react.build.dir"), "static")
     )
     print("static_folder: " + str(os.path.join(os.path.dirname(__file__), "static")))
     return app
