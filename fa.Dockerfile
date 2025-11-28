@@ -24,7 +24,8 @@ COPY frontend/ /fa
 
 # we do this so static resources will properly be served in non-localhost environment
 # RUN sed -i "s@/appstatic@/financial_analyzer/appstatic@g" /fa/package.json 
-COPY /fa/.env_docker   /fa/.env
+#COPY /fa/.env_docker   /fa/.env
+COPY frontend/.env_docker .env
 RUN sed -i "s@__react_app_api_base_url@${REACT_APP_API_BASE_URL}@g" /fa/.env
 RUN sed -i "s@__react_app_validate_url@${REACT_APP_VALIDATE_URL}@g" /fa/.env
 RUN sed -i "s@__react_app_auth_url@${REACT_APP_AUTH_URL}@g"         /fa/.env
