@@ -6,7 +6,6 @@ import os
 import yfinance as yf
 import statsmodels.api as sm
 from contextlib import redirect_stdout
-# from werkzeug.utils import secure_filename
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from datetime import datetime
 from typing import Any
@@ -16,7 +15,6 @@ from src.logging.app_logger import AppLogger
 from src.config.config import Config
 from src.services.data_service import DataService
 from src.services.file_service import FileService
-#from src.services.matrix_service import MatrixService
 from src.services.backtest_service import BacktestService
 from src.services.backtest_input_error import BacktestInputError
 from life_cycle import (
@@ -26,9 +24,6 @@ from life_cycle import (
 )
 
 class ApiRoutes(object):
-    # Define a single blueprint for all API endpoints
-    # api_bp = Blueprint("api_bp", __name__)
-    #blueprint = Blueprint("ApiRoutes", __name__)
 
     def __init__(self) -> None:
         self.logger = AppLogger.get_logger()
@@ -51,11 +46,26 @@ class ApiRoutes(object):
 
     def _add_routes(self) -> Any:
         bp = self.blueprint
-        #self.get_blueprint().register_blueprint(PurchaseRoutes().get_blueprint())
-        #self.get_blueprint().register_blueprint(ReportingRoutes().get_blueprint())
-        # @bp.route("/")
-        # def home():
-        #     return "Home route OK"
+
+        # -------------
+        # React static serving routes
+        # -------------
+        @bp.route("/", defaults={"path": ""})
+        @bp.route("/<path:path>")
+        def serve_react_app(path):
+            """Serve React build files or index.html for SPA routes"""
+            self.logger.info(f"serve_react_app: path={path}")
+
+            # full path to possible file inside your React build
+            possible_file = os.path.join(self.REACT_BUILD_PATH, path)
+
+            # Case 1 – empty path or nonexistent file → serve index.html
+            if path == "" or not os.path.exists(possible_file):
+                self.logger.info(f"Serving index.html from {self.REACT_BUILD_PATH}")
+                return send_from_directory(self.REACT_BUILD_PATH, "index.html")
+
+            # Case 2 – existing file → serve that file (js, css, etc.)
+            return send_from_directory(self.REACT_BUILD_PATH, path)
 
         @bp.route("/run", methods=["POST"])
         def run_mv():
@@ -121,173 +131,6 @@ class ApiRoutes(object):
 
                 traceback.print_exc()
                 return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
-
-        # @bp.route("/matrix/matret/generate", methods=["POST"])
-        # def matrix_generate_matret():
-        #     data = request.json or {}
-        #     self.log_user_activity()
-
-        #     tickers = data.get("tickers", [])
-        #     if isinstance(tickers, str):
-        #         tickers = [t.strip() for t in tickers.split(",") if t.strip()]
-
-        #     start_date = data.get("start_date", "2000-01-01")
-        #     end_date = data.get("end_date", datetime.today().strftime("%Y-%m-%d"))
-
-        #     try:
-        #         matret_df, available = self.matrix_service.download_matret(tickers, start_date, end_date)
-        #     except Exception as exc:  # pragma: no cover - defensive error path
-        #         return jsonify({"error": str(exc)}), 400
-
-        #     # filename = save_dataframe(matret_df, "matret")
-        #     user = getattr(g, "fwUser", None)
-        #     filename = self.file_service.save_dataframe(user, matret_df, "matret")
-        #     return jsonify(
-        #         {
-        #             "matrix": self.dataframe_payload(matret_df),
-        #             "tickers": available,
-        #             "csv_url": f"/static/{filename}",
-        #         }
-        #     )
-
-        # @bp.route("/matrix/matret/upload", methods=["POST"])
-        # def matrix_upload_matret():
-        #     self.log_user_activity()
-        #     if "file" not in request.files:
-        #         return jsonify({"error": "No file uploaded"}), 400
-
-        #     file = request.files["file"]
-        #     if not file.filename:
-        #         return jsonify({"error": "Empty filename"}), 400
-
-        #     try:
-        #         df = pd.read_csv(file)
-        #     except Exception as exc:  # pragma: no cover - pandas error path
-        #         return jsonify({"error": f"Unable to read CSV: {exc}"}), 400
-
-        #     if df.empty:
-        #         return jsonify({"error": "Uploaded file is empty"}), 400
-
-        #     # @SDS begin
-        #     # filename = save_dataframe(df, "matret_upload")
-        #     user = getattr(g, "fwUser", None)
-        #     filename = self.file_service.save_dataframe(user, df, "matret_upload")
-        #     # @SDS end
-
-        #     return jsonify(
-        #         {
-        #             "matrix": self.dataframe_payload(df),
-        #             "csv_url": f"/static/{filename}",
-        #             "original_filename": secure_filename(file.filename),
-        #         }
-        #     )
-
-        # @bp.route("/matrix/mat_er_covr/generate", methods=["POST"])
-        # def matrix_generate_mat_er_covr():
-        #     data = request.json or {}
-        #     self.log_user_activity()
-
-        #     matret_payload = data.get("matret")
-        #     risk_free = data.get("risk_free")
-
-        #     try:
-        #         matret_df = self.matrix_service.parse_matrix_payload(matret_payload)
-        #     except Exception as exc:
-        #         return jsonify({"error": f"Invalid matret payload: {exc}"}), 400
-
-        #     try:
-        #         rf_value = float(risk_free) if risk_free is not None else None
-        #     except (TypeError, ValueError):
-        #         return jsonify({"error": "Risk-free rate must be numeric"}), 400
-
-        #     try:
-        #         mat_er_covr_df, resolved_rf = self.matrix_service.create_mat_er_covr(matret_df, rf_value)
-        #     except Exception as exc:  # pragma: no cover - numeric errors
-        #         return jsonify({"error": str(exc)}), 400
-
-        #     # @SDS begin
-        #     # filename = save_dataframe(mat_er_covr_df, "mat_er_covr")
-        #     user = getattr(g, "fwUser", None)
-        #     filename = self.file_service.save_dataframe(user, mat_er_covr_df, "mat_er_covr")
-        #     # @SDS end
-        #     return jsonify(
-        #         {
-        #             "matrix": self.dataframe_payload(mat_er_covr_df),
-        #             "risk_free": resolved_rf,
-        #             "csv_url": f"/static/{filename}",
-        #         }
-        #     )
-
-
-        # @bp.route("/matrix/mat_er_covr/upload", methods=["POST"])
-        # def matrix_upload_mat_er_covr():
-        #     self.log_user_activity()
-
-        #     if "file" not in request.files:
-        #         return jsonify({"error": "No file uploaded"}), 400
-
-        #     file = request.files["file"]
-        #     if not file.filename:
-        #         return jsonify({"error": "Empty filename"}), 400
-
-        #     try:
-        #         df = pd.read_csv(file)
-        #     except Exception as exc:
-        #         return jsonify({"error": f"Unable to read CSV: {exc}"}), 400
-
-        #     if df.empty:
-        #         return jsonify({"error": "Uploaded file is empty"}), 400
-
-        #     rf_value = None
-        #     if "Assets" in df.columns and "Mean" in df.columns:
-        #         asset_series = df["Assets"].astype(str).str.lower()
-        #         rf_rows = df[asset_series == "rf"]
-        #         if not rf_rows.empty:
-        #             numeric_rf = pd.to_numeric(rf_rows["Mean"], errors="coerce").dropna()
-        #             if not numeric_rf.empty:
-        #                 rf_value = float(numeric_rf.iloc[0])
-
-        #     # @SDS begin
-        #     # filename = save_dataframe(df, "mat_er_covr_upload")
-        #     user = getattr(g, "fwUser", None)
-        #     filename = self.file_service.save_dataframe(user, df, "mat_er_covr_upload")
-        #     # @ SDS end
-        #     return jsonify(
-        #         {
-        #             "matrix": self.dataframe_payload(df),
-        #             "risk_free": rf_value,
-        #             "csv_url": f"/static/{filename}",
-        #             "original_filename": secure_filename(file.filename),
-        #         }
-        #     )
-
-        # @bp.route("/matrix/portfolios", methods=["POST"])
-        # def matrix_compute_portfolios():
-        #     data = request.json or {}
-        #     self.log_user_activity(data)
-
-        #     mat_er_covr_payload = data.get("mat_er_covr")
-        #     risk_free = data.get("risk_free")
-
-        #     try:
-        #         mat_er_covr_df = self.matrix_service.parse_matrix_payload(mat_er_covr_payload)
-        #     except Exception as exc:
-        #         return jsonify({"error": f"Invalid mat_er_covr payload: {exc}"}), 400
-
-        #     try:
-        #         rf_value = float(risk_free) if risk_free is not None else None
-        #     except (TypeError, ValueError):
-        #         return jsonify({"error": "Risk-free rate must be numeric"}), 400
-
-        #     print(rf_value)
-
-        #     try:
-        #         result = self.matrix_service.compute_portfolios(mat_er_covr_df, rf_value)
-        #     except Exception as exc:  # pragma: no cover - numeric errors
-        #         print(exc)
-        #         return jsonify({"error": f"Compute error: {str(exc)}"}), 400
-
-        #     return jsonify(result)
 
         @bp.route("/backtest", methods=["POST"])
         def run_backtest():
@@ -724,27 +567,26 @@ class ApiRoutes(object):
 
         #     return send_from_directory(base_dir, filename)
         
-        @bp.route("/", defaults={"path": ""})
-        @bp.route("/<path:path>")
-        def serve_react_app(path):
-            # Empty path (root URL) -> serve index.html
-            self.logger.info("serve_react_app: path: " + str(path))
+        # @bp.route("/", defaults={"path": ""})
+        # @bp.route("/<path:path>")
+        # def serve_react_app(path):
+        #     # Empty path (root URL) -> serve index.html
+        #     self.logger.info("serve_react_app: path: " + str(path))
 
-            if path == "":
-                self.logger.info("serve_react_app: Serving: " + str(self.REACT_BUILD_PATH) + " index.html")
-                return send_from_directory(self.REACT_BUILD_PATH, "index.html")
+        #     if path == "":
+        #         self.logger.info("serve_react_app: Serving: " + str(self.REACT_BUILD_PATH) + " index.html")
+        #         return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
-            # If it's a real file, serve it
-            possible_file = os.path.join(self.REACT_BUILD_PATH, path)
-            self.logger.info("possible_file: " + str(possible_file))
-            #if os.path.exists(possible_file) and os.path.isfile(possible_file):
-                #self.logger.info("serve_react_app: Serving: " + str(self.REACT_BUILD_PATH) + " " + str(path))
-            return send_from_directory(self.REACT_BUILD_PATH, path)
+        #     # If it's a real file, serve it
+        #     possible_file = os.path.join(self.REACT_BUILD_PATH, path)
+        #     self.logger.info("possible_file: " + str(possible_file))
+        #     #if os.path.exists(possible_file) and os.path.isfile(possible_file):
+        #         #self.logger.info("serve_react_app: Serving: " + str(self.REACT_BUILD_PATH) + " " + str(path))
+        #     return send_from_directory(self.REACT_BUILD_PATH, path)
 
-            # Otherwise return index.html for React Router to handle
-            #self.logger.info("serve_react_app:  just returning index.html")
-            #return send_from_directory(self.REACT_BUILD_PATH, "index.html")
-
+        #     # Otherwise return index.html for React Router to handle
+        #     #self.logger.info("serve_react_app:  just returning index.html")
+        #     #return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
     def convert_numpy(self, obj):
         """Helper function to convert numpy types to native Python."""
@@ -835,27 +677,6 @@ class ApiRoutes(object):
             return int(float(value))
         except (TypeError, ValueError):
             raise LifeCycleInputError(f"{label} must be an integer value.")
-        
-
-    # def dataframe_payload(self, df: pd.DataFrame) -> dict:
-    #     """Serialize a dataframe for JSON responses.
-
-    #     ``pandas`` represents missing values as ``NaN`` which does not have a
-    #     native JSON representation.  ``json.dumps`` would emit the JavaScript
-    #     identifier ``NaN`` which is invalid JSON and causes ``JSON.parse`` to
-    #     throw on the frontend.  To keep the payloads consumable for both uploaded
-    #     and generated matrices we normalise the dataframe and replace missing
-    #     values with ``None`` (rendered as ``null`` in JSON) before converting it to
-    #     dictionaries.
-    #     """
-
-    #     sanitized = df.copy().astype(object)
-    #     sanitized = sanitized.where(pd.notna(sanitized), None)
-    #     return {
-    #         "columns": list(sanitized.columns),
-    #         "records": sanitized.to_dict(orient="records"),
-    #     }
-
     
     def log_user_activity(self, data=None):
         if not (

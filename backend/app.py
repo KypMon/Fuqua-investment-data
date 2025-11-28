@@ -2,7 +2,7 @@ from flask import Flask, redirect
 from flask_cors import CORS
 import os
 from datetime import datetime
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
+#from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from src.logging.app_logger import AppLogger
 from src.config.config import Config
 from src.middleware.authentication import Authentication
@@ -10,19 +10,17 @@ from src.middleware.before_request_hook import BeforeRequestHook
 from src.routes.api_routes import ApiRoutes
 from src.routes.matrix import Matrix
 
-# timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-# log_file = "app.log_" + timestamp + ".log"
-# AppLogger.set_up_logger(log_file)
-# log = AppLogger.get_logger()
-
-# config_file = os.environ.get("APP_CONFIG_FILE", "config/.env")
-# Config.set_up_config(config_file)
-
 def get_app():
+    # app = Flask(
+    #     __name__,
+    #     static_url_path="/static",
+    #     static_folder=os.path.join(os.path.dirname(__file__), "static")
+    # )
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     app = Flask(
         __name__,
         static_url_path="/static",
-        static_folder=os.path.join(os.path.dirname(__file__), "static")
+        static_folder=os.path.join(BASE_DIR, "react_build", "static")
     )
     print("static_folder: " + str(os.path.join(os.path.dirname(__file__), "static")))
     return app
@@ -31,11 +29,6 @@ def register_routes(app):
     app.register_blueprint(ApiRoutes().blueprint)
     #app.register_blueprint(Matrix(app).blueprint)
     Matrix(app)
-
-    # @app.route('/')
-    # def root():
-    #     print("REDIRECTION")
-    #     return redirect('/financial_analyzer')
 
 ### ##############################
 ### when running on a Fuqua server
