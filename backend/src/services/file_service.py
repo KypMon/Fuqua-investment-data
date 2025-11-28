@@ -28,7 +28,7 @@ class FileService(object):
 
         self.is_local_host = True if config.get("HOST") == "localhost" else False
 
-        self.STATIC_DIR = config.get("static.dir")
+        #self.STATIC_DIR = config.get("static.dir")
 
     def get_etf_file_path(self) -> str:
         return self.etf_file
@@ -42,14 +42,25 @@ class FileService(object):
     def get_mom_file_path(self) -> str:
         return self.mom_file
     
-    def get_STATIC_DIR(self) -> str:
-        return self.STATIC_DIR
+    # def get_STATIC_DIR(self) -> str:
+    #     return self.STATIC_DIR
     
-    def save_dataframe(self, user, df: pd.DataFrame, prefix: str) -> str:
+    # def save_dataframe(self, user, df: pd.DataFrame, prefix: str) -> str:
+    #     filename = self.timestamped_filename(prefix)
+    #     if self.is_local_host is False:
+    #         filename = self.user_timestamped_filename(filename, user) # embed userId
+    #     path = os.path.join(self.STATIC_DIR, filename)
+    #     #self.logger.info("Saving " + path + " to dataframe")
+    #     df.to_csv(path, index=False)
+    #     return filename
+
+    def save_dataframe(self, user, df: pd.DataFrame, prefix: str, static_dir: str) -> str:
         filename = self.timestamped_filename(prefix)
         if self.is_local_host is False:
             filename = self.user_timestamped_filename(filename, user) # embed userId
-        path = os.path.join(self.STATIC_DIR, filename)
+
+        # path = os.path.join(self.STATIC_DIR, filename)
+        path = os.path.join(static_dir, filename)
         #self.logger.info("Saving " + path + " to dataframe")
         df.to_csv(path, index=False)
         return filename
