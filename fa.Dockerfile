@@ -23,7 +23,8 @@ WORKDIR /fa
 COPY frontend/ /fa
 
 # we do this so static resources will properly be served in non-localhost environment
-RUN sed -i "s@/@/financial_analyzer@g" /fa/package.json 
+RUN apk add --no-cache jq
+RUN jq '.homepage="/financial_analyzer"' package.json > tmp.json && mv tmp.json package.json
 
 COPY frontend/.env_docker .env
 RUN sed -i "s@__react_app_api_base_url@${REACT_APP_API_BASE_URL}@g" /fa/.env
