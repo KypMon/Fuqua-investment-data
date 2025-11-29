@@ -29,6 +29,9 @@ class ApiRoutes(object):
         self.logger = AppLogger.get_logger()
         self.logger.info("This is AppRoutes constructor")
 
+        self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
+        self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
+
         routes_dir = os.path.dirname(__file__)
         #self.logger.info("routes_dir: " + str(routes_dir))
         backend_root = os.path.abspath(os.path.join(routes_dir, "..", ".."))  # up to backend
@@ -50,21 +53,36 @@ class ApiRoutes(object):
         # -------------
         # React static serving routes
         # -------------
-        @bp.route("/", defaults={"path": ""})
-        @bp.route("/<path:path>")
+        # @bp.route("/", defaults={"path": ""})
+        # @bp.route("/<path:path>")
+        # def serve_react_app(path):
+        #     """Serve React build files or index.html for SPA routes"""
+        #     #self.logger.info(f"serve_react_app: path={path}")
+
+        #     # full path to possible file inside your React build
+        #     possible_file = os.path.join(self.REACT_BUILD_PATH, path)
+
+        #     # Case 1 – empty path or nonexistent file → serve index.html
+        #     if path == "" or not os.path.exists(possible_file):
+        #         #self.logger.info(f"Serving index.html from {self.REACT_BUILD_PATH}")
+        #         return send_from_directory(self.REACT_BUILD_PATH, "index.html")
+
+        #     # Case 2 – existing file → serve that file (js, css, etc.)
+        #     return send_from_directory(self.REACT_BUILD_PATH, path)
+
+        @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
+        @bp.route(f"{self.APP_PREFIX}/<path:path>")
         def serve_react_app(path):
-            """Serve React build files or index.html for SPA routes"""
-            #self.logger.info(f"serve_react_app: path={path}")
-
-            # full path to possible file inside your React build
-            possible_file = os.path.join(self.REACT_BUILD_PATH, path)
-
-            # Case 1 – empty path or nonexistent file → serve index.html
-            if path == "" or not os.path.exists(possible_file):
-                #self.logger.info(f"Serving index.html from {self.REACT_BUILD_PATH}")
+            self.logger.info("path: " + str(path))
+            #react_build = current_app.config.get("REACT_BUILD_PATH", "react_build")
+            #fullpath = os.path.join(react_build, path)
+            fullpath = os.path.join(self.REACT_BUILD_PATH, path)
+            self.logger.info("fullpath: " + str(fullpath))
+            if path == "" or not os.path.exists(fullpath):
+                self.logger.info("sending index.html")
                 return send_from_directory(self.REACT_BUILD_PATH, "index.html")
-
-            # Case 2 – existing file → serve that file (js, css, etc.)
+            
+            self.logger.info("sending: " + str(self.REACT_BUILD_PATH) + " " + str(path))
             return send_from_directory(self.REACT_BUILD_PATH, path)
 
         @bp.route("/run", methods=["POST"])

@@ -51,6 +51,8 @@ FROM python:3.13-alpine
 # ARG http_proxy
 # ARG https_proxy
 
+ARG APP_PREFIX
+
 # app will run as root and listen on container port 80 (mapped to host port 5002)
 ARG PORT
 # container listens on 0.0.0.0
@@ -79,6 +81,7 @@ ARG STATIC_DIR
 # location for React artifacts
 ARG REACT_BUILD_DIR
 
+ENV APP_PREFIX=${APP_PREFIX}
 ENV PORT=${PORT}
 ENV HOST=${HOST}
 ENV AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME}
@@ -116,6 +119,7 @@ COPY backend ${APP_PATH}/backend
 COPY --from=node-build /fa/build  ${APP_PATH}/backend/react_build
 COPY backend/config/.env_docker   backend/config/.env
 
+RUN sed -i "s@__app_prefix@${APP_PREFIX}@g"                                       ${APP_PATH}/backend/config/.env
 RUN sed -i "s/__port/${PORT}/g"                                                           ${APP_PATH}/backend/config/.env
 RUN sed -i "s/__host/${HOST}/g"                                                           ${APP_PATH}/backend/config/.env
 #
