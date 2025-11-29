@@ -14,6 +14,7 @@ class BeforeRequestHook(object):
     def register_hooks(self, app):
         @app.before_request
         def authenticate_and_authorize():
+            self.logger.info("before request hook")
             static = request.environ.get("static")
             if static is True:
                 self.logger.info("static resource, doing nothing")

@@ -50,32 +50,32 @@ class Authentication(object):
         #     if key == "HTTP_COOKIE" or key == "HTTP_HOST" or key == "REQUEST_URI":
         #         self.logger.info(key + " -> " + str(value))
 
-        # ---- skip static assets early ----
-        path = request.path
-        if (
-            path.startswith("/static/")
-            or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
-        ):
-            self.logger.info(f"Skipping auth for static resource: {path}")
-            environ["static"] = True
-            return self.app(environ, start_response)
-        # ---- end static skip ----
+        # # ---- skip static assets early ----
+        # path = request.path
+        # if (
+        #     path.startswith("/static/")
+        #     or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
+        # ):
+        #     self.logger.info(f"Skipping auth for static resource: {path}")
+        #     environ["static"] = True
+        #     return self.app(environ, start_response)
+        # # ---- end static skip ----
 
         # skip all authentication logic for OPTIONS
-        if request.method == "OPTIONS":
-            self.logger.info("request.method is " + str(request.method))
-            environ["options"] = True
-            return self.app(environ, start_response)
+        # if request.method == "OPTIONS":
+        #     self.logger.info("request.method is " + str(request.method))
+        #     environ["options"] = True
+        #     return self.app(environ, start_response)
 
         try:
             data = request.headers.get("Cookie") if request.headers.get("Cookie") is not None \
                     else (environ["HTTP_COOKIE"] if "HTTP_COOKIE" in environ else None)
             
-            #self.logger.info("data: " + str(data))
+            self.logger.info("data: " + str(data))
 
             JWT = self.extractJWT(data) if data is not None else None
-            # if JWT is not None:
-            #    self.logger.info("JWT is " + JWT)
+            if JWT is not None:
+               self.logger.info("JWT is " + JWT)
 
             if JWT is None: # return 401
                 self.logger.info("No JWT")
