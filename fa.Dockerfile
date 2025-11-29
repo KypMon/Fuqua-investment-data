@@ -47,9 +47,8 @@ FROM python:3.13-alpine
 # ##  (we want Geetha to be able to continue to develop in her local, non-Docker environment)
 # ARG ENV
 
-# ## need the proxy URL to successfully build the image (when outside of gitlab ci/cd environment)
-# ARG http_proxy
-# ARG https_proxy
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
 
 ARG APP_PREFIX
 
@@ -81,6 +80,8 @@ ARG STATIC_DIR
 # location for React artifacts
 ARG REACT_BUILD_DIR
 
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
 ENV APP_PREFIX=${APP_PREFIX}
 ENV PORT=${PORT}
 ENV HOST=${HOST}

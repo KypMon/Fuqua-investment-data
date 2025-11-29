@@ -1,4 +1,6 @@
 #!/bin/bash
+HTTP_PROXY=http://ha-proxy.fuqua.duke.edu:3128
+HTTPS_PROXY=$HTTP_PROXY
 APP_PREFIX=/financial_analyzer
 HOST=0.0.0.0
 HOST_PORT=5002
@@ -40,8 +42,8 @@ docker rmi -f $IMAGE 2>/dev/null || true
 docker build  \
 -f fa.Dockerfile \
 --build-arg APP_PREFIX=$APP_PREFIX \
---build-arg http_proxy=$HTTP_PROXY \
---build-arg https_proxy=$HTTPS_PROXY \
+--build-arg HTTP_PROXY=$HTTP_PROXY \
+--build-arg HTTPS_PROXY=$HTTPS_PROXY \
 --build-arg NPM_REGISTRY=$NPM_REGISTRY \
 --build-arg PORT=$CONTAINER_PORT \
 --build-arg HOST=$HOST \
