@@ -1,5 +1,6 @@
 #!/bin/bash
-HTTP_PROXY=http://ha-proxy.fuqua.duke.edu:3128
+#HTTP_PROXY=http://ha-proxy.fuqua.duke.edu:3128
+HTTP_PROXY=http://proxy.fuqua.duke.edu:3128
 HTTPS_PROXY=$HTTP_PROXY
 APP_PREFIX=/financial_analyzer
 HOST=0.0.0.0
