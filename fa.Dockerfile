@@ -105,9 +105,13 @@ ENV REACT_BUILD_DIR=${REACT_BUILD_DIR}
 #RUN apk add --no-cache \
 #    gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
 #    lapack-dev blas-dev rust cargo
+# RUN apk add --no-cache \
+#     gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
+#     lapack-dev blas-dev rust cargo git cmake
 RUN apk add --no-cache \
     gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
-    lapack-dev blas-dev rust cargo git cmake
+    lapack-dev blas-dev rust cargo git cmake ca-certificates \
+    && update-ca-certificates
 
 # /app/fa
 ENV HOME=/app
