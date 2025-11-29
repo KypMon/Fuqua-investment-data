@@ -34,6 +34,18 @@ class Authentication(object):
 
         request = Request(environ, shallow=False)
 
+        # # ---- skip static assets early ----
+        path = request.path
+        if (
+            path.startswith("/static/")
+            or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
+        ):
+            #self.logger.info(f"Skipping auth for static resource: {path}")
+            #environ["static"] = True
+            environ["status_code"] = 200
+            return self.app(environ, start_response)
+        # # ---- end static skip ----
+
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
         #self.logger.info("request.base_url " + str(request.base_url))
         #self.logger.info("request.path " + str(request.path))
@@ -50,17 +62,6 @@ class Authentication(object):
         # for key,value in environ.items():
         #     if key == "HTTP_COOKIE" or key == "HTTP_HOST" or key == "REQUEST_URI":
         #         self.logger.info(key + " -> " + str(value))
-
-        # # ---- skip static assets early ----
-        # path = request.path
-        # if (
-        #     path.startswith("/static/")
-        #     or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
-        # ):
-        #     self.logger.info(f"Skipping auth for static resource: {path}")
-        #     environ["static"] = True
-        #     return self.app(environ, start_response)
-        # # ---- end static skip ----
 
         # skip all authentication logic for OPTIONS
         # if request.method == "OPTIONS":
