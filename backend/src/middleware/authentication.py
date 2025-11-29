@@ -1,4 +1,5 @@
 import jwt
+import ssl
 import os
 from jwt import PyJWKClient
 #from src.config.config import Config
@@ -145,7 +146,16 @@ class Authentication(object):
             self.logger.error(str(err.__dict__))
             return None
 
-    def extract_signing_key(self, JWT:str):
-        jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"] )
-        signing_key = jwks_client.get_signing_key_from_jwt(JWT)
-        return signing_key
+    # def extract_signing_key(self, JWT:str):
+    #     jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"] )
+    #     signing_key = jwks_client.get_signing_key_from_jwt(JWT)
+    #     return signing_key
+
+    def extract_signing_key(self, JWT: str):
+        ctx = ssl.create_default_context()
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2     # force modern TLS
+        ctx.check_hostname = True
+
+        jwks_url = Authentication.auth_config["jwks_uri"]
+        jwks_client = PyJWKClient(jwks_url, ssl_context=ctx, timeout=5)
+        return jwks_client.get_signing_key_from_jwt(JWT)
