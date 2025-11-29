@@ -57,11 +57,14 @@ class Authentication(object):
             or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
         ):
             self.logger.info(f"Skipping auth for static resource: {path}")
+            environ["static"] = True
             return self.app(environ, start_response)
         # ---- end static skip ----
 
         # skip all authentication logic for OPTIONS
         if request.method == "OPTIONS":
+            self.logger.info("request.method is " + str(request.method))
+            environ["options"] = True
             return self.app(environ, start_response)
 
         try:
