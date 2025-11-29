@@ -27,15 +27,15 @@ class Authentication(object):
         #self.logger.info(str(Authentication.auth_config))
 
     def __call__(self, environ, start_response):
-        self.logger.info("------------------------ Authentication -----------------------------")
+        #self.logger.info("------------------------ Authentication -----------------------------")
         # for key,value in environ.items():
         #     self.logger.info(key + " -> " + str(value))
 
         request = Request(environ, shallow=False)
 
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
-        self.logger.info("request.base_url " + str(request.base_url))
-        self.logger.info("request.path " + str(request.path))
+        #self.logger.info("request.base_url " + str(request.base_url))
+        #self.logger.info("request.path " + str(request.path))
         #self.logger.info("request.headers " + str(request.headers))
         #self.logger.info(str(request.headers.get("Cookie")))
         #self.logger.info("request.authorization " + str(request.authorization))
@@ -71,14 +71,14 @@ class Authentication(object):
             data = request.headers.get("Cookie") if request.headers.get("Cookie") is not None \
                     else (environ["HTTP_COOKIE"] if "HTTP_COOKIE" in environ else None)
             
-            self.logger.info("data: " + str(data))
+            #self.logger.info("data: " + str(data))
 
             JWT = self.extractJWT(data) if data is not None else None
-            if JWT is not None:
-               self.logger.info("JWT is " + JWT)
+            #if JWT is not None:
+            #   self.logger.info("JWT is " + JWT)
 
             if JWT is None: # return 401
-                self.logger.info("No JWT")
+                self.logger.info("No JWT ... returning 401")
                 environ["status_code"] = 401
                 return self.app(environ, start_response)
 
@@ -95,7 +95,7 @@ class Authentication(object):
             )
 
             if claims is None: # return 401
-                self.logger.info("No claims taken from JWT")
+                self.logger.info("No claims taken from JWT ... returning 401")
                 environ["status_code"] = 401
                 return self.app(environ, start_response)
 

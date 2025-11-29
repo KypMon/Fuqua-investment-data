@@ -53,22 +53,26 @@ class ApiRoutes(object):
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         @bp.route(f"{self.APP_PREFIX}/<path:path>")
         def serve_react_app(path):
-            self.logger.info("serve_react_app **************************************************")
-            self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
-            self.logger.info("path: " + str(path))
+            #self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
+            #self.logger.info("path: " + str(path))
             #react_build = current_app.config.get("REACT_BUILD_PATH", "react_build")
             #fullpath = os.path.join(react_build, path)
             fullpath = os.path.join(self.REACT_BUILD_PATH, path)
-            if not os.path.exists(fullpath):
-                self.logger.info("fullpath: " + str(fullpath) + " DOES NOT EXIST")
-            else:
-                self.logger.info("fullpath: " + str(fullpath) + " exists")
+            # if not os.path.exists(fullpath):
+            #     self.logger.info("fullpath: " + str(fullpath) + " DOES NOT EXIST")
+            # else:
+            #     self.logger.info("fullpath: " + str(fullpath) + " exists")
+            self.logger.info("fullpath: " + str(fullpath))
 
-            if path == "" or not os.path.exists(fullpath):
-                self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because no path or fullpath does not exist")
+            if path == "":
+                self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because path is empty")
+                return send_from_directory(self.REACT_BUILD_PATH, "index.html")
+
+            if not os.path.exists(fullpath):
+                self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because fullpath does not exist")
                 return send_from_directory(self.REACT_BUILD_PATH, "index.html")
             
-            self.logger.info("sending: " + str(self.REACT_BUILD_PATH) + " " + str(path))
+            #self.logger.info("sending: " + str(self.REACT_BUILD_PATH) + " " + str(path))
             return send_from_directory(self.REACT_BUILD_PATH, path)
 
         @bp.route("/run", methods=["POST"])
