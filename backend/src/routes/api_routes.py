@@ -50,26 +50,6 @@ class ApiRoutes(object):
     def _add_routes(self) -> Any:
         bp = self.blueprint
 
-        # -------------
-        # React static serving routes
-        # -------------
-        # @bp.route("/", defaults={"path": ""})
-        # @bp.route("/<path:path>")
-        # def serve_react_app(path):
-        #     """Serve React build files or index.html for SPA routes"""
-        #     #self.logger.info(f"serve_react_app: path={path}")
-
-        #     # full path to possible file inside your React build
-        #     possible_file = os.path.join(self.REACT_BUILD_PATH, path)
-
-        #     # Case 1 – empty path or nonexistent file → serve index.html
-        #     if path == "" or not os.path.exists(possible_file):
-        #         #self.logger.info(f"Serving index.html from {self.REACT_BUILD_PATH}")
-        #         return send_from_directory(self.REACT_BUILD_PATH, "index.html")
-
-        #     # Case 2 – existing file → serve that file (js, css, etc.)
-        #     return send_from_directory(self.REACT_BUILD_PATH, path)
-
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         @bp.route(f"{self.APP_PREFIX}/<path:path>")
         def serve_react_app(path):

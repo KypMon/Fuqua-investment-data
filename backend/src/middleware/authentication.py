@@ -27,15 +27,15 @@ class Authentication(object):
         #self.logger.info(str(Authentication.auth_config))
 
     def __call__(self, environ, start_response):
-        # self.logger.info("-----------------------------------------------------------------")
+        self.logger.info("------------------------ Authentication -----------------------------")
         # for key,value in environ.items():
         #     self.logger.info(key + " -> " + str(value))
 
         request = Request(environ, shallow=False)
 
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
-        #self.logger.info("request.base_url " + str(request.base_url))
-        #self.logger.info("request.path " + str(request.path))
+        self.logger.info("request.base_url " + str(request.base_url))
+        self.logger.info("request.path " + str(request.path))
         #self.logger.info("request.headers " + str(request.headers))
         #self.logger.info(str(request.headers.get("Cookie")))
         #self.logger.info("request.authorization " + str(request.authorization))
@@ -44,7 +44,7 @@ class Authentication(object):
         #self.logger.info("request.args -> " + str(request.args))
         #self.logger.info("request.application -> " + str(request.application))
         #self.logger.info("request.data -> " + str(request.data))
-        #self.logger.info("request.full_path -> " + str(request.full_path))
+        self.logger.info("request.full_path -> " + str(request.full_path))
 
         # for key,value in environ.items():
         #     if key == "HTTP_COOKIE" or key == "HTTP_HOST" or key == "REQUEST_URI":

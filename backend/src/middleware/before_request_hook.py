@@ -16,10 +16,12 @@ class BeforeRequestHook(object):
         def authenticate_and_authorize():
             static = request.environ.get("static")
             if static is True:
+                self.logger.info("static resource, doing nothing")
                 return
             
             options = request.environ.get("options")
             if options is True:
+                self.logger.info("options request, doing nothing")
                 return
 
             status_code = request.environ.get("status_code")
