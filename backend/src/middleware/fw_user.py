@@ -6,7 +6,7 @@ class FwUser(object):
         self.logger = AppLogger.get_logger()
 
         if claims is None:
-            self.logger.info("uh oh, no claims")
+            #self.logger.info("uh oh, no claims")
             return
         self.claims = claims
 

@@ -15,7 +15,8 @@ JWKS_URI=https://go-dev.fuqua.duke.edu/auth/jwks
 ALGORITHM=RS256
 AUDIENCE=FuquaWorld
 FW_LOGIN_URL=https://authdev.fuqua.duke.edu/auth/duke?service=
-HOME_PAGE_REDIRECT=http://go-dev.fuqua.duke.edu/financial_analyzer/
+#HOME_PAGE_REDIRECT=http://go-dev.fuqua.duke.edu/financial_analyzer/
+HOME_PAGE_REDIRECT=http://go-dev.fuqua.duke.edu/financial_analyzer/login/callback
 DATA_DIRECTORY=/data/input
 CONFIG_DIRECTORY=config
 F_F_MOMENTUM_FACTOR=F-F_Momentum_Factor.csv

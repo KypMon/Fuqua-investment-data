@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from datetime import datetime
 from typing import Any
-from flask import Blueprint, jsonify, request, g, send_from_directory
+from flask import Blueprint, jsonify, request, g, send_from_directory, make_response, redirect
 from mv import mv
 from src.logging.app_logger import AppLogger
 from src.config.config import Config
@@ -49,6 +49,16 @@ class ApiRoutes(object):
 
     def _add_routes(self) -> Any:
         bp = self.blueprint
+
+        @bp.route(f"{self.APP_PREFIX}/login/callback")
+        def login_callback():
+            self.logger.info("LOGIN CALLBACK")
+            token = request.args.get("token")
+            resp = make_response(redirect(f"{self.APP_PREFIX}/"))
+            if token:
+                resp.set_cookie(Config.get_property("auth.cookie.name"),
+                                token, httponly=True, path="/")
+            return resp
 
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         @bp.route(f"{self.APP_PREFIX}/<path:path>")
