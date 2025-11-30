@@ -73,6 +73,7 @@ function App() {
 
   const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "";
   const isLocalhost = apiBaseUrl.includes("localhost");
+  console.log(`${apiBaseUrl}`);
 
   return (
     <>
