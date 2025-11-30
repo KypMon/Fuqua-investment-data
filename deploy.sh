@@ -50,7 +50,7 @@ if [[ "$1" == "debug-node" ]]; then
     --build-arg HTTP_PROXY=$HTTP_PROXY \
     --build-arg HTTPS_PROXY=$HTTPS_PROXY \
     --build-arg NPM_REGISTRY=$NPM_REGISTRY \
-    --build-arg REACT_APP_BASE_URL=${REACT_APP_API_BASE_URL} \
+    --build-arg REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL} \
     --build-arg REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL} \
     --build-arg REACT_APP_VALIDATE_URL=${REACT_APP_VALIDATE_URL} \
     .
