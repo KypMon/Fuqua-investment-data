@@ -1,6 +1,6 @@
 import { AppBar, Container, Tab, Tabs, Toolbar, Typography } from "@mui/material";
 //import { useState } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import BacktestForm from "./components/BacktestForm";
 import BacktestResult from "./components/BacktestResult";
@@ -12,18 +12,42 @@ import ResultSection from "./components/ResultSection";
 
 function App() {
   // user authentication
+  const fwAuthRef = useRef(null);
   useEffect(() => {
-    const authElement = document.querySelector('fw-auth');
+    const authElement = fwAuthRef.current;
     if (authElement) {
       authElement.setAttribute('url', `${process.env.REACT_APP_AUTH_URL}`);
       authElement.setAttribute('validateUrl', `${process.env.REACT_APP_VALIDATE_URL}`);
 
-      // Add event listeners to see what fw-auth is doing
-      authElement.addEventListener('login', () => console.log('fw-auth: login event'));
-      authElement.addEventListener('logout', () => console.log('fw-auth: logout event'));
-      authElement.addEventListener('authenticated', () => console.log('fw-auth: authenticated'));
+      // Direct event listeners on Web Component ref
+      const handleLogin = () => console.log('fw-auth: login event');
+      const handleLogout = () => console.log('fw-auth: logout event');
+      const handleAuthenticated = () => console.log('fw-auth: authenticated');
+
+      authElement.addEventListener('login', handleLogin);
+      authElement.addEventListener('logout', handleLogout);
+      authElement.addEventListener('authenticated', handleAuthenticated);
+
+      // Cleanup
+      return () => {
+        authElement.removeEventListener('login', handleLogin);
+        authElement.removeEventListener('logout', handleLogout);
+        authElement.removeEventListener('authenticated', handleAuthenticated);
+      };
     }
-  }, []); // runs once after initial mount
+  }, []);
+  // useEffect(() => {
+  //   const authElement = document.querySelector('fw-auth');
+  //   if (authElement) {
+  //     authElement.setAttribute('url', `${process.env.REACT_APP_AUTH_URL}`);
+  //     authElement.setAttribute('validateUrl', `${process.env.REACT_APP_VALIDATE_URL}`);
+
+  //     // Add event listeners to see what fw-auth is doing
+  //     authElement.addEventListener('login', () => console.log('fw-auth: login event'));
+  //     authElement.addEventListener('logout', () => console.log('fw-auth: logout event'));
+  //     authElement.addEventListener('authenticated', () => console.log('fw-auth: authenticated'));
+  //   }
+  // }, []); // runs once after initial mount
 
   const [result, setResult] = useState(null);
   const [backtestResult, setBacktestResult] = useState(null);
