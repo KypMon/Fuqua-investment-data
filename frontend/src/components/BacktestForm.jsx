@@ -123,6 +123,7 @@ export default function BacktestForm({ setBacktestResult }) {
         start_balance: form.start_balance,
       };
 
+      console.log(`${process.env.REACT_APP_API_BASE_URL}`);
       console.log(`${process.env.REACT_APP_API_BASE_URL}/backtest`);
       const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/backtest`, payload);
       setBacktestResult(res.data);
