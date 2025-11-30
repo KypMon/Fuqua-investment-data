@@ -126,6 +126,10 @@ RUN mkdir -p  ${APP_PATH}
 WORKDIR ${APP_PATH}
 COPY backend ${APP_PATH}/backend
 COPY --from=node-build /fa/build  ${APP_PATH}/backend/react_build
+
+# frontend_build_env only for debug purposes - is not used by the app !
+COPY --from=node-build /fa/.env ${APP_PATH}/frontend_build_env  
+
 COPY backend/config/.env_docker   backend/config/.env
 
 RUN sed -i "s@__app_prefix@${APP_PREFIX}@g"                                       ${APP_PATH}/backend/config/.env
