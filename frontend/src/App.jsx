@@ -20,20 +20,20 @@ function App() {
       authElement.setAttribute('validateUrl', `${process.env.REACT_APP_VALIDATE_URL}`);
 
       // Direct event listeners on Web Component ref
-      const handleLogin = () => console.log('fw-auth: login event');
-      const handleLogout = () => console.log('fw-auth: logout event');
-      const handleAuthenticated = () => console.log('fw-auth: authenticated');
+      // const handleLogin = () => console.log('fw-auth: login event');
+      // const handleLogout = () => console.log('fw-auth: logout event');
+      // const handleAuthenticated = () => console.log('fw-auth: authenticated');
 
-      authElement.addEventListener('login', handleLogin);
-      authElement.addEventListener('logout', handleLogout);
-      authElement.addEventListener('authenticated', handleAuthenticated);
+      // authElement.addEventListener('login', handleLogin);
+      // authElement.addEventListener('logout', handleLogout);
+      // authElement.addEventListener('authenticated', handleAuthenticated);
 
-      // Cleanup
-      return () => {
-        authElement.removeEventListener('login', handleLogin);
-        authElement.removeEventListener('logout', handleLogout);
-        authElement.removeEventListener('authenticated', handleAuthenticated);
-      };
+      // // Cleanup
+      // return () => {
+      //   authElement.removeEventListener('login', handleLogin);
+      //   authElement.removeEventListener('logout', handleLogout);
+      //   authElement.removeEventListener('authenticated', handleAuthenticated);
+      // };
     }
   }, []);
   // useEffect(() => {

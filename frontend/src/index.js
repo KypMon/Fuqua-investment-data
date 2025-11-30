@@ -26,9 +26,11 @@ const root = ReactDOM.createRoot(document.getElementById("root"));
 
 const theme = createTheme();
 
+const basename = process.env.REACT_APP_BASENAME || ""; // "" for localhost
+
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <App />
