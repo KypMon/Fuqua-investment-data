@@ -1,17 +1,17 @@
-import React, { useMemo, useCallback } from "react";
 import {
-  Box,
-  Typography,
-  Paper,
-  Grid,
   Alert,
+  Box,
+  Button,
+  Grid,
+  Paper,
   Stack,
-  Button
+  Typography
 } from "@mui/material";
+import { useCallback, useMemo } from "react";
 import Plot from 'react-plotly.js'; // Make sure react-plotly.js is installed
-import OlsSummary from './OlsSummary';
+import { downloadCsvContent, ensureCsvExtension, extractTablesFromHtml, tablesToCsv } from "../utils/csv";
 import DataTable from "./DataTable";
-import { ensureCsvExtension, downloadCsvContent, extractTablesFromHtml, tablesToCsv } from "../utils/csv";
+import OlsSummary from './OlsSummary';
 
 export default function RegressionResult({ result }) {
   const hasResult = Boolean(result);
@@ -35,10 +35,10 @@ export default function RegressionResult({ result }) {
   const rollingPlotLayout = {
     title: 'Rolling Alpha & Factor Loadings',
     xaxis: { title: 'Date', type: 'date' },
-    yaxis: { 
-      title: 'Annualized Alpha', 
-      titlefont: { color: 'red' }, 
-      tickfont: { color: 'red' } 
+    yaxis: {
+      title: 'Annualized Alpha',
+      titlefont: { color: 'red' },
+      tickfont: { color: 'red' }
     },
     yaxis2: {
       title: 'Factor Loadings',
@@ -49,10 +49,10 @@ export default function RegressionResult({ result }) {
     },
     autosize: true,
     height: 500,
-    legend: { 
-      x: 0.5, 
+    legend: {
+      x: 0.5,
       y: -0.3, // Adjusted y to be below the chart
-      xanchor: 'center', 
+      xanchor: 'center',
       orientation: 'h',
       traceorder: 'normal' // To control legend item order if needed
     },
@@ -60,8 +60,8 @@ export default function RegressionResult({ result }) {
   };
 
   if (resultData.rolling_plot_data &&
-      resultData.rolling_plot_data.dates &&
-      resultData.rolling_plot_data.dates.length > 0) {
+    resultData.rolling_plot_data.dates &&
+    resultData.rolling_plot_data.dates.length > 0) {
 
     // 1. Alpha Series (Primary Y-axis)
     if (resultData.rolling_plot_data.alpha_series) {
@@ -146,16 +146,16 @@ export default function RegressionResult({ result }) {
     () =>
       Array.isArray(resultData.summary_table)
         ? resultData.summary_table.map((row) => ({
-            factor: row["Factor"],
-            averageExcessReturn:
-              row["Av. Ann. Excess Return"] !== null && row["Av. Ann. Excess Return"] !== undefined
-                ? (parseFloat(row["Av. Ann. Excess Return"]) * 100).toFixed(2)
-                : "—",
-            returnContribution:
-              row["Return Contribution"] !== null && row["Return Contribution"] !== undefined
-                ? parseFloat(row["Return Contribution"]).toFixed(2)
-                : "—",
-          }))
+          factor: row["Factor"],
+          averageExcessReturn:
+            row["Av. Ann. Excess Return"] !== null && row["Av. Ann. Excess Return"] !== undefined
+              ? (parseFloat(row["Av. Ann. Excess Return"]) * 100).toFixed(2)
+              : "—",
+          returnContribution:
+            row["Return Contribution"] !== null && row["Return Contribution"] !== undefined
+              ? parseFloat(row["Return Contribution"]).toFixed(2)
+              : "—",
+        }))
         : [],
     [resultData.summary_table],
   );
@@ -215,23 +215,23 @@ export default function RegressionResult({ result }) {
           <Plot
             data={rollingPlotTraces}
             layout={rollingPlotLayout}
-            style={{ width: '100%'}}
+            style={{ width: '100%' }}
             useResizeHandler={true}
           />
         </Paper>
       ) : (
         Array.isArray(resultData.image_urls) && resultData.image_urls.length > 0 ? null : <Typography>No rolling plot data available.</Typography>
       )}
-      
+
       {/* Existing logic for other backend-generated images, if any */}
       {Array.isArray(resultData.image_urls) && resultData.image_urls.length > 0 && (
         <Grid container spacing={2}>
           {resultData.image_urls.map((url, idx) => (
             <Grid item xs={12} md={6} key={`img-${idx}`}>
-              <img 
-                src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${url}?t=${Date.now()}`} 
-                alt={`Regression Chart ${idx}`} 
-                style={{ width: "100%", border: "1px solid #ddd"}} 
+              <img
+                src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001'}${url}?t=${Date.now()}`}
+                alt={`Regression Chart ${idx}`}
+                style={{ width: "100%", border: "1px solid #ddd" }}
               />
             </Grid>
           ))}

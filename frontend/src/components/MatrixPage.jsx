@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import AddIcon from "@mui/icons-material/Add";
+import { LoadingButton } from "@mui/lab";
 import {
   Alert,
   Box,
@@ -11,10 +12,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { LoadingButton } from "@mui/lab";
-import AddIcon from "@mui/icons-material/Add";
-import Plot from "react-plotly.js";
 import axios from "axios";
+import { useMemo, useState } from "react";
+import Plot from "react-plotly.js";
 
 import DataTable from "./DataTable";
 import EtfListInput from "./EtfListInput";
@@ -142,7 +142,7 @@ const extractError = (error, fallback = "Unexpected error") => {
 };
 
 export default function MatrixPage() {
-  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
 
   const [tickers, setTickers] = useState(() => [...DEFAULT_TICKERS]);
   const sanitizedTickers = useMemo(
@@ -441,24 +441,24 @@ export default function MatrixPage() {
             size={4}
             minItems={2}
           />
-          
+
           <Grid container>
-              <Stack spacing={4}>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => setTickers((current) => [...current, ""])}
-                  sx={{ alignSelf: "flex-start" }}
-                >
-                  Add Ticker
-                </Button>
-                <Typography variant="caption" color="text.secondary">
-                  Enter at least two ticker symbols.
-                </Typography>
-              </Stack>
+            <Stack spacing={4}>
+              <Button
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => setTickers((current) => [...current, ""])}
+                sx={{ alignSelf: "flex-start" }}
+              >
+                Add Ticker
+              </Button>
+              <Typography variant="caption" color="text.secondary">
+                Enter at least two ticker symbols.
+              </Typography>
+            </Stack>
           </Grid>
 
-          <Stack direction="row" spacing={2}>            
+          <Stack direction="row" spacing={2}>
             <TextField
               label="Start Date"
               type="date"

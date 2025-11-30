@@ -1,4 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import DownloadIcon from "@mui/icons-material/Download";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import { LoadingButton } from "@mui/lab";
 import {
   Alert,
   Box,
@@ -10,14 +12,12 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { LoadingButton } from "@mui/lab";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import DownloadIcon from "@mui/icons-material/Download";
-import Plot from "react-plotly.js";
 import axios from "axios";
+import { useCallback, useMemo, useState } from "react";
+import Plot from "react-plotly.js";
 
-import DataTable from "./DataTable";
 import { downloadCsvContent, escapeCsvValue } from "../utils/csv";
+import DataTable from "./DataTable";
 
 const formatNumber = (value, options = {}) => {
   if (value === null || value === undefined || Number.isNaN(value)) {
@@ -32,7 +32,7 @@ const formatNumber = (value, options = {}) => {
 };
 
 export default function LifeCycleSimulationPage() {
-  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
 
   const [returnsFile, setReturnsFile] = useState(null);
   const [cashflowsFile, setCashflowsFile] = useState(null);

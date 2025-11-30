@@ -15,7 +15,8 @@ axios.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // Force re-authentication if backend says 401
       console.log("REDIRECT from index.js");
-      window.location.href = "https://go.fuqua.duke.edu/auth/onelink?service=" + encodeURIComponent(window.location.href);
+      // window.location.href = "https://go.fuqua.duke.edu/auth/onelink?service=" + encodeURIComponent(window.location.href);
+      window.location.href = process.env.REACT_APP_AUTH_URL + encodeURIComponent(window.location.href);
     }
     return Promise.reject(error);
   }

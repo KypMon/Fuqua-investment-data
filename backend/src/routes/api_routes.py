@@ -50,15 +50,15 @@ class ApiRoutes(object):
     def _add_routes(self) -> Any:
         bp = self.blueprint
 
-        @bp.route(f"{self.APP_PREFIX}/login/callback")
-        def login_callback():
-            self.logger.info("LOGIN CALLBACK")
-            token = request.args.get("token")
-            resp = make_response(redirect(f"{self.APP_PREFIX}/"))
-            if token:
-                resp.set_cookie(Config.get_property("auth.cookie.name"),
-                                token, httponly=True, path="/")
-            return resp
+        # @bp.route(f"{self.APP_PREFIX}/login/callback")
+        # def login_callback():
+        #     self.logger.info("LOGIN CALLBACK")
+        #     token = request.args.get("token")
+        #     resp = make_response(redirect(f"{self.APP_PREFIX}/"))
+        #     if token:
+        #         resp.set_cookie(Config.get_property("auth.cookie.name"),
+        #                         token, httponly=True, path="/")
+        #     return resp
 
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         @bp.route(f"{self.APP_PREFIX}/<path:path>")
@@ -72,7 +72,7 @@ class ApiRoutes(object):
             #     self.logger.info("fullpath: " + str(fullpath) + " DOES NOT EXIST")
             # else:
             #     self.logger.info("fullpath: " + str(fullpath) + " exists")
-            self.logger.info("fullpath: " + str(fullpath))
+            #self.logger.info("fullpath: " + str(fullpath))
 
             if path == "":
                 self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because path is empty")

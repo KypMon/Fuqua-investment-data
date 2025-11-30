@@ -41,10 +41,15 @@ class Authentication(object):
             or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
         ):
             #self.logger.info(f"Skipping auth for static resource: {path}")
-            #environ["static"] = True
             environ["status_code"] = 200
             return self.app(environ, start_response)
         # # ---- end static skip ----
+
+        # skip all authentication logic for OPTIONS
+        if request.method == "OPTIONS":
+            #self.logger.info("request.method is " + str(request.method))
+            environ["status_code"] = 200
+            return self.app(environ, start_response)
 
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
         #self.logger.info("request.base_url " + str(request.base_url))
@@ -62,12 +67,6 @@ class Authentication(object):
         # for key,value in environ.items():
         #     if key == "HTTP_COOKIE" or key == "HTTP_HOST" or key == "REQUEST_URI":
         #         self.logger.info(key + " -> " + str(value))
-
-        # skip all authentication logic for OPTIONS
-        # if request.method == "OPTIONS":
-        #     self.logger.info("request.method is " + str(request.method))
-        #     environ["options"] = True
-        #     return self.app(environ, start_response)
 
         try:
             data = request.headers.get("Cookie") if request.headers.get("Cookie") is not None \
@@ -102,13 +101,6 @@ class Authentication(object):
                 return self.app(environ, start_response)
 
             #self.logger.info(str(claims))
-
-            # path = request.path
-            # if not (
-            #     path.startswith("/static/")
-            #     or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
-            # ):
-            #     self.logger.info(request.host_url + " " + claims["name"])
 
             environ["status_code"] = 200
             environ["claims"] = claims
@@ -147,16 +139,16 @@ class Authentication(object):
             self.logger.error(str(err.__dict__))
             return None
 
-    # def extract_signing_key(self, JWT:str):
-    #     jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"] )
-    #     signing_key = jwks_client.get_signing_key_from_jwt(JWT)
-    #     return signing_key
+    def extract_signing_key(self, JWT:str):
+        jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"] )
+        signing_key = jwks_client.get_signing_key_from_jwt(JWT)
+        return signing_key
 
-    def extract_signing_key(self, JWT: str):
-        ctx = ssl.create_default_context()
-        ctx.minimum_version = ssl.TLSVersion.TLSv1_2     # force modern TLS
-        ctx.check_hostname = True
+    # def extract_signing_key(self, JWT: str):
+    #     ctx = ssl.create_default_context()
+    #     ctx.minimum_version = ssl.TLSVersion.TLSv1_2     # force modern TLS
+    #     ctx.check_hostname = True
 
-        jwks_url = Authentication.auth_config["jwks_uri"]
-        jwks_client = PyJWKClient(jwks_url, ssl_context=ctx, timeout=5)
-        return jwks_client.get_signing_key_from_jwt(JWT)
+    #     jwks_url = Authentication.auth_config["jwks_uri"]
+    #     jwks_client = PyJWKClient(jwks_url, ssl_context=ctx, timeout=5)
+    #     return jwks_client.get_signing_key_from_jwt(JWT)
