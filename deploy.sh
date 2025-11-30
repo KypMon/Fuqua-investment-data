@@ -33,49 +33,52 @@ REACT_APP_API_BASE_URL=http://go-dev.fuqua.duke.edu:5002
 REACT_APP_VALIDATE_URL=https://authdev.fuqua.duke.edu/auth/getjwt
 REACT_APP_AUTH_URL=https://authdev.fuqua.duke.edu/auth/duke?service=
 
-docker stop $CONTAINER 2>/dev/null || true
-docker rm $CONTAINER 2>/dev/null || true
+# Run temporary node-build container and get shell (WORKDIR is /fa)
+docker run -it --rm  fa-node-build sh
 
-# docker volume rm $VOLUME_UPLOADS_DOWNLOADS 2>/dev/null || true  NO ! ! ! !
+# docker stop $CONTAINER 2>/dev/null || true
+# docker rm $CONTAINER 2>/dev/null || true
 
-docker rmi -f $IMAGE 2>/dev/null || true
+# # docker volume rm $VOLUME_UPLOADS_DOWNLOADS 2>/dev/null || true  NO ! ! ! !
 
-docker build  \
--f fa.Dockerfile \
---build-arg APP_PREFIX=$APP_PREFIX \
---build-arg HTTP_PROXY=$HTTP_PROXY \
---build-arg HTTPS_PROXY=$HTTPS_PROXY \
---build-arg NPM_REGISTRY=$NPM_REGISTRY \
---build-arg PORT=$CONTAINER_PORT \
---build-arg HOST=$HOST \
---build-arg AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME} \
---build-arg ISSUER=${ISSUER} \
---build-arg JWKS_URI=${JWKS_URI} \
---build-arg ALGORITHM=${ALGORITHM} \
---build-arg AUDIENCE=${AUDIENCE} \
---build-arg FW_LOGIN_URL=${FW_LOGIN_URL} \
---build-arg HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT} \
---build-arg DATA_DIRECTORY=${DATA_DIRECTORY} \
---build-arg CONFIG_DIRECTORY=${CONFIG_DIRECTORY} \
---build-arg F_F_MOMENTUM_FACTOR=${F_F_MOMENTUM_FACTOR} \
---build-arg F_F_RESEARCH_DATA_5_FACTORS_2BY3=${F_F_RESEARCH_DATA_5_FACTORS_2BY3} \
---build-arg F_F_RESEARCH_DATA_FACTORS=${F_F_RESEARCH_DATA_FACTORS} \
---build-arg STOCKER_ETF=${STOCKER_ETF} \
---build-arg STATIC_DIR=${STATIC_DIR} \
---build-arg REACT_BUILD_DIR=${REACT_BUILD_DIR} \
---build-arg REACT_APP_BASE_URL=${REACT_APP_BASE_URL} \
---build-arg REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL} \
---build-arg REACT_APP_VALIDATE_URL=${REACT_APP_VALIDATE_URL} \
---no-cache \
--t $IMAGE \
-.
+# docker rmi -f $IMAGE 2>/dev/null || true
+
+# docker build  \
+# -f fa.Dockerfile \
+# --build-arg APP_PREFIX=$APP_PREFIX \
+# --build-arg HTTP_PROXY=$HTTP_PROXY \
+# --build-arg HTTPS_PROXY=$HTTPS_PROXY \
+# --build-arg NPM_REGISTRY=$NPM_REGISTRY \
+# --build-arg PORT=$CONTAINER_PORT \
+# --build-arg HOST=$HOST \
+# --build-arg AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME} \
+# --build-arg ISSUER=${ISSUER} \
+# --build-arg JWKS_URI=${JWKS_URI} \
+# --build-arg ALGORITHM=${ALGORITHM} \
+# --build-arg AUDIENCE=${AUDIENCE} \
+# --build-arg FW_LOGIN_URL=${FW_LOGIN_URL} \
+# --build-arg HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT} \
+# --build-arg DATA_DIRECTORY=${DATA_DIRECTORY} \
+# --build-arg CONFIG_DIRECTORY=${CONFIG_DIRECTORY} \
+# --build-arg F_F_MOMENTUM_FACTOR=${F_F_MOMENTUM_FACTOR} \
+# --build-arg F_F_RESEARCH_DATA_5_FACTORS_2BY3=${F_F_RESEARCH_DATA_5_FACTORS_2BY3} \
+# --build-arg F_F_RESEARCH_DATA_FACTORS=${F_F_RESEARCH_DATA_FACTORS} \
+# --build-arg STOCKER_ETF=${STOCKER_ETF} \
+# --build-arg STATIC_DIR=${STATIC_DIR} \
+# --build-arg REACT_BUILD_DIR=${REACT_BUILD_DIR} \
+# --build-arg REACT_APP_BASE_URL=${REACT_APP_BASE_URL} \
+# --build-arg REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL} \
+# --build-arg REACT_APP_VALIDATE_URL=${REACT_APP_VALIDATE_URL} \
+# --no-cache \
+# -t $IMAGE \
+# .
 
 
-#docker run -it -w /fa --entrypoint /bin/sh $NODE_IMAGE
-#docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
+# #docker run -it -w /fa --entrypoint /bin/sh $NODE_IMAGE
+# #docker run -it -w /app/fa --entrypoint /bin/sh $IMAGE
 
-docker run  --detach  \
--p ${HOST_PORT}:${CONTAINER_PORT} \
--v $VOLUME_UPLOAD_DOWNLOAD:/static \
--v $VOLUME_CSV_INPUT:/data \
---name $CONTAINER  $IMAGE
+# docker run  --detach  \
+# -p ${HOST_PORT}:${CONTAINER_PORT} \
+# -v $VOLUME_UPLOAD_DOWNLOAD:/static \
+# -v $VOLUME_CSV_INPUT:/data \
+# --name $CONTAINER  $IMAGE
