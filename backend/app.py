@@ -92,6 +92,6 @@ else:
     log.info("SERVER")
 
     app = create_app_server()
-    # gunicorn starts the server here, so we do not say 'app.run' 
+    # gunicorn is our server, so we do not say 'app.run' 
     #app.run(host=Config.get_property("HOST"), port=int(Config.get_property("PORT")))
 

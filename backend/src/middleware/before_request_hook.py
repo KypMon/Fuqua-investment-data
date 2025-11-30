@@ -15,6 +15,7 @@ class BeforeRequestHook(object):
         @app.before_request
         def authenticate_and_authorize():
             status_code = request.environ.get("status_code")
+            self.logger.info("BeforeRequestHook status_code: " + str(status_code))
             if status_code == 401:
                 self.logger.info("HTTP status code is " + str(status_code))
                 login_url = Config.get_property("fw.login.url")

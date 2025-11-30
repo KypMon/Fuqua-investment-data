@@ -20,7 +20,6 @@ class Matrix(object):
         module_dir = os.path.dirname(os.path.abspath(__file__))
         static_dir = os.path.join(module_dir, "static")
         self.logger.info(str(static_dir))
-        #static_dir = os.path.join(module_dir, "static")
 
         # guarantee folder exists
         os.makedirs(static_dir, exist_ok=True)

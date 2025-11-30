@@ -17,8 +17,11 @@ function App() {
     if (authElement) {
       authElement.setAttribute('url', `${process.env.REACT_APP_AUTH_URL}`);
       authElement.setAttribute('validateUrl', `${process.env.REACT_APP_VALIDATE_URL}`);
-    } else {
-      console.warn('fw-auth element not found in DOM');
+
+      // Add event listeners to see what fw-auth is doing
+      authElement.addEventListener('login', () => console.log('fw-auth: login event'));
+      authElement.addEventListener('logout', () => console.log('fw-auth: logout event'));
+      authElement.addEventListener('authenticated', () => console.log('fw-auth: authenticated'));
     }
   }, []); // runs once after initial mount
 
