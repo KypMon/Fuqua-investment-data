@@ -1,6 +1,8 @@
 import jwt
 import ssl
 import os
+import base64
+import json
 from jwt import PyJWKClient
 #from src.config.config import Config
 from src.config.config import Config
@@ -25,7 +27,7 @@ class Authentication(object):
     def __init__(self, app) -> None:
         self.logger = AppLogger.get_logger()
         self.app = app
-        #self.logger.info(str(Authentication.auth_config))
+        self.logger.info(str(Authentication.auth_config))
 
     def __call__(self, environ, start_response):
         #self.logger.info("------------------------ Authentication -----------------------------")
@@ -46,10 +48,10 @@ class Authentication(object):
         # # ---- end static skip ----
 
         # skip all authentication logic for OPTIONS
-        if request.method == "OPTIONS":
-            #self.logger.info("request.method is " + str(request.method))
-            environ["status_code"] = 200
-            return self.app(environ, start_response)
+        # if request.method == "OPTIONS":
+        #     #self.logger.info("request.method is " + str(request.method))
+        #     environ["status_code"] = 200
+        #     return self.app(environ, start_response)
 
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
         #self.logger.info("request.base_url " + str(request.base_url))
@@ -62,11 +64,14 @@ class Authentication(object):
         #self.logger.info("request.args -> " + str(request.args))
         #self.logger.info("request.application -> " + str(request.application))
         #self.logger.info("request.data -> " + str(request.data))
-        self.logger.info("request.full_path -> " + str(request.full_path))
+        #self.logger.info("request.full_path -> " + str(request.full_path))
 
         # for key,value in environ.items():
         #     if key == "HTTP_COOKIE" or key == "HTTP_HOST" or key == "REQUEST_URI":
         #         self.logger.info(key + " -> " + str(value))
+        
+        self.logger.info(f"Request path: {request.path}, full_path: {request.full_path}")
+        self.logger.info(f"Cookie header: {request.headers.get('Cookie')}")
 
         try:
             data = request.headers.get("Cookie") if request.headers.get("Cookie") is not None \
@@ -75,6 +80,7 @@ class Authentication(object):
             #self.logger.info("data: " + str(data))
 
             JWT = self.extractJWT(data) if data is not None else None
+            self.debugger(JWT)
             #if JWT is not None:
             #   self.logger.info("JWT is " + JWT)
 
@@ -125,6 +131,8 @@ class Authentication(object):
 
 
     def extractJWT(self, cookieString:str) -> str:
+        self.logger.info(f"Auth config: issuer={Authentication.auth_config['issuer']}, audience={Authentication.auth_config['audience']}, algorithm={Authentication.auth_config['algorithm']}, jwks_uri={Authentication.auth_config['jwks_uri']}")
+
         try:
             if cookieString is None or len(cookieString) == 0:
                 self.logger.info("NO COOKIE STRING")
@@ -156,3 +164,14 @@ class Authentication(object):
     #     jwks_url = Authentication.auth_config["jwks_uri"]
     #     jwks_client = PyJWKClient(jwks_url, ssl_context=ctx, timeout=5)
     #     return jwks_client.get_signing_key_from_jwt(JWT)
+
+    def debugger(self, JWT):
+        self.logger.info(f"Extracted JWT (first 50 chars): {JWT[:50]}...")
+        if JWT:
+            # Decode header (base64) without verification to inspect
+            try:
+                header_b64 = JWT.split('.')[0] + '=' * (4 - len(JWT.split('.')[0]) % 4)
+                header = json.loads(base64.b64decode(header_b64).decode())
+                self.logger.info(f"JWT Header: kid={header.get('kid')}, alg={header.get('alg')}, typ={header.get('typ')}")
+            except Exception as e:
+                self.logger.error(f"Failed to decode JWT header: {e}")

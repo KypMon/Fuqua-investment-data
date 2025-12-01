@@ -45,11 +45,8 @@ RUN npm install --legacy-peer-deps
 RUN npm run build
 
 
-FROM python:3.13-alpine
-
-# ## the ENV environment variable exists for backward compatibility reasons 
-# ##  (we want Geetha to be able to continue to develop in her local, non-Docker environment)
-# ARG ENV
+#FROM python:3.13-alpine
+FROM python:3.13-slim
 
 ARG HTTP_PROXY
 ARG HTTPS_PROXY
