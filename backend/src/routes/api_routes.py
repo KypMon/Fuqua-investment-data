@@ -53,8 +53,8 @@ class ApiRoutes(object):
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         @bp.route(f"{self.APP_PREFIX}/<path:path>")
         def serve_react_app(path):
-            self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
-            self.logger.info("path: " + str(path))
+            #self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
+            #self.logger.info("path: " + str(path))
             #react_build = current_app.config.get("REACT_BUILD_PATH", "react_build")
             #fullpath = os.path.join(react_build, path)
             fullpath = os.path.join(self.REACT_BUILD_PATH, path)
