@@ -36,7 +36,6 @@ class Authentication(object):
         #     self.logger.info(key + " -> " + str(value))
 
         request = Request(environ, shallow=False)
-        self.logger.info("request.full_path -> " + str(request.full_path))
 
         # # ---- skip static assets early ----
         path = request.path
@@ -80,21 +79,8 @@ class Authentication(object):
                     else (environ["HTTP_COOKIE"] if "HTTP_COOKIE" in environ else None)
             
             #self.logger.info("data: " + str(data))
-            ###
-            ### begin 1-time debug
-            # resp = requests.get(Authentication.auth_config["jwks_uri"], timeout=5)
-            # self.logger.info(f"JWKS status: {resp.status_code}")
-            # if resp.status_code == 200:
-            #     jwks = resp.json()
-            #     general_key = next((k for k in jwks['keys'] if k['kid']=='general'), None)
-            #     if general_key:
-            #         self.logger.info(f"JWKS has 'general' key: alg={general_key['alg']}")
-            #     else:
-            #         self.logger.info("NO 'general' key in JWKS!")
-            ### end 1-time debug
 
             JWT = self.extractJWT(data) if data is not None else None
-            #self.debugger(JWT)
             #if JWT is not None:
             #   self.logger.info("JWT is " + JWT)
 
@@ -104,7 +90,7 @@ class Authentication(object):
                 return self.app(environ, start_response)
 
             # https://pyjwt.readthedocs.io/en/stable/usage.html#retrieve-rsa-signing-keys-from-a-jwks-endpoint
-            signing_key = self.extract_signing_key(JWT) #from https://go-dev.fuqua.duke.edu/auth/jwks
+            signing_key = self.extract_signing_key(JWT) 
 
             # claims = jwt.decode(
             #     JWT,
@@ -155,7 +141,6 @@ class Authentication(object):
             return self.app(environ, start_response)
 
     def extractJWT(self, cookieString:str) -> str:
-        #self.logger.info(f"Auth config: issuer={Authentication.auth_config['issuer']}, audience={Authentication.auth_config['audience']}, algorithm={Authentication.auth_config['algorithm']}, jwks_uri={Authentication.auth_config['jwks_uri']}")
 
         try:
             if cookieString is None or len(cookieString) == 0:
@@ -175,29 +160,7 @@ class Authentication(object):
             self.logger.error(str(err.__dict__))
             return None
 
-    # def extract_signing_key(self, JWT:str):
-    #     jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"] )
-    #     signing_key = jwks_client.get_signing_key_from_jwt(JWT)
-    #     return signing_key
-
     def extract_signing_key(self, JWT:str):
-        #self.logger.info(f"Fetching from JWKS: {Authentication.auth_config['jwks_uri']}")
-        jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"])
+        jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"] )
         signing_key = jwks_client.get_signing_key_from_jwt(JWT)
-        
-        #self.logger.info(f"KEY kid: {getattr(signing_key, 'key_id', 'MISSING')}")
-        #self.logger.info(f"KEY alg: {getattr(signing_key, 'algorithm', 'MISSING')}")
-        #self.logger.info(f"KEY matches header? {getattr(signing_key, 'key_id', 'MISSING') == 'general'}")
         return signing_key
-
-
-    def debugger(self, JWT):
-        if JWT:
-            self.logger.info(f"Extracted JWT (first 50 chars): {JWT[:50]}...")
-            # Decode header (base64) without verification to inspect
-            try:
-                header_b64 = JWT.split('.')[0] + '=' * (4 - len(JWT.split('.')[0]) % 4)
-                header = json.loads(base64.b64decode(header_b64).decode())
-                self.logger.info(f"JWT Header: kid={header.get('kid')}, alg={header.get('alg')}, typ={header.get('typ')}")
-            except Exception as e:
-                self.logger.error(f"Failed to decode JWT header: {e}")
