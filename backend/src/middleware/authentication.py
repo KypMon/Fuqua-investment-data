@@ -28,7 +28,7 @@ class Authentication(object):
     def __init__(self, app) -> None:
         self.logger = AppLogger.get_logger()
         self.app = app
-        self.logger.info(str(Authentication.auth_config))
+        #self.logger.info(str(Authentication.auth_config))
 
     def __call__(self, environ, start_response):
         #self.logger.info("------------------------ Authentication -----------------------------")
@@ -78,7 +78,7 @@ class Authentication(object):
             data = request.headers.get("Cookie") if request.headers.get("Cookie") is not None \
                     else (environ["HTTP_COOKIE"] if "HTTP_COOKIE" in environ else None)
             
-            #self.logger.info("data: " + str(data))
+            self.logger.info("data: " + str(data))
             ###
             ### begin 1-time debug
             resp = requests.get(Authentication.auth_config["jwks_uri"], timeout=5)
@@ -89,7 +89,7 @@ class Authentication(object):
                 if general_key:
                     self.logger.info(f"JWKS has 'general' key: alg={general_key['alg']}")
                 else:
-                    self.logger.info("❌ NO 'general' key in JWKS!")
+                    self.logger.info("NO 'general' key in JWKS!")
             ### end 1-time debug
 
             JWT = self.extractJWT(data) if data is not None else None
