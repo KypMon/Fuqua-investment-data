@@ -27,7 +27,7 @@ const theme = createTheme();
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/financial_analyzer">
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <App />
