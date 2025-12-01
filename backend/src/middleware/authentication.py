@@ -53,6 +53,21 @@ class Authentication(object):
             #self.logger.info("request.method is " + str(request.method))
             environ["status_code"] = 200
             return self.app(environ, start_response)
+        
+        # begin debug
+        response = requests.get(Authentication.auth_config["jwks_uri"])
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        jwks = response.json()  # Parse the JWKS as JSON
+        print(json.dumps(jwks, indent=2))  # Pretty-print the keys
+
+        # Optional: inspect key IDs ("kid")
+        if "keys" in jwks:
+            key_ids = [key.get("kid") for key in jwks["keys"]]
+            print("Available key IDs:", key_ids)
+        else:
+            print("No 'keys' field found in JWKS response!")
+        # end debug
 
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
         #self.logger.info("request.base_url " + str(request.base_url))
@@ -88,6 +103,11 @@ class Authentication(object):
                 self.logger.info(str(request.full_path) + " " + "No JWT ... returning 401")
                 environ["status_code"] = 401
                 return self.app(environ, start_response)
+            
+            # begin debug
+            header = jwt.get_unverified_header(JWT)
+            self.logger.info("JWT header kid: " + str(header.get("kid")))
+            # end debug
 
             # https://pyjwt.readthedocs.io/en/stable/usage.html#retrieve-rsa-signing-keys-from-a-jwks-endpoint
             signing_key = self.extract_signing_key(JWT) 
@@ -133,8 +153,7 @@ class Authentication(object):
                 return self.app(environ, start_response)
             
             if "Signature verification failed".upper() in (str(err)).upper():
-                # environ["status_code"] = 401
-                environ["status_code"] = 200
+                environ["status_code"] = 401
                 return self.app(environ, start_response)
 
             environ["status_code"] = 500
