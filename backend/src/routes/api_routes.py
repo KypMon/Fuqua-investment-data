@@ -50,16 +50,6 @@ class ApiRoutes(object):
     def _add_routes(self) -> Any:
         bp = self.blueprint
 
-        # @bp.route(f"{self.APP_PREFIX}/login/callback")
-        # def login_callback():
-        #     self.logger.info("LOGIN CALLBACK")
-        #     token = request.args.get("token")
-        #     resp = make_response(redirect(f"{self.APP_PREFIX}/"))
-        #     if token:
-        #         resp.set_cookie(Config.get_property("auth.cookie.name"),
-        #                         token, httponly=True, path="/")
-        #     return resp
-
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         @bp.route(f"{self.APP_PREFIX}/<path:path>")
         def serve_react_app(path):
