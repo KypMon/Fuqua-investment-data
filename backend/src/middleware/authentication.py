@@ -107,6 +107,9 @@ class Authentication(object):
             # begin debug
             header = jwt.get_unverified_header(JWT)
             self.logger.info("JWT header kid: " + str(header.get("kid")))
+
+            claims_unverified = jwt.decode(JWT, options={"verify_signature": False})
+            self.logger.info(f"Unverified claims: {claims_unverified}")
             # end debug
 
             # https://pyjwt.readthedocs.io/en/stable/usage.html#retrieve-rsa-signing-keys-from-a-jwks-endpoint
@@ -129,7 +132,8 @@ class Authentication(object):
                 algorithms=[Authentication.auth_config["algorithm"]],  # LIST format!
                 options={"verify_exp": True, "verify_iat": False},
                 audience=Authentication.auth_config["audience"],
-                issuer=Authentication.auth_config["issuer"]
+                issuer=Authentication.auth_config["issuer"],
+                options={"verify_exp": True, "verify_aud": False}
             )
             #self.logger.info(str(request.full_path) + " DECODE SUCCESSFUL")
 
