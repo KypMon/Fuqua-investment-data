@@ -133,7 +133,8 @@ class Authentication(object):
                 return self.app(environ, start_response)
             
             if "Signature verification failed".upper() in (str(err)).upper():
-                environ["status_code"] = 401
+                # environ["status_code"] = 401
+                environ["status_code"] = 200
                 return self.app(environ, start_response)
 
             environ["status_code"] = 500
