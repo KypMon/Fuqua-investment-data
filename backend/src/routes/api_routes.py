@@ -75,10 +75,11 @@ class ApiRoutes(object):
             #self.logger.info("fullpath: " + str(fullpath))
 
             if path == "":
-                self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because path is empty")
+                #self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because path is empty")
                 return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
             if not os.path.exists(fullpath):
+                self.logger.info("fullpath: " + str(fullpath) + " does not exist")
                 self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because fullpath does not exist")
                 return send_from_directory(self.REACT_BUILD_PATH, "index.html")
             

@@ -113,6 +113,10 @@ class Authentication(object):
             if "Signature has expired".upper() in (str(err)).upper():
                 environ["status_code"] = 401
                 return self.app(environ, start_response)
+            
+            if "Signature verification failed".upper() in (str(err)).upper():
+                environ["status_code"] = 401
+                return self.app(environ, start_response)
 
             environ["status_code"] = 500
             environ["err"] = str(err)
