@@ -125,7 +125,7 @@ class Authentication(object):
                 audience=Authentication.auth_config["audience"],
                 issuer=Authentication.auth_config["issuer"]
             )
-            self.logger.info(str(request.full_path) + " DECODE SUCCESSFUL")
+            #self.logger.info(str(request.full_path) + " DECODE SUCCESSFUL")
 
             if claims is None: # return 401
                 self.logger.info(str(request.full_path) + " No claims taken from JWT ... returning 401")
@@ -155,7 +155,7 @@ class Authentication(object):
             return self.app(environ, start_response)
 
     def extractJWT(self, cookieString:str) -> str:
-        self.logger.info(f"Auth config: issuer={Authentication.auth_config['issuer']}, audience={Authentication.auth_config['audience']}, algorithm={Authentication.auth_config['algorithm']}, jwks_uri={Authentication.auth_config['jwks_uri']}")
+        #self.logger.info(f"Auth config: issuer={Authentication.auth_config['issuer']}, audience={Authentication.auth_config['audience']}, algorithm={Authentication.auth_config['algorithm']}, jwks_uri={Authentication.auth_config['jwks_uri']}")
 
         try:
             if cookieString is None or len(cookieString) == 0:
@@ -181,7 +181,7 @@ class Authentication(object):
     #     return signing_key
 
     def extract_signing_key(self, JWT:str):
-        self.logger.info(f"Fetching from JWKS: {Authentication.auth_config['jwks_uri']}")
+        #self.logger.info(f"Fetching from JWKS: {Authentication.auth_config['jwks_uri']}")
         jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"])
         signing_key = jwks_client.get_signing_key_from_jwt(JWT)
         

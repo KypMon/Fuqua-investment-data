@@ -18,8 +18,8 @@ ENV REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL}
 ARG REACT_APP_API_BASE_URL
 ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
 
-#ARG REACT_APP_BASENAME
-#ENV REACT_APP_BASENAME=${REACT_APP_BASENAME}
+ARG REACT_APP_BASENAME
+ENV REACT_APP_BASENAME=${REACT_APP_BASENAME}
 
 RUN mkdir -p /fa
 WORKDIR /fa
@@ -33,7 +33,7 @@ COPY frontend/.env_docker .env
 RUN sed -i "s@__react_app_api_base_url@${REACT_APP_API_BASE_URL}@g" /fa/.env
 RUN sed -i "s@__react_app_validate_url@${REACT_APP_VALIDATE_URL}@g" /fa/.env
 RUN sed -i "s@__react_app_auth_url@${REACT_APP_AUTH_URL}@g"         /fa/.env
-#RUN sed -i "s@__react_app_basename@${REACT_APP_BASENAME}@g"         /fa/.env
+RUN sed -i "s@__react_app_basename@${REACT_APP_BASENAME}@g"         /fa/.env
 
 RUN npm config set registry=${NPM_REGISTRY}
 RUN npm config set access=public
