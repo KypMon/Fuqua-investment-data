@@ -92,7 +92,9 @@ class Authentication(object):
                     self.logger.info("NO 'general' key in JWKS!")
             ### end 1-time debug
 
+            self.logger.info("calling self.extractJWT")
             JWT = self.extractJWT(data) if data is not None else None
+            self.logger.info("called self.extractJWT")
             self.debugger(JWT)
             #if JWT is not None:
             #   self.logger.info("JWT is " + JWT)
@@ -191,8 +193,10 @@ class Authentication(object):
 
 
     def debugger(self, JWT):
-        self.logger.info(f"Extracted JWT (first 50 chars): {JWT[:50]}...")
+        self.logger.info("begin debugger")
+        
         if JWT:
+            self.logger.info(f"Extracted JWT (first 50 chars): {JWT[:50]}...")
             # Decode header (base64) without verification to inspect
             try:
                 header_b64 = JWT.split('.')[0] + '=' * (4 - len(JWT.split('.')[0]) % 4)
