@@ -102,17 +102,17 @@ ENV STOCKER_ETF=${STOCKER_ETF}
 ENV STATIC_DIR=${STATIC_DIR}
 ENV REACT_BUILD_DIR=${REACT_BUILD_DIR}
 
-#RUN apk add  --no-cache  gcc g++ musl-dev python3-dev libffi-dev openssl-dev make
-#RUN apk add --no-cache \
-#    gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
-#    lapack-dev blas-dev rust cargo
+# apk for using alpine image
 # RUN apk add --no-cache \
 #     gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
-#     lapack-dev blas-dev rust cargo git cmake
-RUN apk add --no-cache \
-    gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
-    lapack-dev blas-dev rust cargo git cmake ca-certificates \
-    && update-ca-certificates
+#     lapack-dev blas-dev rust cargo git cmake ca-certificates \
+#     && update-ca-certificates
+RUN apt-get update && apt-get install -y \
+    gcc g++ python3-dev libffi-dev libssl-dev make \
+    liblapack-dev libblas-dev rustc cargo git cmake ca-certificates \
+    && update-ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # /app/fa
 ENV HOME=/app
