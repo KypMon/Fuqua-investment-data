@@ -50,11 +50,22 @@ class ApiRoutes(object):
     def _add_routes(self) -> Any:
         bp = self.blueprint
 
+            # Redirect logic for root URL
+        @bp.route("/")
+        def redirect_to_app_prefix():
+            self.logger.info("ROUTE /")
+            self.logger.info("APP_PREFIX is " + str(self.APP_PREFIX))
+            # If APP_PREFIX is "/", no need to redirect
+            if self.APP_PREFIX == "/" or self.APP_PREFIX == "":
+                return self.serve_react_app("")
+            # Otherwise redirect to APP_PREFIX with trailing slash
+            return redirect(self.APP_PREFIX + "/", code=301)
+
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         @bp.route(f"{self.APP_PREFIX}/<path:path>")
         def serve_react_app(path):
-            #self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
-            #self.logger.info("path: " + str(path))
+            self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
+            self.logger.info("path: " + str(path))
             #react_build = current_app.config.get("REACT_BUILD_PATH", "react_build")
             #fullpath = os.path.join(react_build, path)
             fullpath = os.path.join(self.REACT_BUILD_PATH, path)
