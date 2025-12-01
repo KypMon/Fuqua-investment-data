@@ -36,6 +36,7 @@ class Authentication(object):
         #     self.logger.info(key + " -> " + str(value))
 
         request = Request(environ, shallow=False)
+        self.logger.info("request.full_path -> " + str(request.full_path))
 
         # # ---- skip static assets early ----
         path = request.path
@@ -44,14 +45,14 @@ class Authentication(object):
             or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
         ):
             #self.logger.info(f"Skipping auth for static resource: {path}")
-            #environ["status_code"] = 200
+            environ["status_code"] = 200
             return self.app(environ, start_response)
         # # ---- end static skip ----
 
         # skip all authentication logic for OPTIONS
         if request.method == "OPTIONS":
             #self.logger.info("request.method is " + str(request.method))
-            #environ["status_code"] = 200
+            environ["status_code"] = 200
             return self.app(environ, start_response)
 
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
@@ -78,29 +79,27 @@ class Authentication(object):
             data = request.headers.get("Cookie") if request.headers.get("Cookie") is not None \
                     else (environ["HTTP_COOKIE"] if "HTTP_COOKIE" in environ else None)
             
-            self.logger.info("data: " + str(data))
+            #self.logger.info("data: " + str(data))
             ###
             ### begin 1-time debug
-            resp = requests.get(Authentication.auth_config["jwks_uri"], timeout=5)
-            self.logger.info(f"JWKS status: {resp.status_code}")
-            if resp.status_code == 200:
-                jwks = resp.json()
-                general_key = next((k for k in jwks['keys'] if k['kid']=='general'), None)
-                if general_key:
-                    self.logger.info(f"JWKS has 'general' key: alg={general_key['alg']}")
-                else:
-                    self.logger.info("NO 'general' key in JWKS!")
+            # resp = requests.get(Authentication.auth_config["jwks_uri"], timeout=5)
+            # self.logger.info(f"JWKS status: {resp.status_code}")
+            # if resp.status_code == 200:
+            #     jwks = resp.json()
+            #     general_key = next((k for k in jwks['keys'] if k['kid']=='general'), None)
+            #     if general_key:
+            #         self.logger.info(f"JWKS has 'general' key: alg={general_key['alg']}")
+            #     else:
+            #         self.logger.info("NO 'general' key in JWKS!")
             ### end 1-time debug
 
-            self.logger.info("calling self.extractJWT")
             JWT = self.extractJWT(data) if data is not None else None
-            self.logger.info("called self.extractJWT")
-            self.debugger(JWT)
+            #self.debugger(JWT)
             #if JWT is not None:
             #   self.logger.info("JWT is " + JWT)
 
             if JWT is None: # return 401
-                self.logger.info("No JWT ... returning 401")
+                self.logger.info(str(request.full_path) + " " + "No JWT ... returning 401")
                 environ["status_code"] = 401
                 return self.app(environ, start_response)
 
@@ -115,8 +114,8 @@ class Authentication(object):
             #     audience=Authentication.auth_config["audience"], #"FuquaWorld",
             #     issuer=Authentication.auth_config["issuer"] # https://go-dev.fuqua.duke.edu/auth
             # )
-            self.logger.info("=== STARTING JWT DECODE ===")
-            self.logger.info(f"Using alg: {Authentication.auth_config['algorithm']}")
+            #self.logger.info("=== STARTING JWT DECODE ===")
+            #self.logger.info(f"Using alg: {Authentication.auth_config['algorithm']}")
 
             claims = jwt.decode(
                 JWT,
@@ -126,10 +125,10 @@ class Authentication(object):
                 audience=Authentication.auth_config["audience"],
                 issuer=Authentication.auth_config["issuer"]
             )
-            self.logger.info("DECODE SUCCESSFUL")
+            self.logger.info(str(request.full_path) + " DECODE SUCCESSFUL")
 
             if claims is None: # return 401
-                self.logger.info("No claims taken from JWT ... returning 401")
+                self.logger.info(str(request.full_path) + " No claims taken from JWT ... returning 401")
                 environ["status_code"] = 401
                 return self.app(environ, start_response)
 
@@ -142,7 +141,7 @@ class Authentication(object):
             return self.app(environ, start_response)
 
         except Exception as err:
-            self.logger.error(str(err))
+            self.logger.error(str(request.full_path) + " " + str(err))
             if "Signature has expired".upper() in (str(err)).upper():
                 environ["status_code"] = 401
                 return self.app(environ, start_response)
@@ -186,15 +185,13 @@ class Authentication(object):
         jwks_client = PyJWKClient(Authentication.auth_config["jwks_uri"])
         signing_key = jwks_client.get_signing_key_from_jwt(JWT)
         
-        self.logger.info(f"KEY kid: {getattr(signing_key, 'key_id', 'MISSING')}")
-        self.logger.info(f"KEY alg: {getattr(signing_key, 'algorithm', 'MISSING')}")
-        self.logger.info(f"KEY matches header? {getattr(signing_key, 'key_id', 'MISSING') == 'general'}")
+        #self.logger.info(f"KEY kid: {getattr(signing_key, 'key_id', 'MISSING')}")
+        #self.logger.info(f"KEY alg: {getattr(signing_key, 'algorithm', 'MISSING')}")
+        #self.logger.info(f"KEY matches header? {getattr(signing_key, 'key_id', 'MISSING') == 'general'}")
         return signing_key
 
 
     def debugger(self, JWT):
-        self.logger.info("begin debugger")
-        
         if JWT:
             self.logger.info(f"Extracted JWT (first 50 chars): {JWT[:50]}...")
             # Decode header (base64) without verification to inspect

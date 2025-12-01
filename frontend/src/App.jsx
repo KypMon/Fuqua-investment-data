@@ -18,36 +18,8 @@ function App() {
     if (authElement) {
       authElement.setAttribute('url', `${process.env.REACT_APP_AUTH_URL}`);
       authElement.setAttribute('validateUrl', `${process.env.REACT_APP_VALIDATE_URL}`);
-
-      // Direct event listeners on Web Component ref
-      // const handleLogin = () => console.log('fw-auth: login event');
-      // const handleLogout = () => console.log('fw-auth: logout event');
-      // const handleAuthenticated = () => console.log('fw-auth: authenticated');
-
-      // authElement.addEventListener('login', handleLogin);
-      // authElement.addEventListener('logout', handleLogout);
-      // authElement.addEventListener('authenticated', handleAuthenticated);
-
-      // // Cleanup
-      // return () => {
-      //   authElement.removeEventListener('login', handleLogin);
-      //   authElement.removeEventListener('logout', handleLogout);
-      //   authElement.removeEventListener('authenticated', handleAuthenticated);
-      // };
     }
   }, []);
-  // useEffect(() => {
-  //   const authElement = document.querySelector('fw-auth');
-  //   if (authElement) {
-  //     authElement.setAttribute('url', `${process.env.REACT_APP_AUTH_URL}`);
-  //     authElement.setAttribute('validateUrl', `${process.env.REACT_APP_VALIDATE_URL}`);
-
-  //     // Add event listeners to see what fw-auth is doing
-  //     authElement.addEventListener('login', () => console.log('fw-auth: login event'));
-  //     authElement.addEventListener('logout', () => console.log('fw-auth: logout event'));
-  //     authElement.addEventListener('authenticated', () => console.log('fw-auth: authenticated'));
-  //   }
-  // }, []); // runs once after initial mount
 
   const [result, setResult] = useState(null);
   const [backtestResult, setBacktestResult] = useState(null);
@@ -73,7 +45,7 @@ function App() {
 
   const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "";
   const isLocalhost = apiBaseUrl.includes("localhost");
-  console.log(`${apiBaseUrl}`);
+  //console.log(`${apiBaseUrl}`);
 
   return (
     <>
