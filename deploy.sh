@@ -15,7 +15,7 @@ JWKS_URI=https://go-dev.fuqua.duke.edu/auth/jwks
 ALGORITHM=RS256
 AUDIENCE=FuquaWorld
 FW_LOGIN_URL=https://authdev.fuqua.duke.edu/auth/duke?service=
-HOME_PAGE_REDIRECT=http://go-dev.fuqua.duke.edu/financial_analyzer/
+HOME_PAGE_REDIRECT=https://go-dev.fuqua.duke.edu/financial_analyzer/
 DATA_DIRECTORY=/data/input
 CONFIG_DIRECTORY=config
 F_F_MOMENTUM_FACTOR=F-F_Momentum_Factor.csv
@@ -30,7 +30,7 @@ VOLUME_CSV_INPUT=fa_volume_csv_input  # read-only!  See deploy_csv_volume.sh
 #
 # REACT_APP_API_BASE_URL=http://go-dev.fuqua.duke.edu:5002/financial_analyzer
 #REACT_APP_API_BASE_URL=http://go-dev.fuqua.duke.edu:5002
-REACT_APP_API_BASE_URL=http://go-dev.fuqua.duke.edu/financial_analyzer
+REACT_APP_API_BASE_URL=https://go-dev.fuqua.duke.edu/financial_analyzer
 REACT_APP_VALIDATE_URL=https://authdev.fuqua.duke.edu/auth/getjwt
 REACT_APP_AUTH_URL=https://authdev.fuqua.duke.edu/auth/duke?service=
 
