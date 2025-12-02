@@ -1,4 +1,5 @@
 import os
+import threading
 from datetime import datetime, UTC
 import pandas as pd
 from src.config.config import Config
@@ -29,6 +30,35 @@ class FileService(object):
         self.is_local_host = True if config.get("HOST") == "localhost" else False
 
         #self.STATIC_DIR = config.get("static.dir")
+        # this is for user file uploads / downloads
+        self._token_map = {}
+        self._lock = threading.Lock()
+
+    def register_user_file(self, user, token: str, file_path: str):
+        """
+        Map a one-time token to this user's file path.
+        You could attach expiry or periodic cleanup if desired.
+        """
+        self.logger.info(str(token))
+        user_id = getattr(user, "userid", None) or user.get_userid()
+        self.logger.info(str(user))
+        with self._lock:
+            self._token_map[token] = {"user_id": user_id, "path": file_path}
+            self.logger.info(str(self._token_map))
+
+    def resolve_user_token(self, user, token: str):
+        """Return the file info *iff* this user owns that token."""
+        self.logger.info(str(token))
+        self.logger.info(str(self._token_map))
+        self.logger.info(str(user))
+        user_id = getattr(user, "userid", None) or user.get_userid()
+        with self._lock:
+            entry = self._token_map.get(token)
+            if not entry:
+                return None
+            if entry["user_id"] != user_id:
+                return None
+            return entry
 
     def get_etf_file_path(self) -> str:
         return self.etf_file

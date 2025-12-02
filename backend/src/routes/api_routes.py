@@ -33,9 +33,7 @@ class ApiRoutes(object):
         self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
 
         routes_dir = os.path.dirname(__file__)
-        #self.logger.info("routes_dir: " + str(routes_dir))
         backend_root = os.path.abspath(os.path.join(routes_dir, "..", ".."))  # up to backend
-        #self.logger.info("backend_root: " + str(backend_root))
         self.REACT_BUILD_PATH = os.path.join(backend_root, Config.get_property("react.build.dir"))
         #self.logger.info("REACT_BUILD_PATH: " + str(self.REACT_BUILD_PATH))
 
@@ -44,7 +42,6 @@ class ApiRoutes(object):
 
         self.data_service = DataService()
         self.file_service = FileService()
-        # self.matrix_service = MatrixService()
         self.backtest_service = BacktestService()
 
     def _add_routes(self) -> Any:
@@ -53,19 +50,9 @@ class ApiRoutes(object):
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         @bp.route(f"{self.APP_PREFIX}/<path:path>")
         def serve_react_app(path):
-            #self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
-            #self.logger.info("path: " + str(path))
-            #react_build = current_app.config.get("REACT_BUILD_PATH", "react_build")
-            #fullpath = os.path.join(react_build, path)
             fullpath = os.path.join(self.REACT_BUILD_PATH, path)
-            # if not os.path.exists(fullpath):
-            #     self.logger.info("fullpath: " + str(fullpath) + " DOES NOT EXIST")
-            # else:
-            #     self.logger.info("fullpath: " + str(fullpath) + " exists")
-            #self.logger.info("fullpath: " + str(fullpath))
 
             if path == "":
-                #self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because path is empty")
                 return send_from_directory(self.REACT_BUILD_PATH, "index.html")
 
             if not os.path.exists(fullpath):

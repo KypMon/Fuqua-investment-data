@@ -1,6 +1,7 @@
 import pandas as pd
 import os
-from flask import Blueprint, request, jsonify, g
+from uuid import uuid4
+from flask import Blueprint, request, jsonify, g, url_for, abort, send_file
 from datetime import datetime
 from werkzeug.utils import secure_filename
 from src.middleware.fw_user import FwUser
@@ -12,12 +13,10 @@ class Matrix(object):
 
     def __init__(self, app=None) -> None:
         self.logger = AppLogger.get_logger()
-        self.logger.info("This is Matrix constructor")
         self.matrix_service = MatrixService()
         self.file_service = FileService()
 
         self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
-        self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
 
         # determine absolute path
         module_dir = os.path.dirname(os.path.abspath(__file__))
@@ -29,13 +28,6 @@ class Matrix(object):
 
         self.static_dir = static_dir
 
-        # self.blueprint = Blueprint(
-        #     "Matrix",
-        #     __name__,
-        #     url_prefix="/matrix",
-        #     static_url_path="/static",     # served at /matrix/static
-        #     static_folder=static_dir,
-        # )
         self.blueprint = Blueprint(
             "Matrix",
             __name__,
@@ -45,36 +37,37 @@ class Matrix(object):
         )
 
         self.blueprint.add_url_rule(
+            "/matret/download/<token>",
+            view_func = self.matret_download,
+            methods=["GET"],
+        )
+
+        self.blueprint.add_url_rule(
             "/matret/generate",
-            #f"{self.APP_PREFIX}/matret/generate", 
             view_func=self.matrix_generate_matret,
             methods=["POST"],
         )
 
         self.blueprint.add_url_rule(
             "/matret/upload",
-            #f"{self.APP_PREFIX}/matret/upload", 
             view_func=self.matrix_upload_matret,
             methods=["POST"],
         )
 
         self.blueprint.add_url_rule(
             "/mat_er_covr/generate",
-            #f"{self.APP_PREFIX}/mat_er_covr/generate", 
             view_func=self.matrix_generate_mat_er_covr,
             methods=["POST"],
         )
 
         self.blueprint.add_url_rule(
             "/mat_er_covr/upload",
-            #f"{self.APP_PREFIX}/mat_er_covr/upload", 
             view_func=self.matrix_upload_mat_er_covr,
             methods=["POST"],
         )
 
         self.blueprint.add_url_rule(
             "/portfolios",
-            #f"{self.APP_PREFIX}/portfolios", 
             view_func=self.matrix_compute_portfolios,
             methods=["POST"],
         )
@@ -83,6 +76,35 @@ class Matrix(object):
             app.register_blueprint(self.blueprint)
 
     #@blueprint.route("/matrix/matret/generate", methods=["POST"])
+    # def matrix_generate_matret(self):
+    #     data = request.json or {}
+    #     self.log_user_activity()
+
+    #     tickers = data.get("tickers", [])
+    #     if isinstance(tickers, str):
+    #         tickers = [t.strip() for t in tickers.split(",") if t.strip()]
+
+    #     start_date = data.get("start_date", "2000-01-01")
+    #     end_date = data.get("end_date", datetime.today().strftime("%Y-%m-%d"))
+
+    #     try:
+    #         matret_df, available = self.matrix_service.download_matret(tickers, start_date, end_date)
+    #     except Exception as exc:  # pragma: no cover - defensive error path
+    #         return jsonify({"error": str(exc)}), 400
+
+    #     # filename = save_dataframe(matret_df, "matret")
+    #     user = getattr(g, "fwUser", None)
+    #     filename = self.file_service.save_dataframe(user, matret_df, "matret", self.static_dir)
+    #     return jsonify(
+    #         {
+    #             "matrix": self.dataframe_payload(matret_df),
+    #             "tickers": available,
+    #             # "csv_url": f"/static/{filename}",
+    #             #"csv_url": f"/routes/static/{filename}",
+    #             "csv_url": f"{self.blueprint.url_prefix}{self.blueprint.static_url_path}/{filename}"
+    #         }
+    #     )
+
     def matrix_generate_matret(self):
         data = request.json or {}
         self.log_user_activity()
@@ -95,23 +117,66 @@ class Matrix(object):
         end_date = data.get("end_date", datetime.today().strftime("%Y-%m-%d"))
 
         try:
-            matret_df, available = self.matrix_service.download_matret(tickers, start_date, end_date)
-        except Exception as exc:  # pragma: no cover - defensive error path
+            matret_df, available = self.matrix_service.download_matret(
+                tickers, start_date, end_date
+            )
+        except Exception as exc:
             return jsonify({"error": str(exc)}), 400
 
-        # filename = save_dataframe(matret_df, "matret")
-        user = getattr(g, "fwUser", None)
-        filename = self.file_service.save_dataframe(user, matret_df, "matret", self.static_dir)
-        return jsonify(
-            {
-                "matrix": self.dataframe_payload(matret_df),
-                "tickers": available,
-                # "csv_url": f"/static/{filename}",
-                #"csv_url": f"/routes/static/{filename}",
-                "csv_url": f"{self.blueprint.url_prefix}{self.blueprint.static_url_path}/{filename}"
-            }
-        )
+        fwUser = getattr(g, "fwUser", None)
 
+        # Save dataframe and get a file path (still under your static_dir for now)
+        filename = self.file_service.save_dataframe(fwUser, matret_df, "matret", self.static_dir)
+        file_path = os.path.join(self.static_dir, filename)
+
+        # --- NEW: Generate unguessable token and store mapping ---
+        token = uuid4().hex
+        self.file_service.register_user_file(fwUser, token, file_path)
+
+        # Build URL to download via token
+        download_url = url_for("matrix.download_matret", token=token)
+        self.logger.info(str(download_url))
+
+        return jsonify({
+            "matrix": self.dataframe_payload(matret_df),
+            "tickers": available,
+            "csv_url": download_url
+        })
+    
+    def download_matret(self, token):
+        """
+        Secure download endpoint. Uses a token issued by the generate route.
+        Only the owner of the file can access it.
+        """
+
+        user = getattr(g, "fwUser", None)
+        self.logger.info(str(user))
+
+        # Ask FileService to look up and validate this token for the current user
+        entry = self.file_service.resolve_user_token(user, token)
+        self.logger.info("entry: " + str(entry))
+
+        if not entry:
+            # token not found or doesn't belong to this user
+            self.logger.error("Aborting 403")
+            abort(403)
+
+        file_path = entry["path"]
+        self.logger.info(str(file_path))
+
+        try:
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=os.path.basename(file_path),
+                mimetype="text/csv",
+                max_age=0,
+                conditional=False
+            )
+        except FileNotFoundError:
+            self.logger.error("Aborting 404")
+            abort(404)
+    
     #@blueprint.route("/matrix/matret/upload", methods=["POST"])
     def matrix_upload_matret(self):
         self.log_user_activity()
