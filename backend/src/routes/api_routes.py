@@ -105,7 +105,8 @@ class ApiRoutes(object):
             #log.info("result: " + str(result))
             return jsonify(result)
     
-        @bp.route("/life-cycle/run", methods=["POST"])
+        #@bp.route("/life-cycle/run", methods=["POST"])
+        @bp.route(f"{self.APP_PREFIX}/life-cycle/run", methods=["POST"])
         def run_life_cycle():
             self.log_user_activity()
 
@@ -142,7 +143,8 @@ class ApiRoutes(object):
                 traceback.print_exc()
                 return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
 
-        @bp.route("/backtest", methods=["POST"])
+        #@bp.route("/backtest", methods=["POST"])
+        @bp.route(f"{self.APP_PREFIX}/backtest", methods=["POST"])
         def run_backtest():
             try:
                 data = request.json
@@ -246,7 +248,8 @@ class ApiRoutes(object):
                 traceback.print_exc()
                 return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
-        @bp.route("/regression", methods=["POST"])
+        #@bp.route("/regression", methods=["POST"])
+        @bp.route(f"{self.APP_PREFIX}/regression", methods=["POST"])
         def run_regression():
             try:
                 # @SDS begin
@@ -543,7 +546,8 @@ class ApiRoutes(object):
                 return jsonify({"error": str(e), "trace": current_traceback}), 500
 
         # this is for user uploads/downloads
-        @bp.route('/static/<path:filename>')
+        #@bp.route('/static/<path:filename>')
+        @bp.route(f"{self.APP_PREFIX}/static/<path:filename>", methods=["POST"])
         def serve_image(filename):
             self.log_user_activity()
             # @SDS begin
