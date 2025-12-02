@@ -76,7 +76,8 @@ class ApiRoutes(object):
             #self.logger.info("sending: " + str(self.REACT_BUILD_PATH) + " " + str(path))
             return send_from_directory(self.REACT_BUILD_PATH, path)
 
-        @bp.route("/run", methods=["POST"])
+        #@bp.route("/run", methods=["POST"])
+        @bp.route(f"{self.APP_PREFIX}/run", methods=["POST"])
         def run_mv():
             data = request.json or request.form
             self.log_user_activity(data)
