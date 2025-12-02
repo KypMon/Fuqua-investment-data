@@ -158,6 +158,13 @@ ENV VIRTUAL_ENV=${APP_PATH}/backend/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN python3 -m venv ${APP_PATH}/backend/.venv
+
+# Upgrade pip tools first (best practice)
+RUN ${APP_PATH}/backend/.venv/bin/pip install --upgrade pip setuptools wheel
+
+# Upgrade core SSL-related dependencies
+RUN ${APP_PATH}/backend/.venv/bin/pip install --upgrade requests urllib3 cryptography certifi
+
 RUN ${APP_PATH}/backend/.venv/bin/pip install  --no-cache-dir   -r ${APP_PATH}/backend/requirements.txt
 
 # WORKDIR ${APP_PATH}
