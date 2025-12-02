@@ -38,7 +38,7 @@ class Matrix(object):
 
         self.blueprint.add_url_rule(
             "/matret/download/<token>",
-            view_func = self.matret_download,
+            view_func = self.download_matret,
             methods=["GET"],
         )
 
