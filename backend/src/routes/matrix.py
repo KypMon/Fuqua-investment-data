@@ -134,7 +134,7 @@ class Matrix(object):
         self.file_service.register_user_file(fwUser, token, file_path)
 
         # Build URL to download via token
-        download_url = url_for("matrix.download_matret", token=token)
+        download_url = url_for("Matrix.download_matret", token=token)
         self.logger.info(str(download_url))
 
         return jsonify({
