@@ -16,8 +16,8 @@ class Matrix(object):
         self.matrix_service = MatrixService()
         self.file_service = FileService()
 
-        self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
-        self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
+        #self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
+        #self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
 
         # determine absolute path
         module_dir = os.path.dirname(os.path.abspath(__file__))
@@ -38,36 +38,36 @@ class Matrix(object):
         )
 
         self.blueprint.add_url_rule(
-            #"/matret/generate",
-            f"{self.APP_PREFIX}/matret/generate", 
+            "/matret/generate",
+            #f"{self.APP_PREFIX}/matret/generate", 
             view_func=self.matrix_generate_matret,
             methods=["POST"],
         )
 
         self.blueprint.add_url_rule(
-            #"/matret/upload",
-            f"{self.APP_PREFIX}/matret/upload", 
+            "/matret/upload",
+            #f"{self.APP_PREFIX}/matret/upload", 
             view_func=self.matrix_upload_matret,
             methods=["POST"],
         )
 
         self.blueprint.add_url_rule(
-            #"/mat_er_covr/generate",
-            f"{self.APP_PREFIX}/mat_er_covr/generate", 
+            "/mat_er_covr/generate",
+            #f"{self.APP_PREFIX}/mat_er_covr/generate", 
             view_func=self.matrix_generate_mat_er_covr,
             methods=["POST"],
         )
 
         self.blueprint.add_url_rule(
-            #"/mat_er_covr/upload",
-            f"{self.APP_PREFIX}/mat_er_covr/upload", 
+            "/mat_er_covr/upload",
+            #f"{self.APP_PREFIX}/mat_er_covr/upload", 
             view_func=self.matrix_upload_mat_er_covr,
             methods=["POST"],
         )
 
         self.blueprint.add_url_rule(
-            #"/portfolios",
-            f"{self.APP_PREFIX}/portfolios", 
+            "/portfolios",
+            #f"{self.APP_PREFIX}/portfolios", 
             view_func=self.matrix_compute_portfolios,
             methods=["POST"],
         )
