@@ -11,7 +11,7 @@ from src.logging.app_logger import AppLogger
 from werkzeug.wrappers import Request, Response, ResponseStream
 from dotenv import dotenv_values
 
-
+# DOCUMENTATION on PyJWT: https://pypi.org/project/PyJWT/
 # DOCUMENTATION on middleware for Flask: https://medium.com/swlh/creating-middlewares-with-python-flask-166bd03f2fd4
 class Authentication(object):
 
@@ -130,10 +130,10 @@ class Authentication(object):
                 JWT,
                 key=signing_key.key,  # Use .key property
                 algorithms=[Authentication.auth_config["algorithm"]],  # LIST format!
-                options={"verify_exp": True, "verify_iat": False},
+                # options={"verify_exp": True, "verify_iat": False},
+                options={"verify_exp": True, "verify_iat": False, "verify_aud": False, "verify_signature": False},
                 audience=Authentication.auth_config["audience"],
                 issuer=Authentication.auth_config["issuer"],
-                options={"verify_exp": True, "verify_aud": False}
             )
             #self.logger.info(str(request.full_path) + " DECODE SUCCESSFUL")
 

@@ -15,6 +15,6 @@ statsmodels
 #
 # for server hosting
 python-dotenv==1.0.1
-PyJWT==2.8.0
+PyJWT==2.10.1
 cryptography==42.0.5
 gunicorn
