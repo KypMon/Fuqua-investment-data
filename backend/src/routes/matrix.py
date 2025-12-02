@@ -39,7 +39,7 @@ class Matrix(object):
 
         self.blueprint.add_url_rule(
             #"/matret/generate",
-            f"{self.APP_PREFIX}/matret/generate", 
+            f"{self.APP_PREFIX}/matrix/matret/generate", 
             view_func=self.matrix_generate_matret,
             methods=["POST"],
         )
