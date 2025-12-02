@@ -54,19 +54,20 @@ class Authentication(object):
             environ["status_code"] = 200
             return self.app(environ, start_response)
         
+        # NO!  apparently this was causing an error I don't need to deal with
         # begin debug
-        response = requests.get(Authentication.auth_config["jwks_uri"])
-        response.raise_for_status()  # Raise an exception for HTTP errors
+        # response = requests.get(Authentication.auth_config["jwks_uri"])
+        # response.raise_for_status()  # Raise an exception for HTTP errors
 
-        jwks = response.json()  # Parse the JWKS as JSON
-        print(json.dumps(jwks, indent=2))  # Pretty-print the keys
+        # jwks = response.json()  # Parse the JWKS as JSON
+        # print(json.dumps(jwks, indent=2))  # Pretty-print the keys
 
-        # Optional: inspect key IDs ("kid")
-        if "keys" in jwks:
-            key_ids = [key.get("kid") for key in jwks["keys"]]
-            print("Available key IDs:", key_ids)
-        else:
-            print("No 'keys' field found in JWKS response!")
+        # # Optional: inspect key IDs ("kid")
+        # if "keys" in jwks:
+        #     key_ids = [key.get("kid") for key in jwks["keys"]]
+        #     print("Available key IDs:", key_ids)
+        # else:
+        #     print("No 'keys' field found in JWKS response!")
         # end debug
 
         # https://flask.palletsprojects.com/en/3.0.x/api/#flask.Request.path
