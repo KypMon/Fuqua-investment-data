@@ -29,17 +29,24 @@ class Matrix(object):
 
         self.static_dir = static_dir
 
+        # self.blueprint = Blueprint(
+        #     "Matrix",
+        #     __name__,
+        #     url_prefix="/matrix",
+        #     static_url_path="/static",     # served at /matrix/static
+        #     static_folder=static_dir,
+        # )
         self.blueprint = Blueprint(
             "Matrix",
             __name__,
-            url_prefix="/matrix",
+            url_prefix=f"{self.APP_PREFIX}/matrix",
             static_url_path="/static",     # served at /matrix/static
             static_folder=static_dir,
         )
 
         self.blueprint.add_url_rule(
             #"/matret/generate",
-            f"{self.APP_PREFIX}/matrix/matret/generate", 
+            f"{self.APP_PREFIX}/matret/generate", 
             view_func=self.matrix_generate_matret,
             methods=["POST"],
         )

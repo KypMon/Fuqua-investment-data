@@ -7,6 +7,12 @@
 # We NEVER want to delete/recreate this volume, once it is created.
 # Well, perhaps at the end of a term or session.  Need guidance from the professors.
 #
+##
+## To view the files on the volume:
+##
+##  docker run --rm -it -v volume_upload_download:/static alpine /bin/sh
+##
+##
 VOLUME=fa_volume_upload_download
 
 # docker volume rm $VOLUME 2>/dev/null || true  NO !!!!!!
