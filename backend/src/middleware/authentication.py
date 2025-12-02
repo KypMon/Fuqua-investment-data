@@ -41,7 +41,7 @@ class Authentication(object):
         path = request.path
         if (
             path.startswith("/static/")
-            or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico"))
+            or path.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".map"))
         ):
             #self.logger.info(f"Skipping auth for static resource: {path}")
             environ["status_code"] = 200
@@ -143,12 +143,12 @@ class Authentication(object):
         #self.logger.info("request.headers " + str(request.headers))
         #self.logger.info(str(request.headers.get("Cookie")))
         #self.logger.info("request.authorization " + str(request.authorization))
-        self.logger.info("request.host_url " + request.host_url)
+        #self.logger.info("request.host_url " + request.host_url)
         #self.logger.info("request.cookies -> " + str(request.cookies))
         #self.logger.info("request.args -> " + str(request.args))
         #self.logger.info("request.application -> " + str(request.application))
         #self.logger.info("request.data -> " + str(request.data))
-        self.logger.info("request.full_path -> " + str(request.full_path))
+        #self.logger.info("request.full_path -> " + str(request.full_path))
 
         #for key,value in environ.items():
         #    if key == "HTTP_COOKIE" or key == "HTTP_HOST" or key == "REQUEST_URI":

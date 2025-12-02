@@ -16,8 +16,8 @@ class Matrix(object):
         self.matrix_service = MatrixService()
         self.file_service = FileService()
 
-        #self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
-        #self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
+        self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
+        self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
 
         # determine absolute path
         module_dir = os.path.dirname(os.path.abspath(__file__))
@@ -38,8 +38,8 @@ class Matrix(object):
         )
 
         self.blueprint.add_url_rule(
-            "/matret/generate",
-            #f"{self.APP_PREFIX}/matret/generate", 
+            #"/matret/generate",
+            f"{self.APP_PREFIX}/matret/generate", 
             view_func=self.matrix_generate_matret,
             methods=["POST"],
         )
