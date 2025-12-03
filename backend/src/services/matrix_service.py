@@ -115,7 +115,9 @@ class MatrixService(object):
             raise ValueError("Insufficient data to compute returns")
 
         # Convert to monthly discrete returns using compounded daily returns
-        monthly_returns = (1 + daily_returns).resample("M").prod() - 1
+        # FutureWarning: 'M' is deprecated and will be removed in a future version, please use 'ME' instead.
+        # monthly_returns = (1 + daily_returns).resample("M").prod() - 1
+        monthly_returns = (1 + daily_returns).resample("ME").prod() - 1
         monthly_returns = monthly_returns.dropna(how="all")
 
         if monthly_returns.empty:

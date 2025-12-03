@@ -105,9 +105,11 @@ class Matrix(object):
     #         }
     #     )
 
+    # GENERATE MATRET
     def matrix_generate_matret(self):
-        data = request.json or {}
         self.log_user_activity()
+
+        data = request.json or {}
 
         tickers = data.get("tickers", [])
         if isinstance(tickers, str):
@@ -128,14 +130,11 @@ class Matrix(object):
         # Save dataframe and get a file path (still under your static_dir for now)
         filename = self.file_service.save_dataframe(fwUser, matret_df, "matret", self.static_dir)
         file_path = os.path.join(self.static_dir, filename)
+        download_url = self.build_download_url_via_token(fwUser, file_path, filename)
 
-        # --- NEW: Generate unguessable token and store mapping ---
-        token = uuid4().hex
-        self.file_service.register_user_file(fwUser, token, file_path)
-
-        # Build URL to download via token
-        download_url = url_for("Matrix.download_matret", token=token)
-        self.logger.info(str(download_url))
+        self.logger.info("filename: " + str(filename))
+        self.logger.info("file_path: " + str(file_path))
+        self.logger.info("download_url: " + str(download_url))
 
         return jsonify({
             "matrix": self.dataframe_payload(matret_df),
@@ -143,18 +142,19 @@ class Matrix(object):
             "csv_url": download_url
         })
     
+    # Download latest matret CSV
     def download_matret(self, token):
         """
         Secure download endpoint. Uses a token issued by the generate route.
         Only the owner of the file can access it.
         """
 
+        self.log_user_activity()
         user = getattr(g, "fwUser", None)
-        self.logger.info(str(user))
 
         # Ask FileService to look up and validate this token for the current user
         entry = self.file_service.resolve_user_token(user, token)
-        self.logger.info("entry: " + str(entry))
+        self.logger.info("resolved user token is: " + str(entry))
 
         if not entry:
             # token not found or doesn't belong to this user
@@ -162,7 +162,6 @@ class Matrix(object):
             abort(403)
 
         file_path = entry["path"]
-        self.logger.info(str(file_path))
 
         try:
             return send_file(
@@ -177,7 +176,36 @@ class Matrix(object):
             self.logger.error("Aborting 404")
             abort(404)
     
+    # UPLOAD MATRET CSV 
     #@blueprint.route("/matrix/matret/upload", methods=["POST"])
+    # def matrix_upload_matret(self):
+    #     self.log_user_activity()
+    #     if "file" not in request.files:
+    #         return jsonify({"error": "No file uploaded"}), 400
+
+    #     file = request.files["file"]
+    #     if not file.filename:
+    #         return jsonify({"error": "Empty filename"}), 400
+
+    #     try:
+    #         df = pd.read_csv(file)
+    #     except Exception as exc:  # pragma: no cover - pandas error path
+    #         return jsonify({"error": f"Unable to read CSV: {exc}"}), 400
+
+    #     if df.empty:
+    #         return jsonify({"error": "Uploaded file is empty"}), 400
+
+    #     user = getattr(g, "fwUser", None)
+    #     filename = self.file_service.save_dataframe(user, df, "matret_upload", self.static_dir)
+
+    #     return jsonify(
+    #         {
+    #             "matrix": self.dataframe_payload(df),
+    #             #"csv_url": f"/static/{filename}",
+    #              "csv_url": f"{self.blueprint.url_prefix}{self.blueprint.static_url_path}/{filename}",
+    #             "original_filename": secure_filename(file.filename),
+    #         }
+    #     )
     def matrix_upload_matret(self):
         self.log_user_activity()
         if "file" not in request.files:
@@ -195,17 +223,21 @@ class Matrix(object):
         if df.empty:
             return jsonify({"error": "Uploaded file is empty"}), 400
 
-        # @SDS begin
-        # filename = save_dataframe(df, "matret_upload")
         user = getattr(g, "fwUser", None)
         filename = self.file_service.save_dataframe(user, df, "matret_upload", self.static_dir)
-        # @SDS end
+        file_path = os.path.join(self.static_dir, filename)
+        download_url = self.build_download_url_via_token(user, file_path, filename)
+
+        self.logger.info("filename: " + str(filename))
+        self.logger.info("file_path: " + str(file_path))
+        self.logger.info("download_url: " + str(download_url))
 
         return jsonify(
             {
                 "matrix": self.dataframe_payload(df),
                 #"csv_url": f"/static/{filename}",
-                 "csv_url": f"{self.blueprint.url_prefix}{self.blueprint.static_url_path}/{filename}",
+                #"csv_url": f"{self.blueprint.url_prefix}{self.blueprint.static_url_path}/{filename}",
+                "csv_url": download_url,
                 "original_filename": secure_filename(file.filename),
             }
         )
@@ -336,6 +368,15 @@ class Matrix(object):
             "columns": list(sanitized.columns),
             "records": sanitized.to_dict(orient="records"),
         }
+    
+    def build_download_url_via_token(self, fwUser, file_path, filename):
+        # --- NEW: Generate unguessable token and store mapping ---
+        token = uuid4().hex
+        self.file_service.register_user_file(fwUser, token, file_path)
+
+        # Build URL to download via token
+        download_url = url_for("Matrix.download_matret", token=token)
+        return download_url
     
     def log_user_activity(self, data=None):
         if not (
