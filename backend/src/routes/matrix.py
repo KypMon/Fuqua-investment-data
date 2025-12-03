@@ -21,12 +21,14 @@ class Matrix(object):
         # determine absolute path
         module_dir = os.path.dirname(os.path.abspath(__file__))
         static_dir = os.path.join(module_dir, "static")
-        #self.logger.info(str(static_dir))
+        token_dir = os.path.join(module_dir, "static/tokens")
 
         # guarantee folder exists
         os.makedirs(static_dir, exist_ok=True)
+        os.makedirs(token_dir, exist_ok=True)
 
         self.static_dir = static_dir
+        self.token_dir = token_dir
 
         self.blueprint = Blueprint(
             "Matrix",
@@ -153,7 +155,7 @@ class Matrix(object):
         user = getattr(g, "fwUser", None)
 
         # Ask FileService to look up and validate this token for the current user
-        entry = self.file_service.resolve_user_token(user, token)
+        entry = self.file_service.resolve_user_token(user, token, self.token_dir)
         self.logger.info("DOWNLOAD LATEST: resolved user token is: " + str(entry))
 
         if not entry:
@@ -372,7 +374,7 @@ class Matrix(object):
     def build_download_url_via_token(self, fwUser, file_path, filename):
         # --- NEW: Generate unguessable token and store mapping ---
         token = uuid4().hex
-        self.file_service.register_user_file(fwUser, token, file_path)
+        self.file_service.register_user_file(fwUser, token, file_path, self.token_dir)
 
         # Build URL to download via token
         # download_url = url_for("Matrix.download_matret", token=token)

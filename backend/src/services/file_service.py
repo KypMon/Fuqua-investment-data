@@ -1,5 +1,6 @@
 import os
-import threading
+import json
+#import threading
 from datetime import datetime, UTC
 import pandas as pd
 from src.config.config import Config
@@ -31,47 +32,86 @@ class FileService(object):
 
         #self.STATIC_DIR = config.get("static.dir")
         # this is for user file uploads / downloads
-        self._token_map = {}
-        self._lock = threading.Lock()
+        #self._token_map = {}
+        #self._lock = threading.Lock()
 
-    def register_user_file(self, user:FwUser, token: str, file_path: str):
-        """
-        Map a one-time token to this user's file path.
-        """
+    # def register_user_file(self, user:FwUser, token: str, file_path: str):
+    #     """
+    #     Map a one-time token to this user's file path.
+    #     """
 
-        user_id = "" if user is None else user.get_userid()
+    #     user_id = "" if user is None else user.get_userid()
 
-        self.logger.info("Generating file token for user " +str(user_id) + " and file " + str(file_path) + " ...")
+    #     self.logger.info("Generating file token for user " +str(user_id) + " and file " + str(file_path) + " ...")
 
-        with self._lock:
-            self._token_map[token] = {"user_id": user_id, "path": file_path}
+    #     with self._lock:
+    #         self._token_map[token] = {"user_id": user_id, "path": file_path}
 
-        self.show_token_map("Updated")
+    #     self.show_token_map("Updated")
 
-    def resolve_user_token(self, user:FwUser, token: str):
-        user_id = "" if user is None else user.get_userid()
+    # def resolve_user_token(self, user:FwUser, token: str):
+    #     user_id = "" if user is None else user.get_userid()
 
-        """Return the file info *iff* this user owns that token."""
-        self.logger.info("Resolving file token " + token + " for user " +str(user_id) + " ...")
-        self.show_token_map("Current")
+    #     """Return the file info *iff* this user owns that token."""
+    #     self.logger.info("Resolving file token " + token + " for user " +str(user_id) + " ...")
+    #     self.show_token_map("Current")
 
-        with self._lock:
-            entry = self._token_map.get(token)
-            if not entry:
-                self.logger.warning("No token")
-                return None
-            if entry["user_id"] != user_id:
-                self.logger.warning("shenanigans")
-                return None
+    #     with self._lock:
+    #         entry = self._token_map.get(token)
+    #         if not entry:
+    #             self.logger.warning("No token")
+    #             return None
+    #         if entry["user_id"] != user_id:
+    #             self.logger.warning("shenanigans")
+    #             return None
             
-            self.logger.info("Token retrieved: " + str(entry))
-            return entry
+    #         self.logger.info("Token retrieved: " + str(entry))
+    #         return entry
         
-    def show_token_map(self, descriptor=""):
-        self.logger.info(descriptor + " token map:")
-        for token,token_dict in self._token_map.items():
-            for k,v in token_dict.items():
-                self.logger.info(token + " -> " + k + " -> " + str(v))
+    def register_user_file(self, user, token, file_path, token_dir):
+        """Store mapping on disk: one small JSON per token."""
+        user_id = "" if user is None else user.get_userid()
+
+        token_path = os.path.join(token_dir, f"{token}.json")
+        self.logger.info("Registering user file for " + user_id + " at " + str(token_path))
+        payload = {"user_id": user_id, "path": file_path}
+        self.logger.info("payload: " + str(payload))
+
+        with open(token_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f)
+
+        self.logger.info(f"Token file written: {token_path}")
+
+    def resolve_user_token(self, user, token, token_dir):
+        user_id = "" if user is None else user.get_userid()
+
+        """Read mapping back from disk and validate ownership."""
+        token_path = os.path.join(token_dir, f"{token}.json")
+
+        self.logger.info("Resolving user token file for " + user_id + " at " + str(token_path))
+
+        if not os.path.exists(token_path):
+            self.logger.warning(f"No such token file: {token_path}")
+            return None
+
+        try:
+            with open(token_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError:
+            self.logger.error(f"Corrupt token file: {token_path}")
+            return None
+
+       
+        if data.get("user_id") != user_id:
+            self.logger.warning("Token mismatch (different user)")
+            return None
+        return data
+    
+    # def show_token_map(self, descriptor=""):
+    #     self.logger.info(descriptor + " token map:")
+    #     for token,token_dict in self._token_map.items():
+    #         for k,v in token_dict.items():
+    #             self.logger.info(token + " -> " + k + " -> " + str(v))
 
     def get_etf_file_path(self) -> str:
         return self.etf_file

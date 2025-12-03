@@ -24,3 +24,5 @@ Thumbs.db
 
 backend/data/
 react_build/
+
+backend/src/routes/static/
