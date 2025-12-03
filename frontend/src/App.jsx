@@ -29,6 +29,16 @@ function App() {
 
   // Match the current path to tab value
   const currentPath = location.pathname;
+  // const tabValue = currentPath.startsWith("/matrix")
+  //   ? "matrix"
+  //   : currentPath.startsWith("/backtest")
+  //     ? "backtest"
+  //     : currentPath.startsWith("/regression")
+  //       ? "regression"
+  //       : currentPath.startsWith("/life-cycle")
+  //         ? "life-cycle"
+  //         : "mv";
+
   const tabValue = currentPath.startsWith("/matrix")
     ? "matrix"
     : currentPath.startsWith("/backtest")
@@ -37,7 +47,10 @@ function App() {
         ? "regression"
         : currentPath.startsWith("/life-cycle")
           ? "life-cycle"
-          : "mv";
+          : currentPath === "/" || currentPath.startsWith("/mv")
+            ? "mv"
+            : "";
+
 
   const handleTabChange = (event, newValue) => {
     navigate(`/${newValue}`);
@@ -79,7 +92,7 @@ function App() {
 
       <Container maxWidth="lg" sx={{ paddingY: 4 }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/mv" replace />} />
+          {/* <Route path="/" element={<Navigate to="/mv" replace />} /> */}
           <Route
             path="/mv"
             element={
@@ -108,6 +121,7 @@ function App() {
               </>
             }
           />
+          <Route path="*" element={<Navigate to="/mv" replace />} />
         </Routes>
       </Container>
     </>
