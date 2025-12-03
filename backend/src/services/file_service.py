@@ -34,26 +34,26 @@ class FileService(object):
         self._token_map = {}
         self._lock = threading.Lock()
 
-    def register_user_file(self, user, token: str, file_path: str):
+    def register_user_file(self, user:FwUser, token: str, file_path: str):
         """
         Map a one-time token to this user's file path.
-        You could attach expiry or periodic cleanup if desired.
         """
-        # user_id = getattr(user, "userid", None) or user.get_userid()
-        user_id = getattr(user, "user_id", None) or ""
+
+        user_id = "" if user is None else user.get_userid()
 
         self.logger.info("Generating file token for user " +str(user_id) + " and file " + str(file_path) + " ...")
 
         with self._lock:
             self._token_map[token] = {"user_id": user_id, "path": file_path}
-            self.show_token_map()
 
-    def resolve_user_token(self, user, token: str):
-        user_id = getattr(user, "user_id", None) or ""
+        self.show_token_map("Updated")
+
+    def resolve_user_token(self, user:FwUser, token: str):
+        user_id = "" if user is None else user.get_userid()
 
         """Return the file info *iff* this user owns that token."""
         self.logger.info("Resolving file token " + token + " for user " +str(user_id) + " ...")
-        self.show_token_map()
+        self.show_token_map("Current")
 
         with self._lock:
             entry = self._token_map.get(token)
@@ -64,14 +64,14 @@ class FileService(object):
                 self.logger.warning("shenanigans")
                 return None
             
-            #self.logger.info("returning token entry: " + str(entry))
+            self.logger.info("Token retrieved: " + str(entry))
             return entry
         
-    def show_token_map(self):
-        self.logger.info("Current token map:")
+    def show_token_map(self, descriptor=""):
+        self.logger.info(descriptor + " token map:")
         for token,token_dict in self._token_map.items():
             for k,v in token_dict.items():
-                self.logger.info("File token: " + token + " -> " + k + " -> " + str(v))
+                self.logger.info(token + " -> " + k + " -> " + str(v))
 
     def get_etf_file_path(self) -> str:
         return self.etf_file

@@ -132,9 +132,9 @@ class Matrix(object):
         file_path = os.path.join(self.static_dir, filename)
         download_url = self.build_download_url_via_token(fwUser, file_path, filename)
 
-        self.logger.info("filename: " + str(filename))
-        self.logger.info("file_path: " + str(file_path))
-        self.logger.info("download_url: " + str(download_url))
+        self.logger.info("GENERATE filename: " + str(filename))
+        self.logger.info("GENERATE file_path: " + str(file_path))
+        self.logger.info("GENERATE download_url: " + str(download_url))
 
         return jsonify({
             "matrix": self.dataframe_payload(matret_df),
@@ -154,7 +154,7 @@ class Matrix(object):
 
         # Ask FileService to look up and validate this token for the current user
         entry = self.file_service.resolve_user_token(user, token)
-        self.logger.info("resolved user token is: " + str(entry))
+        self.logger.info("DOWNLOAD LATEST: resolved user token is: " + str(entry))
 
         if not entry:
             # token not found or doesn't belong to this user
@@ -228,9 +228,9 @@ class Matrix(object):
         file_path = os.path.join(self.static_dir, filename)
         download_url = self.build_download_url_via_token(user, file_path, filename)
 
-        self.logger.info("filename: " + str(filename))
-        self.logger.info("file_path: " + str(file_path))
-        self.logger.info("download_url: " + str(download_url))
+        self.logger.info("UPLOAD filename: " + str(filename))
+        self.logger.info("UPLOAD file_path: " + str(file_path))
+        self.logger.info("UPLOAD download_url: " + str(download_url))
 
         return jsonify(
             {

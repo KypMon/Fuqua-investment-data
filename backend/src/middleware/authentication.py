@@ -54,7 +54,7 @@ class Authentication(object):
             environ["status_code"] = 200
             return self.app(environ, start_response)
         
-        self.debug_statements(request, environ)
+        #self.debug_statements(request, environ)
 
         try:
             data = request.headers.get("Cookie") if request.headers.get("Cookie") is not None \
