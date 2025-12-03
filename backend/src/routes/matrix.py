@@ -375,7 +375,8 @@ class Matrix(object):
         self.file_service.register_user_file(fwUser, token, file_path)
 
         # Build URL to download via token
-        download_url = url_for("Matrix.download_matret", token=token)
+        # download_url = url_for("Matrix.download_matret", token=token)
+        download_url = (url_for("Matrix.download_matret", token=token)).replace(self.APP_PREFIX, "")
         return download_url
     
     def log_user_activity(self, data=None):
