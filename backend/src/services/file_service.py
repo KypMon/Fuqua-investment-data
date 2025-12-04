@@ -31,43 +31,7 @@ class FileService(object):
         self.is_local_host = True if config.get("HOST") == "localhost" else False
 
         #self.STATIC_DIR = config.get("static.dir")
-        # this is for user file uploads / downloads
-        #self._token_map = {}
-        #self._lock = threading.Lock()
 
-    # def register_user_file(self, user:FwUser, token: str, file_path: str):
-    #     """
-    #     Map a one-time token to this user's file path.
-    #     """
-
-    #     user_id = "" if user is None else user.get_userid()
-
-    #     self.logger.info("Generating file token for user " +str(user_id) + " and file " + str(file_path) + " ...")
-
-    #     with self._lock:
-    #         self._token_map[token] = {"user_id": user_id, "path": file_path}
-
-    #     self.show_token_map("Updated")
-
-    # def resolve_user_token(self, user:FwUser, token: str):
-    #     user_id = "" if user is None else user.get_userid()
-
-    #     """Return the file info *iff* this user owns that token."""
-    #     self.logger.info("Resolving file token " + token + " for user " +str(user_id) + " ...")
-    #     self.show_token_map("Current")
-
-    #     with self._lock:
-    #         entry = self._token_map.get(token)
-    #         if not entry:
-    #             self.logger.warning("No token")
-    #             return None
-    #         if entry["user_id"] != user_id:
-    #             self.logger.warning("shenanigans")
-    #             return None
-            
-    #         self.logger.info("Token retrieved: " + str(entry))
-    #         return entry
-        
     def register_user_file(self, user, token, file_path, token_dir):
         """Store mapping on disk: one small JSON per token."""
         user_id = "" if user is None else user.get_userid()
@@ -75,12 +39,12 @@ class FileService(object):
         token_path = os.path.join(token_dir, f"{token}.json")
         self.logger.info("Registering user file for " + user_id + " at " + str(token_path))
         payload = {"user_id": user_id, "path": file_path}
-        self.logger.info("payload: " + str(payload))
+        #self.logger.info("payload: " + str(payload))
 
         with open(token_path, "w", encoding="utf-8") as f:
             json.dump(payload, f)
 
-        self.logger.info(f"Token file written: {token_path}")
+        #self.logger.info(f"Token file written for: {token_path}")
 
     def resolve_user_token(self, user, token, token_dir):
         user_id = "" if user is None else user.get_userid()
@@ -107,12 +71,6 @@ class FileService(object):
             return None
         return data
     
-    # def show_token_map(self, descriptor=""):
-    #     self.logger.info(descriptor + " token map:")
-    #     for token,token_dict in self._token_map.items():
-    #         for k,v in token_dict.items():
-    #             self.logger.info(token + " -> " + k + " -> " + str(v))
-
     def get_etf_file_path(self) -> str:
         return self.etf_file
     
@@ -128,21 +86,11 @@ class FileService(object):
     # def get_STATIC_DIR(self) -> str:
     #     return self.STATIC_DIR
     
-    # def save_dataframe(self, user, df: pd.DataFrame, prefix: str) -> str:
-    #     filename = self.timestamped_filename(prefix)
-    #     if self.is_local_host is False:
-    #         filename = self.user_timestamped_filename(filename, user) # embed userId
-    #     path = os.path.join(self.STATIC_DIR, filename)
-    #     #self.logger.info("Saving " + path + " to dataframe")
-    #     df.to_csv(path, index=False)
-    #     return filename
-
     def save_dataframe(self, user, df: pd.DataFrame, prefix: str, static_dir: str) -> str:
         filename = self.timestamped_filename(prefix)
         if self.is_local_host is False:
             filename = self.user_timestamped_filename(filename, user) # embed userId
 
-        # path = os.path.join(self.STATIC_DIR, filename)
         path = os.path.join(static_dir, filename)
         #self.logger.info("Saving " + path + " to dataframe")
         df.to_csv(path, index=False)

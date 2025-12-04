@@ -47,22 +47,6 @@ class ApiRoutes(object):
     def _add_routes(self) -> Any:
         bp = self.blueprint
 
-        # @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
-        # @bp.route(f"{self.APP_PREFIX}/<path:path>")
-        # def serve_react_app(path):
-        #     fullpath = os.path.join(self.REACT_BUILD_PATH, path)
-
-        #     if path == "":
-        #         return send_from_directory(self.REACT_BUILD_PATH, "index.html")
-
-        #     if not os.path.exists(fullpath):
-        #         self.logger.info("fullpath: " + str(fullpath) + " does not exist")
-        #         self.logger.info("sending index.html from: " + str(self.REACT_BUILD_PATH) + "/index.html because fullpath does not exist")
-        #         return send_from_directory(self.REACT_BUILD_PATH, "index.html")
-            
-        #     #self.logger.info("sending: " + str(self.REACT_BUILD_PATH) + " " + str(path))
-        #     return send_from_directory(self.REACT_BUILD_PATH, path)
-
         @bp.route(f"{self.APP_PREFIX}/", defaults={"path": ""})
         def serve_react_app(path):
             if path == "":

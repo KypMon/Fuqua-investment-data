@@ -126,7 +126,7 @@ class Matrix(object):
 
         # Ask FileService to look up and validate this token for the current user
         entry = self.file_service.resolve_user_token(user, token, self.token_dir)
-        self.logger.info("DOWNLOAD LATEST: resolved user token is: " + str(entry))
+        #self.logger.info("DOWNLOAD LATEST: resolved user token is: " + str(entry))
 
         if not entry:
             # token not found or doesn't belong to this user
@@ -218,9 +218,9 @@ class Matrix(object):
         file_path = os.path.join(self.static_dir, filename)
         download_url = self.build_download_url_via_token(fwUser, file_path, filename)
 
-        self.logger.info("GENERATE_COVR filename: " + str(filename))
-        self.logger.info("GENERATE_COVR file_path: " + str(file_path))
-        self.logger.info("GENERATE_COVR download_url: " + str(download_url))
+        #self.logger.info("GENERATE_COVR filename: " + str(filename))
+        #self.logger.info("GENERATE_COVR file_path: " + str(file_path))
+        #self.logger.info("GENERATE_COVR download_url: " + str(download_url))
 
         return jsonify(
             {
