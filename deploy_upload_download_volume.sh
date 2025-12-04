@@ -18,7 +18,9 @@ VOLUME=fa_volume_upload_download
 # docker volume rm $VOLUME 2>/dev/null || true  NO !!!!!!
 
 docker volume create --driver local $VOLUME;
-docker run --rm -v $VOLUME:/static alpine mkdir -p /static;
+docker run --rm \
+-v $VOLUME:/static alpine mkdir \
+-p /static /static/matrix /static/matrix/tokens /static/lifecycle /static/lifecycle/tokens
 
 # inspect
 docker run --rm -it -v $VOLUME:/static alpine sh
