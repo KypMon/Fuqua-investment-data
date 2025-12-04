@@ -106,9 +106,9 @@ class FileService(object):
         user_filename = parts[0] + "_" + user.get_userid() + "." + parts[1]
         return user_filename
     
-    def make_static_dir(self):
-        self.logger.info("Creating static directory path for: " + self.STATIC_DIR)
-        os.makedirs(self.STATIC_DIR, exist_ok=True)
+    # def make_static_dir(self):
+    #     self.logger.info("Creating static directory path for: " + self.STATIC_DIR)
+    #     os.makedirs(self.STATIC_DIR, exist_ok=True)
 
 
 
