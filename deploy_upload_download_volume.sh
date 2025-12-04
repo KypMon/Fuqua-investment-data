@@ -10,7 +10,7 @@
 ##
 ## To view the files on the volume:
 ##
-##  docker run --rm -it -v volume_upload_download:/static alpine /bin/sh
+##  docker run --rm -it -v fa_volume_upload_download:/static alpine /bin/sh
 ##
 ##
 VOLUME=fa_volume_upload_download

@@ -18,21 +18,15 @@ class Matrix(object):
 
         self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
 
-        # determine absolute path
-        # module_dir = os.path.dirname(os.path.abspath(__file__))
-        # static_dir = os.path.join(module_dir, "static")
-        # token_dir = os.path.join(module_dir, "static/tokens")
-
-        #################################################
-        env_static_dir = os.getenv("STATIC_DIR")
-        if env_static_dir: # server environment
-            static_dir = env_static_dir # /static
+        # determine absolute path for file uploads/downloads
+        server_static_dir = os.getenv("STATIC_DIR")
+        if server_static_dir: # server environment
+            static_dir = server_static_dir + "/matrix" # /static/matrix
         else: # localhost environment
             module_dir = os.path.dirname(os.path.abspath(__file__))
             static_dir = os.path.join(module_dir, "static")
 
         token_dir = os.path.join(static_dir, "tokens")
-        #####################################################
 
         # guarantee folder exists
         os.makedirs(static_dir, exist_ok=True)
