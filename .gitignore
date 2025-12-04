@@ -1,0 +1,23 @@
+# Editor config
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+
+# Global OS stuff
+.DS_Store
+Thumbs.db
+
+
+# Env
+# .env
+
+# CSV
+*.csv
+
+!frontend/public/ticker_and_names.csv
+!public/ticker_and_names.csv
+
+# image
+*.png

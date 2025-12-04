@@ -1,0 +1,24 @@
+#ols-summary-container table {
+  border-collapse: collapse;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 14px;
+  width: 100%;
+  margin-top: 1em;
+}
+
+#ols-summary-container th,
+#ols-summary-container td {
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  text-align: right;
+}
+
+#ols-summary-container th {
+  background-color: #f0f0f0;
+  font-weight: bold;
+}
+
+#ols-summary-container td:first-child,
+#ols-summary-container th:first-child {
+  text-align: left;
+}

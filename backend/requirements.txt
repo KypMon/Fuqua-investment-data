@@ -1,0 +1,10 @@
+Flask
+pandas
+matplotlib
+numpy==1.23.5
+cvxpy
+cvxopt
+tabulate
+flask-cors
+yfinance
+statsmodels
