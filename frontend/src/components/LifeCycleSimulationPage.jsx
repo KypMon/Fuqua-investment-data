@@ -67,7 +67,7 @@ export default function LifeCycleSimulationPage() {
       formData.append("wmin_cutoff", minWealthCutoff ?? "0");
       formData.append("nsim", nsim ?? "1000");
 
-      const response = await axios.post(`${apiBaseUrl}/life-cycle/run`, formData, {
+      const response = await axios.post(`${apiBaseUrl}/lifecycle/life-cycle/run`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 

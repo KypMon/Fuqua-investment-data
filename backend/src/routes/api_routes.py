@@ -17,11 +17,11 @@ from src.services.data_service import DataService
 from src.services.file_service import FileService
 from src.services.backtest_service import BacktestService
 from src.services.backtest_input_error import BacktestInputError
-from life_cycle import (
-    LifeCycleInputError,
-    load_vector_from_csv,
-    run_life_cycle_analysis,
-)
+# from life_cycle import (
+#     LifeCycleInputError,
+#     load_vector_from_csv,
+#     run_life_cycle_analysis,
+# )
 
 class ApiRoutes(object):
 
@@ -35,7 +35,6 @@ class ApiRoutes(object):
         routes_dir = os.path.dirname(__file__)
         backend_root = os.path.abspath(os.path.join(routes_dir, "..", ".."))  # up to backend
         self.REACT_BUILD_PATH = os.path.join(backend_root, Config.get_property("react.build.dir"))
-        #self.logger.info("REACT_BUILD_PATH: " + str(self.REACT_BUILD_PATH))
 
         self.blueprint = Blueprint("ApiRoutes", __name__)
         self._add_routes()
@@ -97,42 +96,42 @@ class ApiRoutes(object):
             return jsonify(result)
     
         #@bp.route("/life-cycle/run", methods=["POST"])
-        @bp.route(f"{self.APP_PREFIX}/life-cycle/run", methods=["POST"])
-        def run_life_cycle():
-            self.log_user_activity()
+        # @bp.route(f"{self.APP_PREFIX}/life-cycle/run", methods=["POST"])
+        # def run_life_cycle():
+        #     self.log_user_activity()
 
-            try:
-                returns_file = request.files.get("returns_file")
-                cashflows_file = request.files.get("cashflows_file")
+        #     try:
+        #         returns_file = request.files.get("returns_file")
+        #         cashflows_file = request.files.get("cashflows_file")
 
-                returns_vector = load_vector_from_csv(returns_file, "Return")
-                cashflow_vector = load_vector_from_csv(cashflows_file, "Cash flow")
+        #         returns_vector = load_vector_from_csv(returns_file, "Return")
+        #         cashflow_vector = load_vector_from_csv(cashflows_file, "Cash flow")
 
-                form_data = request.form or {}
-                if not form_data:
-                    form_data = request.json or {}
+        #         form_data = request.form or {}
+        #         if not form_data:
+        #             form_data = request.json or {}
 
-                initial_wealth = self._parse_float(form_data.get("initial_wealth", 0), "Initial wealth", 0.0)
-                wmin_cutoff = self._parse_float(form_data.get("wmin_cutoff", 0), "Minimum wealth cutoff", 0.0)
-                nsim = self._parse_int(form_data.get("nsim", 1000), "Number of simulations", 1000)
+        #         initial_wealth = self._parse_float(form_data.get("initial_wealth", 0), "Initial wealth", 0.0)
+        #         wmin_cutoff = self._parse_float(form_data.get("wmin_cutoff", 0), "Minimum wealth cutoff", 0.0)
+        #         nsim = self._parse_int(form_data.get("nsim", 1000), "Number of simulations", 1000)
 
-                result = run_life_cycle_analysis(
-                    returns_vector,
-                    cashflow_vector,
-                    w0=initial_wealth,
-                    wmin_cutoff=wmin_cutoff,
-                    nsim=nsim,
-                )
+        #         result = run_life_cycle_analysis(
+        #             returns_vector,
+        #             cashflow_vector,
+        #             w0=initial_wealth,
+        #             wmin_cutoff=wmin_cutoff,
+        #             nsim=nsim,
+        #         )
 
-                return jsonify(result)
+        #         return jsonify(result)
 
-            except LifeCycleInputError as exc:
-                return jsonify({"error": str(exc)}), 400
-            except Exception as exc:  # pragma: no cover - defensive fallback
-                import traceback
+        #     except LifeCycleInputError as exc:
+        #         return jsonify({"error": str(exc)}), 400
+        #     except Exception as exc:  # pragma: no cover - defensive fallback
+        #         import traceback
 
-                traceback.print_exc()
-                return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
+        #         traceback.print_exc()
+        #         return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
 
         #@bp.route("/backtest", methods=["POST"])
         @bp.route(f"{self.APP_PREFIX}/backtest", methods=["POST"])
@@ -619,22 +618,22 @@ class ApiRoutes(object):
 
         return summary
 
-    def _parse_float(self, value, label, default=0.0):
-        if value in (None, ""):
-            return float(default)
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            raise LifeCycleInputError(f"{label} must be a numeric value.")
+    # def _parse_float(self, value, label, default=0.0):
+    #     if value in (None, ""):
+    #         return float(default)
+    #     try:
+    #         return float(value)
+    #     except (TypeError, ValueError):
+    #         raise LifeCycleInputError(f"{label} must be a numeric value.")
 
 
-    def _parse_int(self, value, label, default=0):
-        if value in (None, ""):
-            return int(default)
-        try:
-            return int(float(value))
-        except (TypeError, ValueError):
-            raise LifeCycleInputError(f"{label} must be an integer value.")
+    # def _parse_int(self, value, label, default=0):
+    #     if value in (None, ""):
+    #         return int(default)
+    #     try:
+    #         return int(float(value))
+    #     except (TypeError, ValueError):
+    #         raise LifeCycleInputError(f"{label} must be an integer value.")
     
     def log_user_activity(self, data=None):
         if not (

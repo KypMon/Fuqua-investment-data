@@ -1,45 +1,36 @@
-from flask import Flask, redirect
+from flask import Flask
 from flask_cors import CORS
 import os
 from datetime import datetime
-#from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from src.logging.app_logger import AppLogger
 from src.config.config import Config
 from src.middleware.authentication import Authentication
 from src.middleware.before_request_hook import BeforeRequestHook
 from src.routes.api_routes import ApiRoutes
 from src.routes.matrix import Matrix
+from src.routes.lifecycle import LifeCycle
 
 def get_app():
-    # app = Flask(
-    #     __name__,
-    #     static_url_path="/static",
-    #     static_folder=os.path.join(os.path.dirname(__file__), "static")
-    # )
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
     app = Flask(
         __name__,
         static_url_path="/static",
-        # static_folder=os.path.join(BASE_DIR, "react_build", "static")
         static_folder=os.path.join(BASE_DIR, Config.get_property("react.build.dir"), "static")
     )
     return app
 
 def register_routes(app):
     app.register_blueprint(ApiRoutes().blueprint)
-    #app.register_blueprint(Matrix(app).blueprint)
     Matrix(app)
+    LifeCycle(app)
 
 ### ##############################
 ### when running on a Fuqua server
 ### ##############################
 def create_app_server(config_file=None, log_file=None):
     app = get_app()
-    #app.config["LOG_FILE"] = log_file
     app.wsgi_app = Authentication(app.wsgi_app)
-    # app.wsgi_app = Authentication(DispatcherMiddleware(app.wsgi_app, {
-    #     '/financial_analyzer': app.wsgi_app
-    # }))
 
     BeforeRequestHook().register_hooks(app)
     register_routes(app)
@@ -57,12 +48,10 @@ def create_app_localhost(config_file=None, log_file=None):
         }
     })
 
-    #STATIC_DIR = "static"
-    #os.makedirs(STATIC_DIR, exist_ok=True)
     register_routes(app)
     return app
 
-if __name__ == "__main__": # only runs if executing "python app.py"
+if __name__ == "__main__": # only runs if executing "python app.py" in localhost environment
     ###
     ### Flask entry point for localhost:3000
     ###
@@ -71,8 +60,6 @@ if __name__ == "__main__": # only runs if executing "python app.py"
 
     config_file = os.environ.get("APP_CONFIG_FILE", "config/.env")
     Config.set_up_config(config_file)
-
-    log.info(__name__ + " ")
 
     app = create_app_localhost()
     app.run(host="0.0.0.0", port=5001, debug=False
@@ -88,8 +75,6 @@ else:
 
     config_file = os.environ.get("APP_CONFIG_FILE", "config/.env")
     Config.set_up_config(config_file)
-
-    log.info("SERVER")
 
     app = create_app_server()
     # gunicorn is our server, so we do not say 'app.run' 
