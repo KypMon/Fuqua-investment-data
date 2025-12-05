@@ -61,12 +61,17 @@ export default function RegressionPage() {
     setLoading(true);
     setResult(null);
     try {
+      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
       const { etflist, ...rest } = form;
       const payload = { ...rest, ticker: etflist[0] };
       console.log(`${process.env.REACT_APP_API_BASE_URL}`);
       console.log(`${process.env.REACT_APP_API_BASE_URL}/regression`);
+      // const res = await axios.post(
+      //   `${process.env.REACT_APP_API_BASE_URL}/regression`,
+      //   payload
+      // );
       const res = await axios.post(
-        `${process.env.REACT_APP_API_BASE_URL}/regression`,
+        `${apiBaseUrl}/regression/run`,
         payload
       );
       setResult(res.data);

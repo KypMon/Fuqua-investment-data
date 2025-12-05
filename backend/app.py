@@ -7,6 +7,7 @@ from src.config.config import Config
 from src.middleware.authentication import Authentication
 from src.middleware.before_request_hook import BeforeRequestHook
 from src.routes.api_routes import ApiRoutes
+from src.routes.regression import Regression
 from src.routes.matrix import Matrix
 from src.routes.lifecycle import LifeCycle
 
@@ -22,6 +23,7 @@ def get_app():
 
 def register_routes(app):
     app.register_blueprint(ApiRoutes().blueprint)
+    Regression(app)
     Matrix(app)
     LifeCycle(app)
 
