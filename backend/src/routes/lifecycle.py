@@ -81,16 +81,16 @@ class LifeCycle(object):
             nsim = self._parse_int(form_data.get("nsim", 1000), "Number of simulations", 1000)
 
             # Read both files into dataframes
-            df_returns = pd.read_csv(returns_file)
-            df_cashflows = pd.read_csv(cashflows_file)
+            #df_returns = pd.read_csv(returns_file)
+            #df_cashflows = pd.read_csv(cashflows_file)
 
             # Reset file pointer for reuse
-            returns_file.seek(0)
-            cashflows_file.seek(0)
+            #returns_file.seek(0)
+            #cashflows_file.seek(0)
 
             # Save them with timestamp + userid 
-            returns_filename = self.file_service.save_dataframe(user, df_returns, "life_cycle_returns", self.static_dir)
-            cashflows_filename = self.file_service.save_dataframe(user, df_cashflows, "life_cycle_cashflows", self.static_dir)
+            #returns_filename = self.file_service.save_dataframe(user, df_returns, "life_cycle_returns", self.static_dir)
+            #cashflows_filename = self.file_service.save_dataframe(user, df_cashflows, "life_cycle_cashflows", self.static_dir)
 
             # run the simulation
             returns_vector = self.life_cycle_service.load_vector_from_csv(returns_file, "Return")
@@ -120,8 +120,8 @@ class LifeCycle(object):
             return jsonify({
                 **result,  # unpack the keys inside result dict
                 "summary_csv_url": download_url,
-                "returns_filename": returns_filename,
-                "cashflows_filename": cashflows_filename,
+                #"returns_filename": returns_filename,    
+                #"cashflows_filename": cashflows_filename,
             })
 
         except LifeCycleInputError as exc:
