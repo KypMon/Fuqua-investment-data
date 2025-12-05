@@ -123,11 +123,6 @@ class Matrix(object):
     
     # Download latest matret CSV
     def download_matret(self, token):
-        """
-        Secure download endpoint. Uses a token issued by the generate route.
-        Only the owner of the file can access it.
-        """
-
         self.utilities_service.log_user_activity()
         user = getattr(g, "fwUser", None)
 

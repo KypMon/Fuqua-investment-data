@@ -260,6 +260,7 @@ export default function LifeCycleSimulationPage() {
   }, [result]);
 
   const summaryDownloadUrl = useMemo(() => {
+    console.log("result", result);
     const path = result?.summary_csv_url;
     if (!path) return null;
     return path.startsWith("http") ? path : `${apiBaseUrl}${path}`;

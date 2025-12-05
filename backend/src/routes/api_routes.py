@@ -491,15 +491,11 @@ class ApiRoutes(object):
                 print(current_traceback) # Print to server logs
                 return jsonify({"error": str(e), "trace": current_traceback}), 500
 
-        # this is for user uploads/downloads
         #@bp.route('/static/<path:filename>')
-        @bp.route(f"{self.APP_PREFIX}/static/<path:filename>", methods=["POST"])
-        def serve_image(filename):
-            self.utilities_service.log_user_activity()
-            # @SDS begin
-            # return send_from_directory(STATIC_DIR, filename)
-            return send_from_directory(self.file_service.get_STATIC_DIR(), filename)
-            # @SDS end
+        # @bp.route(f"{self.APP_PREFIX}/static/<path:filename>", methods=["POST"])
+        # def serve_image(filename):
+        #     self.utilities_service.log_user_activity()
+        #     return send_from_directory(self.file_service.get_STATIC_DIR(), filename)
 
     def convert_numpy(self, obj):
         """Helper function to convert numpy types to native Python."""
