@@ -259,6 +259,12 @@ export default function LifeCycleSimulationPage() {
     return rows;
   }, [result]);
 
+  const summaryDownloadUrl = useMemo(() => {
+    const path = result?.summary_csv_url;
+    if (!path) return null;
+    return path.startsWith("http") ? path : `${apiBaseUrl}${path}`;
+  }, [result, apiBaseUrl]);
+
   const summaryCsvContent = useMemo(() => {
     if (!summaryDownloadRows.length) {
       return null;
@@ -398,11 +404,21 @@ export default function LifeCycleSimulationPage() {
               sx={{ mb: 2 }}
             >
               <Typography variant="h6">Summary</Typography>
-              <Button
+              {/* <Button
                 variant="outlined"
                 startIcon={<DownloadIcon />}
                 onClick={handleDownloadSummary}
                 disabled={!summaryCsvContent}
+              >
+                Download Summary
+              </Button> */}
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                disabled={!summaryDownloadUrl}
+                href={summaryDownloadUrl}
+                target="_blank"
+                rel="noopener"
               >
                 Download Summary
               </Button>

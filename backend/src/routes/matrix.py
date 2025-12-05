@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 from src.middleware.fw_user import FwUser
 from src.services.matrix_service import MatrixService
 from src.services.file_service import FileService
+from src.services.utilities_service import UtilitiesService
 from src.logging.app_logger import AppLogger
 
 class Matrix(object):
@@ -15,6 +16,7 @@ class Matrix(object):
         self.logger = AppLogger.get_logger()
         self.matrix_service = MatrixService()
         self.file_service = FileService()
+        self.utilities_service = UtilitiesService()
 
         self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
 
@@ -84,7 +86,7 @@ class Matrix(object):
 
     # GENERATE MATRET
     def matrix_generate_matret(self):
-        self.log_user_activity()
+        self.utilities_service.log_user_activity()
 
         data = request.json or {}
 
@@ -126,12 +128,11 @@ class Matrix(object):
         Only the owner of the file can access it.
         """
 
-        self.log_user_activity()
+        self.utilities_service.log_user_activity()
         user = getattr(g, "fwUser", None)
 
         # Ask FileService to look up and validate this token for the current user
         entry = self.file_service.resolve_user_token(user, token, self.token_dir)
-        #self.logger.info("DOWNLOAD LATEST: resolved user token is: " + str(entry))
 
         if not entry:
             # token not found or doesn't belong to this user
@@ -155,7 +156,7 @@ class Matrix(object):
     
     # UPLOAD MATRET CSV 
     def matrix_upload_matret(self):
-        self.log_user_activity()
+        self.utilities_service.log_user_activity()
 
         if "file" not in request.files:
             return jsonify({"error": "No file uploaded"}), 400
@@ -184,8 +185,6 @@ class Matrix(object):
         return jsonify(
             {
                 "matrix": self.dataframe_payload(df),
-                #"csv_url": f"/static/{filename}",
-                #"csv_url": f"{self.blueprint.url_prefix}{self.blueprint.static_url_path}/{filename}",
                 "csv_url": download_url,
                 "original_filename": secure_filename(file.filename),
             }
@@ -194,7 +193,7 @@ class Matrix(object):
     # GENERATE MAT_ER_COVR
     #@blueprint.route("/matrix/mat_er_covr/generate", methods=["POST"])
     def matrix_generate_mat_er_covr(self):
-        self.log_user_activity()
+        self.utilities_service.log_user_activity()
 
         data = request.json or {}
 
@@ -218,7 +217,6 @@ class Matrix(object):
 
         fwUser = getattr(g, "fwUser", None)
 
-        #filename = self.file_service.save_dataframe(fwUser, mat_er_covr_df, "mat_er_covr", self.static_dir)
         filename = self.file_service.save_dataframe(fwUser, mat_er_covr_df, "mat_er_covr", self.static_dir)
         file_path = os.path.join(self.static_dir, filename)
         download_url = self.build_download_url_via_token(fwUser, file_path, filename)
@@ -231,8 +229,6 @@ class Matrix(object):
             {
                 "matrix": self.dataframe_payload(mat_er_covr_df),
                 "risk_free": resolved_rf,
-                #"csv_url": f"/static/{filename}",
-                # "csv_url": f"{self.blueprint.url_prefix}{self.blueprint.static_url_path}/{filename}",
                 "csv_url": download_url
             }
         )
@@ -240,7 +236,7 @@ class Matrix(object):
     # UPLOAD MAT_ER_COVR CSV
     #@blueprint.route("/matrix/mat_er_covr/upload", methods=["POST"])
     def matrix_upload_mat_er_covr(self):
-        self.log_user_activity()
+        self.utilities_service.log_user_activity()
 
         if "file" not in request.files:
             return jsonify({"error": "No file uploaded"}), 400
@@ -279,8 +275,6 @@ class Matrix(object):
             {
                 "matrix": self.dataframe_payload(df),
                 "risk_free": rf_value,
-                #"csv_url": f"/static/{filename}",
-                #"csv_url": f"{self.blueprint.url_prefix}{self.blueprint.static_url_path}/{filename}",
                 "csv_url": download_url,
                 "original_filename": secure_filename(file.filename),
             }
@@ -289,7 +283,7 @@ class Matrix(object):
     #@blueprint.route("/matrix/portfolios", methods=["POST"])
     def matrix_compute_portfolios(self):
         data = request.json or {}
-        self.log_user_activity(data)
+        self.utilities_service.log_user_activity(data)
 
         mat_er_covr_payload = data.get("mat_er_covr")
         risk_free = data.get("risk_free")
@@ -334,26 +328,12 @@ class Matrix(object):
         }
     
     def build_download_url_via_token(self, fwUser, file_path, filename):
-        # --- NEW: Generate unguessable token and store mapping ---
         token = uuid4().hex
         self.file_service.register_user_file(fwUser, token, file_path, self.token_dir)
 
         # Build URL to download via token
-        # download_url = url_for("Matrix.download_matret", token=token)
         download_url = (url_for("Matrix.download_matret", token=token)).replace(self.APP_PREFIX, "")
         return download_url
-    
-    def log_user_activity(self, data=None):
-        if not (
-            request.url.startswith("/static/")
-            or request.url.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".map"))
-        ):
-            user = getattr(g, "fwUser", None)
-            if not user is None:
-                self.logger.info(user.get_dukeid() + " " + user.get_userid() + " " + user.get_name() + " -> " + request.url + " " + (str(data) if data is not None else ""))
-            else:
-                self.logger.info(request.url + " " + (str(data) if data is not None else ""))
-
     
     def get_blueprint(self):
         return Matrix.blueprint

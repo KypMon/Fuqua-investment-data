@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from uuid import uuid4
 from flask import Blueprint, request, jsonify, g, url_for, abort, send_file
 from datetime import datetime
@@ -46,11 +47,12 @@ class LifeCycle(object):
             static_folder=static_dir,
         )
 
-        # self.blueprint.add_url_rule(
-        #     "/matret/download/<token>",
-        #     view_func = self.download_matret,
-        #     methods=["GET"],
-        # )
+        # register download endpoint for summary files
+        self.blueprint.add_url_rule(
+            "/life-cycle/download/<token>",
+            view_func=self.download_life_cycle_summary,
+            methods=["GET"],
+        )
 
         self.blueprint.add_url_rule(
             "/life-cycle/run",
@@ -61,16 +63,14 @@ class LifeCycle(object):
         if app:
             app.register_blueprint(self.blueprint)
 
-    #@bp.route(f"{self.APP_PREFIX}/life-cycle/run", methods=["POST"])
     def run_life_cycle(self):
         self.utilities_service.log_user_activity()
+
+        user = getattr(g, "fwUser", None)
 
         try:
             returns_file = request.files.get("returns_file")
             cashflows_file = request.files.get("cashflows_file")
-
-            returns_vector = self.life_cycle_service.load_vector_from_csv(returns_file, "Return")
-            cashflow_vector = self.life_cycle_service.load_vector_from_csv(cashflows_file, "Cash flow")
 
             form_data = request.form or {}
             if not form_data:
@@ -80,6 +80,22 @@ class LifeCycle(object):
             wmin_cutoff = self._parse_float(form_data.get("wmin_cutoff", 0), "Minimum wealth cutoff", 0.0)
             nsim = self._parse_int(form_data.get("nsim", 1000), "Number of simulations", 1000)
 
+            # Read both files into dataframes
+            df_returns = pd.read_csv(returns_file)
+            df_cashflows = pd.read_csv(cashflows_file)
+
+            # Reset file pointer for reuse
+            returns_file.seek(0)
+            cashflows_file.seek(0)
+
+            # Save them with timestamp + userid 
+            returns_filename = self.file_service.save_dataframe(user, df_returns, "life_cycle_returns", self.static_dir)
+            cashflows_filename = self.file_service.save_dataframe(user, df_cashflows, "life_cycle_cashflows", self.static_dir)
+
+            # run the simulation
+            returns_vector = self.life_cycle_service.load_vector_from_csv(returns_file, "Return")
+            cashflow_vector = self.life_cycle_service.load_vector_from_csv(cashflows_file, "Cash flow")
+
             result = self.life_cycle_service.run_life_cycle_analysis(
                 returns_vector,
                 cashflow_vector,
@@ -88,7 +104,20 @@ class LifeCycle(object):
                 nsim=nsim,
             )
 
-            return jsonify(result)
+            # Save summary CSV (use same helper)
+            summary_df = self.life_cycle_service.to_summary_dataframe(result)
+            summary_filename = self.file_service.save_dataframe(user, summary_df, "life_cycle_summary", self.static_dir)
+
+            # Register for secure token download
+            summary_path = os.path.join(self.static_dir, summary_filename)
+            csv_url = self.build_download_url_via_token(user, summary_path, summary_filename)
+
+            return jsonify({
+                **result,  # unpack the keys inside result dict
+                "summary_csv_url": csv_url,
+                "returns_filename": returns_filename,
+                "cashflows_filename": cashflows_filename,
+            })
 
         except LifeCycleInputError as exc:
             return jsonify({"error": str(exc)}), 400
@@ -97,6 +126,28 @@ class LifeCycle(object):
 
             traceback.print_exc()
             return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
+        
+    #@bp.route("/life-cycle/download/<token>")
+    def download_life_cycle_summary(self, token):
+        self.utilities_service.log_user_activity()
+        user = getattr(g, "fwUser", None)
+
+        entry = self.file_service.resolve_user_token(user, token, self.token_dir)
+        if not entry:
+            abort(403)
+
+        file_path = entry["path"]
+        try:
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=os.path.basename(file_path),
+                mimetype="text/csv",
+                max_age=0,
+                conditional=False
+            )
+        except FileNotFoundError:
+            abort(404)
         
     def _parse_float(self, value, label, default=0.0):
         if value in (None, ""):
@@ -121,8 +172,7 @@ class LifeCycle(object):
         self.file_service.register_user_file(fwUser, token, file_path, self.token_dir)
 
         # Build URL to download via token
-        # download_url = url_for("Matrix.download_matret", token=token)
-        download_url = (url_for("Matrix.download_matret", token=token)).replace(self.APP_PREFIX, "")
+        download_url = (url_for("LifeCycle.download_life_cycle_summary", token=token)).replace(self.APP_PREFIX, "")
         return download_url
     
     def get_blueprint(self):

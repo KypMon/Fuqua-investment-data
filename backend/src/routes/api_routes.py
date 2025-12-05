@@ -3,13 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import io
 import os
-import yfinance as yf
 import statsmodels.api as sm
 from contextlib import redirect_stdout
 from statsmodels.stats.stattools import durbin_watson, jarque_bera
 from datetime import datetime
 from typing import Any
-from flask import Blueprint, jsonify, request, g, send_from_directory, make_response, redirect, url_for
+from flask import Blueprint, jsonify, request, g, send_from_directory, redirect
 from mv import mv
 from src.logging.app_logger import AppLogger
 from src.config.config import Config
@@ -17,20 +16,14 @@ from src.services.data_service import DataService
 from src.services.file_service import FileService
 from src.services.backtest_service import BacktestService
 from src.services.backtest_input_error import BacktestInputError
-# from life_cycle import (
-#     LifeCycleInputError,
-#     load_vector_from_csv,
-#     run_life_cycle_analysis,
-# )
+from src.services.utilities_service import UtilitiesService
 
 class ApiRoutes(object):
 
     def __init__(self) -> None:
         self.logger = AppLogger.get_logger()
-        self.logger.info("This is AppRoutes constructor")
 
         self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
-        self.logger.info("self.APP_PREFIX: " + str(self.APP_PREFIX))
 
         routes_dir = os.path.dirname(__file__)
         backend_root = os.path.abspath(os.path.join(routes_dir, "..", ".."))  # up to backend
@@ -39,6 +32,7 @@ class ApiRoutes(object):
         self.blueprint = Blueprint("ApiRoutes", __name__)
         self._add_routes()
 
+        self.utilities_service = UtilitiesService()
         self.data_service = DataService()
         self.file_service = FileService()
         self.backtest_service = BacktestService()
@@ -70,7 +64,7 @@ class ApiRoutes(object):
         @bp.route(f"{self.APP_PREFIX}/run", methods=["POST"])
         def run_mv():
             data = request.json or request.form
-            self.log_user_activity(data)
+            self.utilities_service.log_user_activity(data)
             etfl = data.get("etflist", "").split(",") if data.get("etflist") else ["VOO","VXUS","AVUV","AVDV","AVEM"]
             short  = int(data.get("short", 0))
             maxuse = int(data.get("maxuse", 0))
@@ -94,51 +88,13 @@ class ApiRoutes(object):
 
             #log.info("result: " + str(result))
             return jsonify(result)
-    
-        #@bp.route("/life-cycle/run", methods=["POST"])
-        # @bp.route(f"{self.APP_PREFIX}/life-cycle/run", methods=["POST"])
-        # def run_life_cycle():
-        #     self.log_user_activity()
-
-        #     try:
-        #         returns_file = request.files.get("returns_file")
-        #         cashflows_file = request.files.get("cashflows_file")
-
-        #         returns_vector = load_vector_from_csv(returns_file, "Return")
-        #         cashflow_vector = load_vector_from_csv(cashflows_file, "Cash flow")
-
-        #         form_data = request.form or {}
-        #         if not form_data:
-        #             form_data = request.json or {}
-
-        #         initial_wealth = self._parse_float(form_data.get("initial_wealth", 0), "Initial wealth", 0.0)
-        #         wmin_cutoff = self._parse_float(form_data.get("wmin_cutoff", 0), "Minimum wealth cutoff", 0.0)
-        #         nsim = self._parse_int(form_data.get("nsim", 1000), "Number of simulations", 1000)
-
-        #         result = run_life_cycle_analysis(
-        #             returns_vector,
-        #             cashflow_vector,
-        #             w0=initial_wealth,
-        #             wmin_cutoff=wmin_cutoff,
-        #             nsim=nsim,
-        #         )
-
-        #         return jsonify(result)
-
-        #     except LifeCycleInputError as exc:
-        #         return jsonify({"error": str(exc)}), 400
-        #     except Exception as exc:  # pragma: no cover - defensive fallback
-        #         import traceback
-
-        #         traceback.print_exc()
-        #         return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
 
         #@bp.route("/backtest", methods=["POST"])
         @bp.route(f"{self.APP_PREFIX}/backtest", methods=["POST"])
         def run_backtest():
             try:
                 data = request.json
-                self.log_user_activity(data)
+                self.utilities_service.log_user_activity(data)
 
                 start_date_str = data.get("start_date", "1970-01-01")
                 end_date_str = data.get("end_date", "2023-12-31")
@@ -248,7 +204,7 @@ class ApiRoutes(object):
                 # @SDS end
 
                 data = request.json
-                self.log_user_activity(data)
+                self.utilities_service.log_user_activity(data)
                 ticker = data.get("ticker")
                 start_date_str = data.get("start_date", "1970-01-01")
                 end_date_str = data.get("end_date", "2023-12-31")
@@ -539,7 +495,7 @@ class ApiRoutes(object):
         #@bp.route('/static/<path:filename>')
         @bp.route(f"{self.APP_PREFIX}/static/<path:filename>", methods=["POST"])
         def serve_image(filename):
-            self.log_user_activity()
+            self.utilities_service.log_user_activity()
             # @SDS begin
             # return send_from_directory(STATIC_DIR, filename)
             return send_from_directory(self.file_service.get_STATIC_DIR(), filename)
@@ -617,34 +573,6 @@ class ApiRoutes(object):
             })
 
         return summary
-
-    # def _parse_float(self, value, label, default=0.0):
-    #     if value in (None, ""):
-    #         return float(default)
-    #     try:
-    #         return float(value)
-    #     except (TypeError, ValueError):
-    #         raise LifeCycleInputError(f"{label} must be a numeric value.")
-
-
-    # def _parse_int(self, value, label, default=0):
-    #     if value in (None, ""):
-    #         return int(default)
-    #     try:
-    #         return int(float(value))
-    #     except (TypeError, ValueError):
-    #         raise LifeCycleInputError(f"{label} must be an integer value.")
-    
-    def log_user_activity(self, data=None):
-        if not (
-            request.url.startswith("/static/")
-            or request.url.endswith((".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".map"))
-        ):
-            user = getattr(g, "fwUser", None)
-            if not user is None:
-                self.logger.info(user.get_dukeid() + " " + user.get_userid() + " " + user.get_name() + " -> " + request.url + " " + (str(data) if data is not None else ""))
-            else:
-                self.logger.info(request.url + " " + (str(data) if data is not None else ""))
 
 class RegressionInputError(Exception):
     """Raised when regression input fails validation."""

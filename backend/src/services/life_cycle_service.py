@@ -23,7 +23,6 @@ class LifeCycleService(object):
             raise LifeCycleInputError(f"{label} vector contains non-finite values.")
         return array
 
-
     def load_vector_from_csv(self, file_storage, label: str) -> np.ndarray:
         """Load a numeric vector from an uploaded CSV file."""
 
@@ -48,6 +47,51 @@ class LifeCycleService(object):
 
         return self._ensure_vector(series.to_numpy(dtype=float), label)
 
+    # def load_vector_from_dataframe(self, df: pd.DataFrame, label: str) -> np.ndarray:
+    #     """Load a numeric vector from a dataframe (first column)."""
+
+    #     if df is None or df.empty:
+    #         raise LifeCycleInputError(f"{label} DataFrame is empty or None.")
+
+    #     # Drop empty/non-numeric values
+    #     df_clean = df.apply(pd.to_numeric, errors="coerce").dropna(how="all")
+    #     if df_clean.empty:
+    #         raise LifeCycleInputError(f"{label} DataFrame does not contain numeric data.")
+
+    #     series = df_clean.iloc[:, 0].dropna()
+    #     if series.empty:
+    #         raise LifeCycleInputError(f"{label} DataFrame has no numeric values in the first column.")
+
+    #     return self._ensure_vector(series.to_numpy(dtype=float), label)
+    
+    def to_summary_dataframe(self, result: dict) -> pd.DataFrame:
+        """Convert a life-cycle simulation result dict into a summary DataFrame."""
+
+        # Defensive: check for 'summary' key
+        summary = result.get("summary") if isinstance(result, dict) else None
+        if summary is None:
+            raise LifeCycleInputError("Result does not contain a 'summary' section.")
+
+        # Convert summary metrics into rows (Metric, Value)
+        rows = []
+        for key, value in summary.items():
+            rows.append({"Metric": key, "Value": value})
+
+        # Optionally include metadata if available
+        metadata = result.get("metadata")
+        if isinstance(metadata, dict):
+            rows.append({})
+            rows.append({"Metric": "Metadata", "Value": ""})
+            for key, value in metadata.items():
+                rows.append({"Metric": key, "Value": value})
+
+        # Build dataframe
+        df = pd.DataFrame(rows)
+
+        # Replace NaN with empty for safer CSV
+        df = df.fillna("")
+
+        return df
 
     def life_cycle_simulation(
         self,

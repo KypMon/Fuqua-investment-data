@@ -83,9 +83,6 @@ class FileService(object):
     def get_mom_file_path(self) -> str:
         return self.mom_file
     
-    # def get_STATIC_DIR(self) -> str:
-    #     return self.STATIC_DIR
-    
     def save_dataframe(self, user, df: pd.DataFrame, prefix: str, static_dir: str) -> str:
         filename = self.timestamped_filename(prefix)
         if self.is_local_host is False:
