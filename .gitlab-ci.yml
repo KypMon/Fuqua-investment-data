@@ -45,10 +45,10 @@ default:
     --build-arg FW_LOGIN_URL=${FW_LOGIN_URL} 
     --build-arg HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
     --build-arg NPM_REGISTRY=${NPM_REGISTRY}
-    -t $IMAGE_TAG/$ENV:$VERSION 
+    -t $IMAGE_TAG:$VERSION 
     --push .
-  - docker tag $IMAGE_TAG/$ENV:$VERSION $IMAGE_TAG/$ENV:latest
-  - docker push $IMAGE_TAG/$ENV:latest
+  - docker tag $IMAGE_TAG:$VERSION $IMAGE_TAG:latest
+  - docker push $IMAGE_TAG:latest
 
 # re-usable job template (build the docker container for dev or prod)
 .dockerize-template:
