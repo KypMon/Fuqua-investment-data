@@ -55,7 +55,6 @@ export default function FormSection({ setResult }) {
         enddate: dayjs(form.enddate).format("YYYYMM"),
       };
 
-      console.log(`${apiBaseUrl}/run`);
       const res = await axios.post(`${apiBaseUrl}/run`, payload);
       setResult(res.data);
     } catch (err) {

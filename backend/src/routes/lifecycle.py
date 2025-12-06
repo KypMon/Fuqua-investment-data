@@ -20,7 +20,6 @@ class LifeCycle(object):
         self.life_cycle_service = LifeCycleService()
 
         self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
-        self.logger.info("APP_PREFIX: " + self.APP_PREFIX)
 
         # determine absolute path for file uploads/downloads
         server_static_dir = os.getenv("STATIC_DIR")

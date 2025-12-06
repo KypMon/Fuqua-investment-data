@@ -13,7 +13,9 @@ class FileService(object):
 
         config = Config.get_config()
 
-        data_dir = config.get("data.directory")
+        self.is_local_host = True if config.get("HOST") == "localhost" else False
+
+        data_dir = config.get("data.directory") if self.is_local_host is False else ""
 
         # stocks_mf_ETF_data_final.csv
         self.etf_file = os.path.join(data_dir, config.get("stocks.etf"))
@@ -26,8 +28,6 @@ class FileService(object):
 
         # F-F_Momentum_Factor.csv
         self.mom_file = os.path.join(data_dir, config.get("f.f.momentum.factor"))
-
-        self.is_local_host = True if config.get("HOST") == "localhost" else False
 
     def register_user_file(self, user, token, file_path, token_dir):
         """Store mapping on disk: one small JSON per token."""

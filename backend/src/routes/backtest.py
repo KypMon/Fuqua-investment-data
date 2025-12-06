@@ -22,7 +22,6 @@ class Backtest(object):
         self.backtest_service = BacktestService()
 
         self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
-        self.logger.info("APP_PREFIX: " + self.APP_PREFIX)
 
         self.blueprint = Blueprint(
             "Backtest",
