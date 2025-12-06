@@ -32,7 +32,7 @@ default:
 ## re-usable script template (build Docker image for either dev or prod)
 .build_docker_image: &build_docker_image
   - >
-    docker build -f coursepacks.Dockerfile 
+    docker build -f fa.Dockerfile 
     --build-arg http_proxy=${HTTP_PROXY}
     --build-arg https_proxy=${HTTPS_PROXY}
     --build-arg PORT=${PORT} 
