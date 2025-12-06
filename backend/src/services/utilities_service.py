@@ -22,13 +22,3 @@ class UtilitiesService(object):
             else:
                 self.logger.info(request.url + " " + (str(data) if data is not None else ""))
 
-    def build_download_url_via_token(self, fwUser, file_path, urlFor):
-        # --- NEW: Generate unguessable token and store mapping ---
-        token = uuid4().hex
-        self.file_service.register_user_file(fwUser, token, file_path, self.token_dir)
-
-        # Build URL to download via token
-        download_url = (url_for(urlFor, token=token)).replace(self.APP_PREFIX, "")
-        return download_url
-
-    

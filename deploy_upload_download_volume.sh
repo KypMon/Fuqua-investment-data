@@ -15,7 +15,7 @@
 ##
 VOLUME=fa_volume_upload_download
 
-# docker volume rm $VOLUME 2>/dev/null || true  NO !!!!!!
+docker volume rm $VOLUME 2>/dev/null || true
 
 docker volume create --driver local $VOLUME;
 docker run --rm \
