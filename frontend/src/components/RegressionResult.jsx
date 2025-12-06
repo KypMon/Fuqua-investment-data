@@ -7,9 +7,9 @@ import {
   Stack,
   Typography
 } from "@mui/material";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import Plot from 'react-plotly.js'; // Make sure react-plotly.js is installed
-import { downloadCsvContent, ensureCsvExtension, extractTablesFromHtml, tablesToCsv } from "../utils/csv";
+import { extractTablesFromHtml } from "../utils/csv";
 import DataTable from "./DataTable";
 import OlsSummary from './OlsSummary';
 
@@ -101,19 +101,19 @@ export default function RegressionResult({ result }) {
 
   const summaryTables = useMemo(() => extractTablesFromHtml(summaryHtml), [summaryHtml]);
 
-  const handleDownloadSummary = useCallback(() => {
-    if (!summaryTables.length) {
-      return;
-    }
+  // const handleDownloadSummary = useCallback(() => {
+  //   if (!summaryTables.length) {
+  //     return;
+  //   }
 
-    const csvString = tablesToCsv(summaryTables);
-    if (!csvString) {
-      return;
-    }
+  //   const csvString = tablesToCsv(summaryTables);
+  //   if (!csvString) {
+  //     return;
+  //   }
 
-    const filename = ensureCsvExtension("regression_output_summary") ?? "regression_output_summary.csv";
-    downloadCsvContent(csvString, filename);
-  }, [summaryTables]);
+  //   const filename = ensureCsvExtension("regression_output_summary") ?? "regression_output_summary.csv";
+  //   downloadCsvContent(csvString, filename);
+  // }, [summaryTables]);
 
   const summaryColumns = useMemo(
     () => [
@@ -164,6 +164,8 @@ export default function RegressionResult({ result }) {
     return null;
   }
 
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
+
   return (
     <Box mt={4}>
       <Typography variant="h6" gutterBottom>Model Output</Typography>
@@ -197,13 +199,14 @@ export default function RegressionResult({ result }) {
               Regression Output Summary
             </Typography>
             {summaryTables.length > 0 && (
-              <Button variant="outlined" size="small" onClick={handleDownloadSummary}>
+              <Button variant="outlined" size="small" href={`${apiBaseUrl}${resultData.csv_url}`} >
                 Download CSV
               </Button>
             )}
           </Box>
           {/* Grid container might not be needed if OlsSummary takes full width */}
-          <OlsSummary html={summaryHtml} />
+          {/* <OlsSummary html={summaryHtml} /> */}
+          <OlsSummary html={summaryHtml} htmlUrl={resultData.html_url} />
         </Paper>
       )}
 

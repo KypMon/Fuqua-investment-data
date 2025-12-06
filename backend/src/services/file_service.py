@@ -103,6 +103,15 @@ class FileService(object):
         user_filename = parts[0] + "_" + user.get_userid() + "." + parts[1]
         return user_filename
     
+    def save_html(self, user, html_content: str, prefix: str, static_dir: str) -> str:
+        filename = self.timestamped_filename(prefix).replace(".csv", ".html")
+        if not self.is_local_host:
+            filename = self.user_timestamped_filename(filename, user)
+        path = os.path.join(static_dir, filename)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        return filename
+    
     # def make_static_dir(self):
     #     self.logger.info("Creating static directory path for: " + self.STATIC_DIR)
     #     os.makedirs(self.STATIC_DIR, exist_ok=True)

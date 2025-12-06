@@ -22,7 +22,6 @@ class Regression(object):
         self.data_service = DataService()
 
         self.APP_PREFIX = os.getenv("APP_PREFIX", "")  # "/financial_analyzer" or ""
-        self.logger.info("APP_PREFIX: " + self.APP_PREFIX)
 
         # determine absolute path for file uploads/downloads
         server_static_dir = os.getenv("STATIC_DIR")
@@ -49,12 +48,23 @@ class Regression(object):
             static_folder=static_dir,
         )
 
-        # register download endpoint for summary files
+        #register download endpoint for regression summary files
         # self.blueprint.add_url_rule(
-        #     "/life-cycle/download/<token>",
-        #     view_func=self.download_life_cycle_summary,
+        #     "/regression/download/<token>/<mimetype>",
+        #     view_func=self.download_regression_output_summary,
         #     methods=["GET"],
         # )
+        self.blueprint.add_url_rule(
+            "/regression/download/html/<token>",
+            view_func=self.download_regression_html,
+            methods=["GET"],
+        )
+
+        self.blueprint.add_url_rule(
+            "/regression/download/csv/<token>",
+            view_func=self.download_regression_csv,
+            methods=["GET"],
+        )
 
         self.blueprint.add_url_rule(
             "/run",
@@ -347,6 +357,28 @@ class Regression(object):
                 elif pd.isna(data_to_sanitize):
                     return None
                 return data_to_sanitize
+            
+            # files (multi-user)
+            # --- Save regression outputs for this user ---
+            user = getattr(g, "fwUser", None)
+
+            # 1) Save the HTML summary
+            #html_filename = f"regression_summary_{ticker}"
+            html_filename = self.file_service.save_html(user, regression_text_html, f"regression_summary_{ticker}", self.static_dir)
+            html_path = os.path.join(self.static_dir, html_filename)
+            self.logger.info("html Path: " + str(html_path))
+            html_url = self.build_download_url_via_token(user, html_path, "Regression.download_regression_html")
+            self.logger.info("html url: " + str(html_url))
+
+            # 2) Save the CSV summary table
+            df_summary = pd.DataFrame(return_contribution_list)
+            csv_filename = self.file_service.save_dataframe(user, df_summary, f"regression_summary_{ticker}", self.static_dir)
+            csv_path = os.path.join(self.static_dir, csv_filename)
+            csv_url = self.build_download_url_via_token(user, csv_path, "Regression.download_regression_csv")
+
+            # 3) Add URLs into payload
+            response_payload["html_url"] = html_url
+            response_payload["csv_url"] = csv_url
 
             return jsonify(sanitize_for_json(response_payload))
 
@@ -355,82 +387,12 @@ class Regression(object):
         except Exception as e:
             import traceback
             current_traceback = traceback.format_exc() # Capture traceback string
-            print(current_traceback) # Print to server logs
+            self.logger.error(str(current_traceback)) # Print to server logs
             return jsonify({"error": str(e), "trace": current_traceback}), 500
-
-
-    # def run_life_cycle(self):
-    #     self.utilities_service.log_user_activity()
-
-    #     user = getattr(g, "fwUser", None)
-
-    #     try:
-    #         returns_file = request.files.get("returns_file")
-    #         cashflows_file = request.files.get("cashflows_file")
-
-    #         form_data = request.form or {}
-    #         if not form_data:
-    #             form_data = request.json or {}
-
-    #         initial_wealth = self._parse_float(form_data.get("initial_wealth", 0), "Initial wealth", 0.0)
-    #         wmin_cutoff = self._parse_float(form_data.get("wmin_cutoff", 0), "Minimum wealth cutoff", 0.0)
-    #         nsim = self._parse_int(form_data.get("nsim", 1000), "Number of simulations", 1000)
-
-    #         # Read both files into dataframes
-    #         #df_returns = pd.read_csv(returns_file)
-    #         #df_cashflows = pd.read_csv(cashflows_file)
-
-    #         # Reset file pointer for reuse
-    #         #returns_file.seek(0)
-    #         #cashflows_file.seek(0)
-
-    #         # Save them with timestamp + userid 
-    #         #returns_filename = self.file_service.save_dataframe(user, df_returns, "life_cycle_returns", self.static_dir)
-    #         #cashflows_filename = self.file_service.save_dataframe(user, df_cashflows, "life_cycle_cashflows", self.static_dir)
-
-    #         # run the simulation
-    #         returns_vector = self.life_cycle_service.load_vector_from_csv(returns_file, "Return")
-    #         cashflow_vector = self.life_cycle_service.load_vector_from_csv(cashflows_file, "Cash flow")
-
-    #         result = self.life_cycle_service.run_life_cycle_analysis(
-    #             returns_vector,
-    #             cashflow_vector,
-    #             w0=initial_wealth,
-    #             wmin_cutoff=wmin_cutoff,
-    #             nsim=nsim,
-    #         )
-
-    #         # Save summary CSV (use same helper)
-    #         summary_df = self.life_cycle_service.to_summary_dataframe(result)
-    #         summary_filename = self.file_service.save_dataframe(user, summary_df, "life_cycle_summary", self.static_dir)
-    #         summary_filepath = os.path.join(self.static_dir, summary_filename)
-    #         download_url = self.build_download_url_via_token(user, summary_filepath, summary_filename)
-
-    #         # Register for secure token download
-    #         #summary_path = os.path.join(self.static_dir, summary_filename)
-    #         #csv_url = self.build_download_url_via_token(user, summary_path, summary_filename)
-    #         self.logger.info("summary_filename: " + str(summary_filename))
-    #         self.logger.info("summary_filepath: " + str(summary_filepath))
-    #         self.logger.info("download url: " + str(download_url))
-
-    #         return jsonify({
-    #             **result,  # unpack the keys inside result dict
-    #             "summary_csv_url": download_url,
-    #             #"returns_filename": returns_filename,    
-    #             #"cashflows_filename": cashflows_filename,
-    #         })
-
-    #     except LifeCycleInputError as exc:
-    #         return jsonify({"error": str(exc)}), 400
-    #     except Exception as exc:  # pragma: no cover - defensive fallback
-    #         import traceback
-
-    #         traceback.print_exc()
-    #         return jsonify({"error": str(exc), "trace": traceback.format_exc()}), 500
         
-    # #@bp.route("/life-cycle/download/<token>")
-    # def download_life_cycle_summary(self, token):
-    #     self.logger.info("DOWNLOAD LIFE CYCLE SUMMARY")
+    #@bp.route("/regression/download/<token>/<mimetype")
+    # def download_regression_output_summary(self, token, mimetype):
+    #     self.logger.info("DOWNLOAD REGRESSION SUMMARY")
     #     self.utilities_service.log_user_activity()
     #     user = getattr(g, "fwUser", None)
 
@@ -444,22 +406,72 @@ class Regression(object):
     #             file_path,
     #             as_attachment=True,
     #             download_name=os.path.basename(file_path),
-    #             mimetype="text/csv",
+    #             #mimetype="text/csv",
+    #             mimetype="text/" + mimetype.strip().lower(),
     #             max_age=0,
     #             conditional=False
     #         )
     #     except FileNotFoundError:
     #         abort(404)
-        
 
-    
-    def build_download_url_via_token(self, fwUser, file_path, filename):
+    def download_regression_html(self, token):
+        self.utilities_service.log_user_activity()
+        user = getattr(g, "fwUser", None)
+
+        entry = self.file_service.resolve_user_token(user, token, self.token_dir)
+        if not entry:
+            abort(403)
+
+        file_path = entry["path"]
+        try:
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=os.path.basename(file_path),
+                mimetype="text/html",
+                max_age=0,
+                conditional=False
+            )
+        except FileNotFoundError:
+            abort(404)
+
+    def download_regression_csv(self, token):
+        self.utilities_service.log_user_activity()
+        user = getattr(g, "fwUser", None)
+
+        entry = self.file_service.resolve_user_token(user, token, self.token_dir)
+        if not entry:
+            abort(403)
+
+        file_path = entry["path"]
+        try:
+            return send_file(
+                file_path,
+                as_attachment=True,
+                download_name=os.path.basename(file_path),
+                mimetype="text/csv",
+                max_age=0,
+                conditional=False
+            )
+        except FileNotFoundError:
+            abort(404)
+
+    # def build_download_url_via_token(self, fwUser, file_path):
+    #     # --- NEW: Generate unguessable token and store mapping ---
+    #     token = uuid4().hex
+    #     self.file_service.register_user_file(fwUser, token, file_path, self.token_dir)
+
+    #     # Build URL to download via token
+    #     download_url = (url_for("Regression.download_regression_output_summary", token=token)).replace(self.APP_PREFIX, "")
+    #     return download_url
+    def build_download_url_via_token(self, fwUser, file_path, urlFor):
         # --- NEW: Generate unguessable token and store mapping ---
         token = uuid4().hex
         self.file_service.register_user_file(fwUser, token, file_path, self.token_dir)
 
         # Build URL to download via token
-        download_url = (url_for("LifeCycle.download_life_cycle_summary", token=token)).replace(self.APP_PREFIX, "")
+        # download_url = (url_for("Regression.download_regression_output_summary", token=token)).replace(self.APP_PREFIX, "")
+        download_url = (url_for(urlFor, token=token)).replace(self.APP_PREFIX, "")
         return download_url
     
     def get_blueprint(self):

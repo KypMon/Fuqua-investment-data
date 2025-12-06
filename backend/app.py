@@ -55,7 +55,7 @@ def create_app_localhost(config_file=None, log_file=None):
 
 if __name__ == "__main__": # only runs if executing "python app.py" in localhost environment
     ###
-    ### Flask entry point for localhost:3000
+    ### Flask entry point for localhost:3000 (single-user, no user authentication)
     ###
     AppLogger.set_up_logger("app.log")
     log = AppLogger.get_logger()
@@ -68,7 +68,7 @@ if __name__ == "__main__": # only runs if executing "python app.py" in localhost
     )
 else:
     ###
-    ### see wsgi.py for gunicorn entry point
+    ### see wsgi.py for gunicorn entry point (multi-user, users must authenticate)
     ### 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = "app.log_" + timestamp + ".log"

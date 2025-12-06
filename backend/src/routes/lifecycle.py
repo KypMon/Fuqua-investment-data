@@ -104,7 +104,7 @@ class LifeCycle(object):
                 nsim=nsim,
             )
 
-            # Save summary CSV (use same helper)
+            # Save summary CSV
             summary_df = self.life_cycle_service.to_summary_dataframe(result)
             summary_filename = self.file_service.save_dataframe(user, summary_df, "life_cycle_summary", self.static_dir)
             summary_filepath = os.path.join(self.static_dir, summary_filename)
