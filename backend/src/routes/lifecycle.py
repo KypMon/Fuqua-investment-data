@@ -110,12 +110,9 @@ class LifeCycle(object):
             summary_filepath = os.path.join(self.static_dir, summary_filename)
             download_url = self.build_download_url_via_token(user, summary_filepath, summary_filename)
 
-            # Register for secure token download
-            #summary_path = os.path.join(self.static_dir, summary_filename)
-            #csv_url = self.build_download_url_via_token(user, summary_path, summary_filename)
-            self.logger.info("summary_filename: " + str(summary_filename))
-            self.logger.info("summary_filepath: " + str(summary_filepath))
-            self.logger.info("download url: " + str(download_url))
+            # self.logger.info("summary_filename: " + str(summary_filename))
+            # self.logger.info("summary_filepath: " + str(summary_filepath))
+            # self.logger.info("download url: " + str(download_url))
 
             return jsonify({
                 **result,  # unpack the keys inside result dict
@@ -134,7 +131,6 @@ class LifeCycle(object):
         
     #@bp.route("/life-cycle/download/<token>")
     def download_life_cycle_summary(self, token):
-        self.logger.info("DOWNLOAD LIFE CYCLE SUMMARY")
         self.utilities_service.log_user_activity()
         user = getattr(g, "fwUser", None)
 

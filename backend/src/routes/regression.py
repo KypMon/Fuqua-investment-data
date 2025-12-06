@@ -5,7 +5,7 @@ import statsmodels.api as sm
 from uuid import uuid4
 from flask import Blueprint, request, jsonify, g, url_for, abort, send_file
 from datetime import datetime
-from werkzeug.utils import secure_filename
+#from werkzeug.utils import secure_filename
 from src.middleware.fw_user import FwUser
 from src.services.regression_input_error import RegressionInputError
 from src.services.file_service import FileService
@@ -48,20 +48,14 @@ class Regression(object):
             static_folder=static_dir,
         )
 
-        #register download endpoint for regression summary files
-        # self.blueprint.add_url_rule(
-        #     "/regression/download/<token>/<mimetype>",
-        #     view_func=self.download_regression_output_summary,
-        #     methods=["GET"],
-        # )
         self.blueprint.add_url_rule(
-            "/regression/download/html/<token>",
+            "/download/html/<token>",
             view_func=self.download_regression_html,
             methods=["GET"],
         )
 
         self.blueprint.add_url_rule(
-            "/regression/download/csv/<token>",
+            "/download/csv/<token>",
             view_func=self.download_regression_csv,
             methods=["GET"],
         )
@@ -359,16 +353,13 @@ class Regression(object):
                 return data_to_sanitize
             
             # files (multi-user)
-            # --- Save regression outputs for this user ---
+            # Save regression outputs for this user 
             user = getattr(g, "fwUser", None)
 
             # 1) Save the HTML summary
-            #html_filename = f"regression_summary_{ticker}"
             html_filename = self.file_service.save_html(user, regression_text_html, f"regression_summary_{ticker}", self.static_dir)
             html_path = os.path.join(self.static_dir, html_filename)
-            self.logger.info("html Path: " + str(html_path))
             html_url = self.build_download_url_via_token(user, html_path, "Regression.download_regression_html")
-            self.logger.info("html url: " + str(html_url))
 
             # 2) Save the CSV summary table
             df_summary = pd.DataFrame(return_contribution_list)
@@ -390,30 +381,6 @@ class Regression(object):
             self.logger.error(str(current_traceback)) # Print to server logs
             return jsonify({"error": str(e), "trace": current_traceback}), 500
         
-    #@bp.route("/regression/download/<token>/<mimetype")
-    # def download_regression_output_summary(self, token, mimetype):
-    #     self.logger.info("DOWNLOAD REGRESSION SUMMARY")
-    #     self.utilities_service.log_user_activity()
-    #     user = getattr(g, "fwUser", None)
-
-    #     entry = self.file_service.resolve_user_token(user, token, self.token_dir)
-    #     if not entry:
-    #         abort(403)
-
-    #     file_path = entry["path"]
-    #     try:
-    #         return send_file(
-    #             file_path,
-    #             as_attachment=True,
-    #             download_name=os.path.basename(file_path),
-    #             #mimetype="text/csv",
-    #             mimetype="text/" + mimetype.strip().lower(),
-    #             max_age=0,
-    #             conditional=False
-    #         )
-    #     except FileNotFoundError:
-    #         abort(404)
-
     def download_regression_html(self, token):
         self.utilities_service.log_user_activity()
         user = getattr(g, "fwUser", None)
@@ -456,21 +423,12 @@ class Regression(object):
         except FileNotFoundError:
             abort(404)
 
-    # def build_download_url_via_token(self, fwUser, file_path):
-    #     # --- NEW: Generate unguessable token and store mapping ---
-    #     token = uuid4().hex
-    #     self.file_service.register_user_file(fwUser, token, file_path, self.token_dir)
-
-    #     # Build URL to download via token
-    #     download_url = (url_for("Regression.download_regression_output_summary", token=token)).replace(self.APP_PREFIX, "")
-    #     return download_url
     def build_download_url_via_token(self, fwUser, file_path, urlFor):
         # --- NEW: Generate unguessable token and store mapping ---
         token = uuid4().hex
         self.file_service.register_user_file(fwUser, token, file_path, self.token_dir)
 
         # Build URL to download via token
-        # download_url = (url_for("Regression.download_regression_output_summary", token=token)).replace(self.APP_PREFIX, "")
         download_url = (url_for(urlFor, token=token)).replace(self.APP_PREFIX, "")
         return download_url
     

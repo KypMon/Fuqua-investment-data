@@ -1,6 +1,5 @@
 import os
 import json
-#import threading
 from datetime import datetime, UTC
 import pandas as pd
 from src.config.config import Config
@@ -29,8 +28,6 @@ class FileService(object):
         self.mom_file = os.path.join(data_dir, config.get("f.f.momentum.factor"))
 
         self.is_local_host = True if config.get("HOST") == "localhost" else False
-
-        #self.STATIC_DIR = config.get("static.dir")
 
     def register_user_file(self, user, token, file_path, token_dir):
         """Store mapping on disk: one small JSON per token."""
@@ -112,10 +109,4 @@ class FileService(object):
             f.write(html_content)
         return filename
     
-    # def make_static_dir(self):
-    #     self.logger.info("Creating static directory path for: " + self.STATIC_DIR)
-    #     os.makedirs(self.STATIC_DIR, exist_ok=True)
-
-
-
 

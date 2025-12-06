@@ -73,7 +73,6 @@ export default function RegressionPage() {
         `${apiBaseUrl}/regression/run`,
         payload
       );
-      console.log("res.data", res.data);
       setResult(res.data);
       setErrors([]);
     } catch (err) {
