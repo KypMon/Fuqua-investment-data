@@ -1,12 +1,4 @@
-#import pandas as pd
-#import numpy as np
-#import matplotlib.pyplot as plt
-# import io
 import os
-# import statsmodels.api as sm
-#from contextlib import redirect_stdout
-#from statsmodels.stats.stattools import durbin_watson, jarque_bera
-#from datetime import datetime
 from typing import Any
 from flask import Blueprint, jsonify, request, g, send_from_directory, redirect
 from mv import mv
@@ -15,7 +7,6 @@ from src.config.config import Config
 from src.services.data_service import DataService
 from src.services.file_service import FileService
 from src.services.backtest_service import BacktestService
-#from src.services.backtest_input_error import BacktestInputError
 from src.services.utilities_service import UtilitiesService
 
 class ApiRoutes(object):
@@ -27,7 +18,12 @@ class ApiRoutes(object):
 
         routes_dir = os.path.dirname(__file__)
         backend_root = os.path.abspath(os.path.join(routes_dir, "..", ".."))  # up to backend
-        self.REACT_BUILD_PATH = os.path.join(backend_root, Config.get_property("react.build.dir"))
+
+        server_static_dir = os.getenv("STATIC_DIR")
+        if server_static_dir: # server environment
+            self.REACT_BUILD_PATH = os.path.join(backend_root, Config.get_property("react.build.dir"))
+        else:
+            self.REACT_BUILD_PATH = ""
 
         self.blueprint = Blueprint("ApiRoutes", __name__)
         self._add_routes()
