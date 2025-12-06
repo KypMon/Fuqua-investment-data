@@ -1,0 +1,95 @@
+stages:
+  - image
+  - refresh
+  - deploy
+
+variables:
+  DOCKER_HOST: tcp://docker:2375/
+  DOCKER_DRIVER: overlay2
+  DOCKER_VERSION: "27.3.1"
+  DOCKER_REGISTRY_PASSWORD: $DOCKER_REGISTRY_PASSWORD
+  DOCKER_REGISTRY_URL: $DOCKER_REGISTRY_URL
+  DOCKER_REGISTRY_USER: $DOCKER_REGISTRY_USER
+  IMAGE_TAG: "$CI_REGISTRY/$CI_PROJECT_PATH"
+  VERSION: "$CI_COMMIT_SHORT_SHA"
+  CI_DEBUG_TRACE: "false"
+  CONTAINER: "financial_analyzer"
+  PROXY: "http://ha-proxy.fuqua.duke.edu:3128"
+
+## this before_script section executes prior to every script section
+default:
+  before_script:
+    - apk update ; apk add --no-cache  openssh-client  bash curl
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    - chmod 600 "$CI_PROJECT_DIR/.secure_files/id_devops"
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - ssh-keyscan  $DEPLOY_SERVER_DEV >> ~/.ssh/known_hosts 
+    - ssh-keyscan  $DEPLOY_SERVER_PROD >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - eval $(ssh-agent -s)
+    - ssh-add $CI_PROJECT_DIR/.secure_files/id_devops
+
+## re-usable script template (build Docker image for either dev or prod)
+.build_docker_image: &build_docker_image
+  - >
+    docker build -f coursepacks.Dockerfile 
+    --build-arg http_proxy=${HTTP_PROXY}
+    --build-arg https_proxy=${HTTPS_PROXY}
+    --build-arg PORT=${PORT} 
+    --build-arg HOST=${HOST}
+    --build-arg AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME} 
+    --build-arg ISSUER=${ISSUER}   
+    --build-arg JWKS_URI=${JWKS_URI}   
+    --build-arg ALGORITHM=${ALGORITHM}
+    --build-arg AUDIENCE=${AUDIENCE}
+    --build-arg FW_LOGIN_URL=${FW_LOGIN_URL} 
+    --build-arg HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
+    --build-arg NPM_REGISTRY=${NPM_REGISTRY}
+    -t $IMAGE_TAG/$ENV:$VERSION 
+    --push .
+  - docker tag $IMAGE_TAG/$ENV:$VERSION $IMAGE_TAG/$ENV:latest
+  - docker push $IMAGE_TAG/$ENV:latest
+
+# re-usable job template (build the docker container for dev or prod)
+.dockerize-template:
+  stage: image
+  variables:
+    PORT: ${CONTAINER_PORT}
+    HOST: ${HOST}
+    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME}
+    ISSUER: ${ISSUER}
+    JWKS_URI: ${JWKS_URI}
+    FW_LOGIN_URL: ${FW_LOGIN_URL}
+    HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT}
+    
+  image: docker:$DOCKER_VERSION
+  services:
+    - docker:$DOCKER_VERSION-dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login   --username "$CI_REGISTRY_USER"   --password-stdin     $DOCKER_REGISTRY_URL
+
+  script:
+    - *build_docker_image
+
+#############################
+## BEGIN THE ACTUAL JOBS 
+#############################
+
+# DEV jobs
+dockerize-dev:
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
+      when: on_success
+  extends: .dockerize-template
+  variables:
+    PORT: ${CONTAINER_PORT_DEV}
+    HOST: ${HOST_DEV}
+    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_DEV}
+    ISSUER: ${ISSUER_DEV}
+    JWKS_URI: ${JWKS_URI_DEV}
+    FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
+    HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
+
+
+
+
