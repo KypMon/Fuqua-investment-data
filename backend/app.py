@@ -12,16 +12,6 @@ from src.routes.regression import Regression
 from src.routes.matrix import Matrix
 from src.routes.lifecycle import LifeCycle
 
-# def get_app():
-#     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-#     app = Flask(
-#         __name__,
-#         static_url_path="/static",
-#         static_folder=os.path.join(BASE_DIR, Config.get_property("react.build.dir"), "static")
-#     )
-#     return app
-
 def register_routes(app):
     app.register_blueprint(ApiRoutes().blueprint)
     Backtest(app)
@@ -33,7 +23,6 @@ def register_routes(app):
 ### when running on a Fuqua server
 ### ##############################
 def create_app_server(config_file=None, log_file=None):
-    #app = get_app()
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
     app = Flask(
@@ -51,7 +40,6 @@ def create_app_server(config_file=None, log_file=None):
 ### when running under localhost
 ### #############################
 def create_app_localhost(config_file=None, log_file=None):
-    #app = get_app()
     app = Flask(
         __name__,
         static_url_path="/static",
