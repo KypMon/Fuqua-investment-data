@@ -91,33 +91,67 @@ default:
   script:
     - *stop_running_container
 
+# re-usable job template: pull down the docker image and deploy it, on dev or prod)
+.deploy-template:
+  stage: deploy
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER}
+    HOST_PORT: ${HOST_PORT}
+    CONTAINER_PORT: ${CONTAINER_PORT}
+  script:
+    - >
+      ssh ${APP_USER}@${DEPLOY_SERVER} 
+      "
+      echo $CI_REGISTRY_PASSWORD | docker login   --username $CI_REGISTRY_USER   --password-stdin     $DOCKER_REGISTRY_URL;
+      docker pull ${IMAGE_TAG}/${ENV}:latest;
+      docker run  --detach  \
+        --restart=unless-stopped \
+        --name=${CONTAINER}  \
+        -p ${HOST_PORT}:${CONTAINER_PORT} \
+        -v ${VOLUME_UPLOAD_DOWNLOAD}:/static \
+        -v ${VOLUME_CSV_INPUT}:/data \
+        $IMAGE_TAG; 
+      "
+
+
 
 #############################
 ## BEGIN THE ACTUAL JOBS 
 #############################
 
 # DEV jobs
-dockerize-dev:
-  rules:
-    - if: '$CI_COMMIT_TAG == null'
-      when: on_success
-  extends: .dockerize-template
-  variables:
-    PORT: ${CONTAINER_PORT_DEV}
-    HOST: ${HOST_DEV}
-    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_DEV}
-    ISSUER: ${ISSUER_DEV}
-    JWKS_URI: ${JWKS_URI_DEV}
-    FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
-    HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
+# dockerize-dev:
+#   rules:
+#     - if: '$CI_COMMIT_TAG == null'
+#       when: on_success
+#   extends: .dockerize-template
+#   variables:
+#     PORT: ${CONTAINER_PORT_DEV}
+#     HOST: ${HOST_DEV}
+#     AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_DEV}
+#     ISSUER: ${ISSUER_DEV}
+#     JWKS_URI: ${JWKS_URI_DEV}
+#     FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
+#     HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
 
-stop-container-dev:
+# stop-container-dev:
+#   rules:
+#     - if: '$CI_COMMIT_TAG == null'
+#       when: on_success
+#   extends: .stop-container-template
+#   variables:
+#     DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+
+deploy-dev:
   rules:
     - if: '$CI_COMMIT_TAG == null'
       when: on_success
-  extends: .stop-container-template
+  extends: .deploy-template
   variables:
     DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+    HOST_PORT: ${HOST_PORT_DEV}
+    CONTAINER_PORT: ${CONTAINER_PORT_DEV}
+
 
 
 
