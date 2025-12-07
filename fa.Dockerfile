@@ -21,6 +21,9 @@ ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
 ARG REACT_APP_BASENAME
 ENV REACT_APP_BASENAME=${REACT_APP_BASENAME}
 
+ARG HOME_PAGE_REDIRECT
+ENV HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
+
 RUN mkdir -p /fa
 WORKDIR /fa
 COPY frontend/ /fa
@@ -28,7 +31,8 @@ COPY frontend/ /fa
 # we do this so static resources will properly be served in non-localhost environment
 RUN apk add --no-cache jq
 #RUN jq '.homepage="/financial_analyzer"' package.json > tmp.json && mv tmp.json package.json
-RUN jq '.homepage="https://go-dev.fuqua.duke.edu/financial_analyzer"' package.json > tmp.json && mv tmp.json package.json
+# RUN jq '.homepage="https://go-dev.fuqua.duke.edu/financial_analyzer"' package.json > tmp.json && mv tmp.json package.json
+RUN jq --arg url "$HOME_PAGE_REDIRECT" '.homepage = $url' package.json > tmp.json && mv tmp.json package.json
 
 COPY frontend/.env_docker .env
 RUN sed -i "s@__react_app_api_base_url@${REACT_APP_API_BASE_URL}@g" /fa/.env
@@ -66,7 +70,6 @@ ARG JWKS_URI
 ARG ALGORITHM
 ARG AUDIENCE
 ARG FW_LOGIN_URL
-ARG HOME_PAGE_REDIRECT
 
 # data files (not sure if I will need to rework this for volumes)
 ARG DATA_DIRECTORY
@@ -93,7 +96,6 @@ ENV JWKS_URI=${JWKS_URI}
 ENV ALGORITHM=${ALGORITHM}
 ENV AUDIENCE=${AUDIENCE}
 ENV FW_LOGIN_URL=${FW_LOGIN_URL}
-ENV HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
 ENV DATA_DIRECTORY=${DATA_DIRECTORY}
 ENV CONFIG_DIRECTORY=${CONFIG_DIRECTORY}
 ENV F_F_MOMENTUM_FACTOR=${F_F_MOMENTUM_FACTOR}
