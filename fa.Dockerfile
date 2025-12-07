@@ -175,6 +175,7 @@ RUN ${APP_PATH}/backend/.venv/bin/pip install  --no-cache-dir   -r ${APP_PATH}/b
 # WORKDIR ${APP_PATH}
 RUN chmod +x ${APP_PATH}/backend/go.sh
 #ENTRYPOINT ["tail", "-f", "/dev/null"]
-CMD ["/bin/sh", "/app/fa/backend/go.sh"]
+#CMD ["/bin/sh", "/app/fa/backend/go.sh"]
+CMD ["/bin/bash", "/app/fa/backend/go.sh"]
 
 
