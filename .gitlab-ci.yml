@@ -111,7 +111,7 @@ default:
         --name=${CONTAINER}  \
         -p ${HOST_PORT}:${CONTAINER_PORT} \
         -v ${VOLUME_UPLOAD_DOWNLOAD}:/static \
-        -v ${VOLUME_CSV_INPUT}:/data \
+        -v ${VOLUME_CSV_INPUT}:/data/input \
         $IMAGE_TAG; 
       "
 
@@ -136,13 +136,13 @@ default:
 #     FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
 #     HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
 
-# stop-container-dev:
-#   rules:
-#     - if: '$CI_COMMIT_TAG == null'
-#       when: on_success
-#   extends: .stop-container-template
-#   variables:
-#     DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+stop-container-dev:
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
+      when: on_success
+  extends: .stop-container-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
 
 deploy-dev:
   rules:
