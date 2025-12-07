@@ -154,6 +154,9 @@ RUN sed -i "s@__home_page_redirect@${HOME_PAGE_REDIRECT}@g"                     
 
 EXPOSE 80
 
+VOLUME ["/static"]
+VOLUME ["/data/input"]
+
 ENV VIRTUAL_ENV=${APP_PATH}/backend/.venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 

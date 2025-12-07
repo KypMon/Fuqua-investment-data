@@ -23,7 +23,7 @@ docker run --rm \
 -p /static /static/matrix /static/matrix/tokens /static/lifecycle /static/lifecycle/tokens /static/regression /static/regression/tokens
 
 # inspect
-docker run --rm -it -v $VOLUME:/static alpine sh
+#docker run --rm -it -v $VOLUME:/static alpine sh
 
 
 

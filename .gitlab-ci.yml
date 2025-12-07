@@ -33,8 +33,8 @@ default:
 .build_docker_image: &build_docker_image
   - >
     docker build -f fa.Dockerfile 
-    --build-arg http_proxy=${HTTP_PROXY}
-    --build-arg https_proxy=${HTTPS_PROXY}
+    --build-arg HTTP_PROXY=${HTTP_PROXY}
+    --build-arg HTTPS_PROXY=${HTTPS_PROXY}
     --build-arg PORT=${PORT} 
     --build-arg HOST=${HOST}
     --build-arg AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME} 
@@ -49,6 +49,17 @@ default:
     --push .
   - docker tag $IMAGE_TAG:$VERSION $IMAGE_TAG:latest
   - docker push $IMAGE_TAG:latest
+
+## re-usable script template (stop and remove running docker images on dev or prod)
+.stop_running_container: &stop_running_container
+  - >
+    ssh ${APP_USER}@${DEPLOY_SERVER} 
+    "
+    echo $CI_REGISTRY_PASSWORD | docker login   --username $CI_REGISTRY_USER   --password-stdin     $DOCKER_REGISTRY_URL;
+    docker stop ${CONTAINER}  2>/dev/null  ||  true;
+    docker rm ${CONTAINER};   2>/dev/null  ||  true;
+    "
+
 
 # re-usable job template (build the docker container for dev or prod)
 .dockerize-template:
@@ -71,6 +82,16 @@ default:
   script:
     - *build_docker_image
 
+# re-usable job template (stop the  financial analyzer container if it is running, on dev or prod)
+.stop-container-template:
+  stage: refresh
+  allow_failure: true
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER}
+  script:
+    - *stop_running_container
+
+
 #############################
 ## BEGIN THE ACTUAL JOBS 
 #############################
@@ -89,6 +110,15 @@ dockerize-dev:
     JWKS_URI: ${JWKS_URI_DEV}
     FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
     HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
+
+stop-container-dev:
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
+      when: on_success
+  extends: .stop-container-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+
 
 
 
