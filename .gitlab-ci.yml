@@ -147,7 +147,7 @@ default:
         -p ${HOST_PORT}:${CONTAINER_PORT} \
         -v ${VOLUME_UPLOAD_DOWNLOAD}:/static \
         -v ${VOLUME_CSV_INPUT}:/data \
-        $IMAGE_TAG; 
+        $IMAGE_TAG:latest; 
       "
 
 #############################
