@@ -34,7 +34,7 @@ chown root:root /data/input/*.csv && chmod 644 /data/input/*.csv \
 
 
 # inspect
-# docker run --rm -it -v $VOLUME:/data alpine sh
+# docker run --rm -it -v fa_volume_csv_input:/data alpine sh
 
 docker rm temp-container
 
