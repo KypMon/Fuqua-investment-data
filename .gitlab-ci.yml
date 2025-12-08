@@ -160,7 +160,7 @@ debug-env:
   stage: debug
   script:
     - echo "Listing all environment variables"
-    - env
+    - env |
     - echo "DONE 1"
 
 # dockerize-dev:
