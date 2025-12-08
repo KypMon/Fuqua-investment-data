@@ -185,6 +185,12 @@ RUN npm config set registry=${NPM_REGISTRY} \
 RUN npm install --legacy-peer-deps
 
 RUN npm run build
+
+# Remove Node.js and npm to slim the final image
+RUN apt-get purge -y nodejs npm && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /root/.npm /usr/lib/node_modules /usr/local/lib/node_modules
 # end react build stuff
 
 #COPY backend ${APP_PATH}/backend
