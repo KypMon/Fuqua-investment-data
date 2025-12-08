@@ -34,7 +34,8 @@ RUN apk add --no-cache jq
 # RUN jq '.homepage="https://go-dev.fuqua.duke.edu/financial_analyzer"' package.json > tmp.json && mv tmp.json package.json
 RUN jq --arg url "$HOME_PAGE_REDIRECT" '.homepage = $url' package.json > tmp.json && mv tmp.json package.json
 
-COPY frontend/.env_docker .env
+# COPY frontend/.env_docker .env
+COPY frontend/.env_docker   /fa/.env
 RUN sed -i "s@__react_app_api_base_url@${REACT_APP_API_BASE_URL}@g" /fa/.env
 RUN sed -i "s@__react_app_validate_url@${REACT_APP_VALIDATE_URL}@g" /fa/.env
 RUN sed -i "s@__react_app_auth_url@${REACT_APP_AUTH_URL}@g"         /fa/.env
