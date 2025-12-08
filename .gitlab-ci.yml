@@ -66,9 +66,9 @@ default:
     --build-arg STOCKER_ETF=${STOCKER_ETF}
     --build-arg REACT_BUILD_DIR=${REACT_BUILD_DIR}
     --build-arg STATIC_DIR=${STATIC_DIR}
-    --build-arg REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL_DEV}
-    --build-arg REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL_DEV}
-    --build-arg REACT_APP_VALIDATE_URL=${REACT_APP_VALIDATE_URL_DEV}
+    --build-arg REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
+    --build-arg REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL}
+    --build-arg REACT_APP_VALIDATE_URL=${REACT_APP_VALIDATE_URL}
     --build-arg REACT_APP_BASENAME=${REACT_APP_BASENAME}
     -t $IMAGE_TAG:$VERSION 
     --push .
@@ -192,22 +192,22 @@ dockerize-dev:
     REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL_DEV}
     #REACT_APP_BASENAME: ${REACT_APP_BASENAME}
 
-# stop-container-dev:
-#   rules:
-#     - if: '$CI_COMMIT_TAG == null'
-#       when: on_success
-#   extends: .stop-container-template
-#   variables:
-#     DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+stop-container-dev:
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
+      when: on_success
+  extends: .stop-container-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
 
-# deploy-dev:
-#   rules:
-#     - if: '$CI_COMMIT_TAG == null'
-#       when: on_success
-#   extends: .deploy-template
-#   variables:
-#     DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
-#     HOST_PORT: ${HOST_PORT_DEV}
-#     CONTAINER_PORT: ${CONTAINER_PORT_DEV}
+deploy-dev:
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
+      when: on_success
+  extends: .deploy-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+    HOST_PORT: ${HOST_PORT_DEV}
+    CONTAINER_PORT: ${CONTAINER_PORT_DEV}
 
 
