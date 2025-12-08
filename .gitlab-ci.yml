@@ -1,4 +1,5 @@
 stages:
+  - debug
   - image
   - refresh
   - deploy
@@ -147,7 +148,7 @@ default:
         -p ${HOST_PORT}:${CONTAINER_PORT} \
         -v ${VOLUME_UPLOAD_DOWNLOAD}:/static \
         -v ${VOLUME_CSV_INPUT}:/data \
-        $IMAGE_TAG:latest; 
+        $IMAGE_TAG; 
       "
 
 #############################
@@ -155,49 +156,56 @@ default:
 #############################
 
 # DEV jobs
-dockerize-dev:
-  rules:
-    - if: '$CI_COMMIT_TAG == null'
-      when: on_success
-  extends: .dockerize-template
-  variables:
-    PORT: ${CONTAINER_PORT_DEV}
-    HOST: ${HOST_DEV}
-    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_DEV}
-    ISSUER: ${ISSUER_DEV}
-    JWKS_URI: ${JWKS_URI_DEV}
-    FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
-    HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
-    APP_PREFIX: ${APP_PREFIX}
-    CONFIG_DIRECTORY: ${CONFIG_DIRECTORY}
-    DATA_DIRECTORY: ${DATA_DIRECTORY}
-    F_F_MOMENTUM_FACTOR: ${F_F_MOMENTUM_FACTOR}
-    F_F_RESEARCH_DATA_5_FACTORS_2BY3: ${F_F_RESEARCH_DATA_5_FACTORS_2BY3}
-    F_F_RESEARCH_DATA_FACTORS: ${F_F_RESEARCH_DATA_FACTORS}
-    STOCKER_ETF: ${STOCKER_ETF}
-    REACT_BUILD_DIR: ${REACT_BUILD_DIR}
-    STATIC_DIR: ${STATIC_DIR}
-    REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL_DEV}
-    REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL_DEV}
-    REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL_DEV}
-    REACT_APP_BASENAME: ${REACT_APP_BASENAME}
+debug-env:
+  stage: debug
+  script:
+    - echo "Listing all environment variables"
+    - env
+    - echo "DONE 1"
 
-stop-container-dev:
-  rules:
-    - if: '$CI_COMMIT_TAG == null'
-      when: on_success
-  extends: .stop-container-template
-  variables:
-    DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+# dockerize-dev:
+#   rules:
+#     - if: '$CI_COMMIT_TAG == null'
+#       when: on_success
+#   extends: .dockerize-template
+#   variables:
+#     PORT: ${CONTAINER_PORT_DEV}
+#     HOST: ${HOST_DEV}
+#     AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_DEV}
+#     ISSUER: ${ISSUER_DEV}
+#     JWKS_URI: ${JWKS_URI_DEV}
+#     FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
+#     HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
+#     APP_PREFIX: ${APP_PREFIX}
+#     CONFIG_DIRECTORY: ${CONFIG_DIRECTORY}
+#     DATA_DIRECTORY: ${DATA_DIRECTORY}
+#     F_F_MOMENTUM_FACTOR: ${F_F_MOMENTUM_FACTOR}
+#     F_F_RESEARCH_DATA_5_FACTORS_2BY3: ${F_F_RESEARCH_DATA_5_FACTORS_2BY3}
+#     F_F_RESEARCH_DATA_FACTORS: ${F_F_RESEARCH_DATA_FACTORS}
+#     STOCKER_ETF: ${STOCKER_ETF}
+#     REACT_BUILD_DIR: ${REACT_BUILD_DIR}
+#     STATIC_DIR: ${STATIC_DIR}
+#     REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL_DEV}
+#     REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL_DEV}
+#     REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL_DEV}
+#     REACT_APP_BASENAME: ${REACT_APP_BASENAME}
 
-deploy-dev:
-  rules:
-    - if: '$CI_COMMIT_TAG == null'
-      when: on_success
-  extends: .deploy-template
-  variables:
-    DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
-    HOST_PORT: ${HOST_PORT_DEV}
-    CONTAINER_PORT: ${CONTAINER_PORT_DEV}
+# stop-container-dev:
+#   rules:
+#     - if: '$CI_COMMIT_TAG == null'
+#       when: on_success
+#   extends: .stop-container-template
+#   variables:
+#     DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+
+# deploy-dev:
+#   rules:
+#     - if: '$CI_COMMIT_TAG == null'
+#       when: on_success
+#   extends: .deploy-template
+#   variables:
+#     DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+#     HOST_PORT: ${HOST_PORT_DEV}
+#     CONTAINER_PORT: ${CONTAINER_PORT_DEV}
 
 
