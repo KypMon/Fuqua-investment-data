@@ -42,11 +42,11 @@ default:
     - ssh-add $CI_PROJECT_DIR/.secure_files/id_devops
 
 ## re-usable script template (build Docker image for either dev or prod)
+#    --build-arg HTTP_PROXY=${HTTP_PROXY}
+#    --build-arg HTTPS_PROXY=${HTTPS_PROXY}
 .build_docker_image: &build_docker_image
   - >
     docker build -f fa.Dockerfile 
-    --build-arg HTTP_PROXY=${HTTP_PROXY}
-    --build-arg HTTPS_PROXY=${HTTPS_PROXY}
     --build-arg PORT=${PORT} 
     --build-arg HOST=${HOST}
     --build-arg AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME} 
@@ -169,8 +169,8 @@ dockerize-dev:
       when: on_success
   extends: .dockerize-template
   variables:
-    HTTP_PROXY: "http://proxy.fuqua.duke.edu:3128"
-    HTTPS_PROXY: "http://proxy.fuqua.duke.edu:3128"
+    #HTTP_PROXY: "http://proxy.fuqua.duke.edu:3128"
+    #HTTPS_PROXY: "http://proxy.fuqua.duke.edu:3128"
     PORT: ${CONTAINER_PORT_DEV}
     HOST: ${HOST_DEV}
     AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_DEV}
