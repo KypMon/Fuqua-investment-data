@@ -15,17 +15,6 @@ variables:
   VERSION: "$CI_COMMIT_SHORT_SHA"
   CI_DEBUG_TRACE: "false"
   CONTAINER: "financial_analyzer"
-  #VOLUME_UPLOAD_DOWNLOAD: "fa_volume_upload_download"
-  #VOLUME_CSV_INPUT: "fa_volume_csv_input"
-  #REACT_BUILD_DIR: "react_build"
-  #REACT_APP_BASENAME: "/financial_analyzer"
-  #CONFIG_DIRECTORY: "config"
-  #DATA_DIRECTORY: "/data/input"
-  #STATIC_DIR: "/static"
-  #F_F_MOMENTUM_FACTOR: "F-F_Momentum_Factor.csv"
-  #F_F_RESEARCH_DATA_5_FACTORS_2BY3: "F-F_Research_Data_5_Factors_2x3.csv"
-  #F_F_RESEARCH_DATA_FACTORS: "F-F_Research_Data_Factors.CSV"
-  #STOCKER_ETF: "stocks_mf_ETF_data_final.csv"
   PROXY: "http://ha-proxy.fuqua.duke.edu:3128"
 
 ## this before_script section executes prior to every script section
@@ -95,15 +84,6 @@ default:
     JWKS_URI: ${JWKS_URI}
     FW_LOGIN_URL: ${FW_LOGIN_URL}
     HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT}
-    #APP_PREFIX: ${APP_PREFIX}
-    #CONFIG_DIRECTORY: ${CONFIG_DIRECTORY}
-    #DATA_DIRECTORY: ${DATA_DIRECTORY}
-    #F_F_MOMENTUM_FACTOR: ${F_F_MOMENTUM_FACTOR}
-    #F_F_RESEARCH_DATA_5_FACTORS_2BY3: ${F_F_RESEARCH_DATA_5_FACTORS_2BY3}
-    #F_F_RESEARCH_DATA_FACTORS: ${F_F_RESEARCH_DATA_FACTORS}
-    #STOCKER_ETF: ${STOCKER_ETF}
-    #REACT_BUILD_DIR: ${REACT_BUILD_DIR}
-    #STATIC_DIR: ${STATIC_DIR}
     REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL}
     REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL}
     REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL}
@@ -174,19 +154,9 @@ dockerize-dev:
     JWKS_URI: ${JWKS_URI_DEV}
     FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
     HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
-    #APP_PREFIX: ${APP_PREFIX}
-    #CONFIG_DIRECTORY: ${CONFIG_DIRECTORY}
-    #DATA_DIRECTORY: ${DATA_DIRECTORY}
-    #F_F_MOMENTUM_FACTOR: ${F_F_MOMENTUM_FACTOR}
-    #F_F_RESEARCH_DATA_5_FACTORS_2BY3: ${F_F_RESEARCH_DATA_5_FACTORS_2BY3}
-    #F_F_RESEARCH_DATA_FACTORS: ${F_F_RESEARCH_DATA_FACTORS}
-    #STOCKER_ETF: ${STOCKER_ETF}
-    #REACT_BUILD_DIR: ${REACT_BUILD_DIR}
-    #STATIC_DIR: ${STATIC_DIR}
     REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL_DEV}
     REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL_DEV}
     REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL_DEV}
-    #REACT_APP_BASENAME: ${REACT_APP_BASENAME}
 
 stop-container-dev:
   rules:
@@ -205,5 +175,43 @@ deploy-dev:
     DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
     HOST_PORT: ${HOST_PORT_DEV}
     CONTAINER_PORT: ${CONTAINER_PORT_DEV}
+
+    # PROD jobs
+dockerize-prod:
+  rules:
+    - if: '$CI_COMMIT_TAG != null'
+      when: on_success
+  extends: .dockerize-template
+  variables:
+    PORT: ${CONTAINER_PORT_PROD}
+    HOST: ${HOST_PROD}
+    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_PROD}
+    ISSUER: ${ISSUER_PROD}
+    JWKS_URI: ${JWKS_URI_PROD}
+    FW_LOGIN_URL: ${FW_LOGIN_URL_PROD}
+    HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_PROD}
+    REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL_PROD}
+    REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL_PROD}
+    REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL_PROD}
+
+
+stop-container-prod:
+  rules:
+    - if: '$CI_COMMIT_TAG != null'
+      when: on_success
+  extends: .stop-container-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_PROD}
+
+deploy-prod:
+  rules:
+    - if: '$CI_COMMIT_TAG != null'
+      when: on_success
+  extends: .deploy-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_PROD}
+    HOST_PORT: ${HOST_PORT_PROD}
+    CONTAINER_PORT: ${CONTAINER_PORT_PROD}
+
 
 

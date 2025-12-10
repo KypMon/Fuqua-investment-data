@@ -1,56 +1,3 @@
-# So that our final FA image is smaller,
-# we complete the node build stage first (React frontend artifacts). 
-# FROM node:24-alpine AS node-build
-
-# RUN npm install -g npm@10.9.2
-# RUN npm --version
-
-# Duke FSB NPM registry
-# ARG NPM_REGISTRY
-# ENV NPM_REGISTRY=${NPM_REGISTRY}
-
-# ARG REACT_APP_VALIDATE_URL
-# ENV REACT_APP_VALIDATE_URL=${REACT_APP_VALIDATE_URL}
-
-# ARG REACT_APP_AUTH_URL
-# ENV REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL}
-
-# ARG REACT_APP_API_BASE_URL
-# ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
-
-# ARG REACT_APP_BASENAME
-# ENV REACT_APP_BASENAME=${REACT_APP_BASENAME}
-
-# ARG HOME_PAGE_REDIRECT
-# ENV HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
-
-#RUN mkdir -p /fa
-#WORKDIR /fa
-#COPY frontend/ /fa
-
-# we do this so static resources will properly be served in non-localhost environment
-#RUN apk add --no-cache jq
-#RUN jq '.homepage="/financial_analyzer"' package.json > tmp.json && mv tmp.json package.json
-# RUN jq '.homepage="https://go-dev.fuqua.duke.edu/financial_analyzer"' package.json > tmp.json && mv tmp.json package.json
-# RUN jq --arg url "$HOME_PAGE_REDIRECT" '.homepage = $url' package.json > tmp.json && mv tmp.json package.json
-
-# COPY frontend/.env_docker .env
-# COPY frontend/.env_docker   /fa/.env
-# RUN sed -i "s@__react_app_api_base_url@${REACT_APP_API_BASE_URL}@g" /fa/.env
-# RUN sed -i "s@__react_app_validate_url@${REACT_APP_VALIDATE_URL}@g" /fa/.env
-# RUN sed -i "s@__react_app_auth_url@${REACT_APP_AUTH_URL}@g"         /fa/.env
-# RUN sed -i "s@__react_app_basename@${REACT_APP_BASENAME}@g"         /fa/.env
-
-# RUN npm config set registry=${NPM_REGISTRY}
-# RUN npm config set access=public
-# RUN npm config set strict-ssl=false
-# RUN npm config set scope=@fuquaschoolofbusiness
-# RUN npm config set @fuquaschoolofbusiness:registry=${NPM_REGISTRY}
-# RUN npm install --legacy-peer-deps
-
-# RUN npm run build
-
-
 #FROM python:3.13-alpine
 FROM python:3.13-slim
 
@@ -107,7 +54,7 @@ ENV AUDIENCE=${AUDIENCE}
 ARG FW_LOGIN_URL
 ENV FW_LOGIN_URL=${FW_LOGIN_URL}
 
-# data files (not sure if I will need to rework this for volumes)
+# data files 
 ARG DATA_DIRECTORY
 ENV DATA_DIRECTORY=${DATA_DIRECTORY}
 
@@ -132,19 +79,6 @@ ENV STATIC_DIR=${STATIC_DIR}
 ARG REACT_BUILD_DIR
 ENV REACT_BUILD_DIR=${REACT_BUILD_DIR}
 
-# apk for using alpine image
-# RUN apk add --no-cache \
-#     gcc g++ musl-dev python3-dev libffi-dev openssl-dev make \
-#     lapack-dev blas-dev rust cargo git cmake ca-certificates \
-#     && update-ca-certificates
-# for 2 images (node, then python)
-# RUN apt-get update && apt-get install -y \
-#     gcc g++ python3-dev libffi-dev libssl-dev make \
-#     liblapack-dev libblas-dev rustc cargo git cmake ca-certificates \
-#     && update-ca-certificates \
-#     && apt-get clean \
-#     && rm -rf /var/lib/apt/lists/*
-# for single image
 # Install system packages for both Node and Python builds
 RUN apt-get update && apt-get install -y \
     curl gnupg build-essential git \
@@ -193,17 +127,10 @@ RUN apt-get purge -y nodejs npm && \
     rm -rf /var/lib/apt/lists/* /root/.npm /usr/lib/node_modules /usr/local/lib/node_modules
 # end react build stuff
 
-#COPY backend ${APP_PATH}/backend
-#COPY --from=node-build /fa/build  ${APP_PATH}/backend/react_build
 RUN mkdir -p ${APP_PATH}/backend/react_build \
     && cp -r ${APP_PATH}/frontend/build/* ${APP_PATH}/backend/react_build/
 
-# frontend_build_env only for debug purposes - is not used by the app !
-#COPY --from=node-build /fa/.env ${APP_PATH}/frontend_build_env  
-
-#WORKDIR ${APP_PATH}
-#COPY backend/config/.env_docker   backend/config/.env
-# Copy whole backend source first
+# Copy backend source
 COPY backend ${APP_PATH}/backend
 
 # Switch into backend/config so sed runs in the right spot
