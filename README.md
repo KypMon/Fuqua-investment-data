@@ -83,7 +83,7 @@ Important!  If doing local development and it is not desired to re-deploy the ap
 
 ```
 git add .
-git commit -m [ci skip]
+git commit -m "[ci skip]"
 git push
 ```
 
