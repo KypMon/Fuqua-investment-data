@@ -62,9 +62,13 @@ The ```App.jsx``` file now tests to see if the user is running under localhost. 
 
 The app is dockerized (see ```fa.Dockerfile```).  It runs in a Docker container.
 
-Gitlab's continuous integration/continuous deployment (CI/CD) capability is used for deployment (see ```.gitlab-ci.yml```).  It is currently active for the ```dev``` branch and the ```main``` branch.  It is not relevant for the ```master``` branch, at this time.
+Gitlab's continuous integration/continuous deployment (CI/CD) capability is used for server deployment (see ```.gitlab-ci.yml```).  
 
-What this means: pushing changes into the ```main``` branch (for example):
+If commits are pushed into either the ```dev``` branch or the ```master``` branch, the build job will re-deploy the app on the test server.
+
+If commits are pushed into the ```main``` branch and the branch is tagged, the build job will re-deploy the app on the live server.
+
+What this means: pushing changes into the ```master``` branch (for example):
 
 ```
 git add .
@@ -72,13 +76,10 @@ git commit -m "my commit message"
 git push
 ```
 
-automatically triggers the build job defined in ```.gitlab-ci.yml```.  This job will stop the running docker container instance on the server, build a new docker image based on the main branch content, push it onto the server and start the new container running.
+automatically triggers the build job defined in ```.gitlab-ci.yml```.  The job will stop the running docker container instance on the server, build a new docker image based on the master branch content, push it onto the server and start the new container running.
 
-The build job is configured (at the moment) to only push out to the test server (serving over ```https://go-dev.fuqua.duke.edu/financial_analyzer```).
 
-To push to the live server (```https://go.fuqua.duke.edu/financial_analyzer```), an additional (as yet not created) deployment step will be required.  These instructions will be updated when the live deployment resources are all created.
-
-Important!  If doing local development and it is not desired to re-deploy the app on the server, add the message ```[ci skip]```, like this:
+Important!  If doing local development and it is not desired to re-deploy the app on a server, add the message ```[ci skip]```, like this:
 
 ```
 git add .
