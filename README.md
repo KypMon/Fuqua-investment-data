@@ -78,7 +78,7 @@ The build job is configured (at the moment) to only push out to the test server 
 
 To push to the live server (```https://go.fuqua.duke.edu/financial_analyzer```), an additional (as yet not created) deployment step will be required.  These instructions will be updated when the live deployment resources are all created.
 
-Important!  If doing local develpment and it is not desired to re-deploy the app on the server, add the message ```[ci skip]```, like this:
+Important!  If doing local development and it is not desired to re-deploy the app on the server, add the message ```[ci skip]```, like this:
 
 ```
 git add .
