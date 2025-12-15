@@ -30,7 +30,7 @@ The ```src/routes/api_routes.py``` code contains the endpoints for launching the
 
 The ```src/routes/backtest.py``` code contains all endpoints related to backtest.  Similarly for lifecycle, matrix, and regression.
 
-All of the API routes have been adapted to use the Flask blueprint framework.  The reason for this choice was that with blueprints (a blueprint equals a collection of 1 or more API endpoints), it is possible to designate a static folder that is visible only to the specific blueprint.  (In localhost mode, the React frontend resources are served from  ```backend/static```.  To avoid difficulties with the server deployment process, uploaded/downloaded files do not go to ```backend/static``` , but to ```lifecycle/static```, ```matrix/static```, and so on).
+All of the API routes have been adapted to use the Flask blueprint framework.  The reason for this choice was that with blueprints (a blueprint equals a collection of 1 or more API endpoints), it is possible to designate a static folder that is visible only to the specific blueprint.  (In localhost mode, the React frontend resources are served from  ```backend/static```.  To avoid difficulties with the non-localhost server deployment process, uploaded/downloaded files do not go to ```backend/static``` , but to ```lifecycle/static```, ```matrix/static```, and so on).
 
 For example, the definition for the lifecycle blueprint:
 
