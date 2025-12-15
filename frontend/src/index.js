@@ -1,9 +1,25 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App.jsx";
+import '@fsb/fw-auth/dist/fw-auth.js';
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
+import axios from "axios";
+import React from "react";
+import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import App from "./App.jsx";
+
+axios.defaults.withCredentials = true;
+
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      // Force re-authentication if backend says 401
+      console.log("REDIRECT from index.js");
+      window.location.href = process.env.REACT_APP_AUTH_URL + encodeURIComponent(window.location.href);
+    }
+    return Promise.reject(error);
+  }
+);
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
@@ -11,9 +27,9 @@ const theme = createTheme();
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={process.env.REACT_APP_BASENAME}>
       <ThemeProvider theme={theme}>
-        <CssBaseline /> 
+        <CssBaseline />
         <App />
       </ThemeProvider>
     </BrowserRouter>

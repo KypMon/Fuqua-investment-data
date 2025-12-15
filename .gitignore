@@ -21,3 +21,8 @@ Thumbs.db
 
 # image
 *.png
+
+backend/data/
+react_build/
+
+backend/src/routes/static/

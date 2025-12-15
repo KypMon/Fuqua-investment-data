@@ -1,12 +1,12 @@
-import React, { useMemo } from "react";
 import {
+  Alert,
   Box,
-  Typography,
   Grid,
   Paper,
-  Alert,
   Stack,
+  Typography,
 } from "@mui/material";
+import { useMemo } from "react";
 import Plot from 'react-plotly.js'; // Import Plotly
 import DataTable from "./DataTable";
 
@@ -34,23 +34,23 @@ export default function BacktestResult({ result }) {
     : [];
 
   const portfolioGrowthTraces = portfolioGrowthData.map((series) => ({
-      type: 'scatter',
-      mode: 'lines',
-      name: series.name,
-      x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
-      y: series.values, // Expects array of numbers
-    }));
+    type: 'scatter',
+    mode: 'lines',
+    name: series.name,
+    x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
+    y: series.values, // Expects array of numbers
+  }));
 
   // 2. Annual Returns Plot (Grouped Bar Chart)
   const annualReturnsData = safeResult.annual_returns_plot_data ?? {};
   const annualReturnYears = Array.isArray(annualReturnsData.years) ? annualReturnsData.years : [];
   const annualReturnTraces = Array.isArray(annualReturnsData.series)
     ? annualReturnsData.series.map(series => ({
-        type: 'bar',
-        name: series.name,
-        x: annualReturnYears, // Uses the common 'years' array
-        y: series.returns,    // Expects array of numbers (percentages)
-      }))
+      type: 'bar',
+      name: series.name,
+      x: annualReturnYears, // Uses the common 'years' array
+      y: series.returns,    // Expects array of numbers (percentages)
+    }))
     : [];
 
   // 3. Drawdown Plot
@@ -59,12 +59,12 @@ export default function BacktestResult({ result }) {
     : [];
 
   const drawdownTraces = drawdownData.map(series => ({
-        type: 'scatter',
-        mode: 'lines',
-        name: series.name,
-        x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
-        y: series.values, // Expects array of numbers (percentages)
-      }));
+    type: 'scatter',
+    mode: 'lines',
+    name: series.name,
+    x: series.dates, // Expects array of date strings 'YYYY-MM-DD'
+    y: series.values, // Expects array of numbers (percentages)
+  }));
 
   const infoMessages = Array.isArray(safeResult.messages) ? safeResult.messages : [];
   const warningMessages = Array.isArray(safeResult.warnings) ? safeResult.warnings : [];
@@ -184,9 +184,9 @@ export default function BacktestResult({ result }) {
                 yaxis: { title: 'Portfolio Value' },
                 autosize: true,
                 height: 400,
-                 margin: { t: 40, b: 80, l: 70, r: 30 } // Adjusted margins
+                margin: { t: 40, b: 80, l: 70, r: 30 } // Adjusted margins
               }}
-              style={{ width: '100%'}}
+              style={{ width: '100%' }}
               useResizeHandler={true}
             />
           </Paper>
@@ -211,7 +211,7 @@ export default function BacktestResult({ result }) {
                 height: 400,
                 margin: { t: 40, b: 40, l: 60, r: 20 }
               }}
-              style={{ width: '100%'}}
+              style={{ width: '100%' }}
               useResizeHandler={true}
             />
           </Paper>
@@ -235,7 +235,7 @@ export default function BacktestResult({ result }) {
                 height: 400,
                 margin: { t: 40, b: 80, l: 70, r: 30 } // Adjusted margins
               }}
-              style={{ width: '100%'}}
+              style={{ width: '100%' }}
               useResizeHandler={true}
             />
           </Paper>
@@ -252,7 +252,7 @@ export default function BacktestResult({ result }) {
             {safeResult.image_urls.map((url, idx) => (
               <Grid item xs={12} md={6} key={`img-${idx}`}>
                 <img
-                  src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}${url}?t=${Date.now()}`}
+                  src={`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5001'}${url}?t=${Date.now()}`}
                   alt={`Chart ${idx}`}
                   style={{ width: "100%", border: "1px solid #ddd" }}
                 />
@@ -323,8 +323,8 @@ export default function BacktestResult({ result }) {
 
       {/* Regression Analysis Tables */}
       {Array.isArray(safeResult.regression_table) && safeResult.regression_table.length > 0 && (
-         safeResult.regression_table.map((regData, pIdx) => (
-         regData.coefficients && regData.coefficients.length > 0 && (
+        safeResult.regression_table.map((regData, pIdx) => (
+          regData.coefficients && regData.coefficients.length > 0 && (
             <Box key={`reg-summary-table-${pIdx}`} mt={3}>
               <DataTable
                 title={`Regression Analysis vs Benchmark: ${regData.portfolioName}`}
@@ -338,12 +338,12 @@ export default function BacktestResult({ result }) {
                 }))}
                 exportFileName={buildFilename(regData.portfolioName, "regression_coefficients")}
               />
-              <Typography variant="body2" sx={{mb:1}}>
-                  R-squared: {formatValue(regData.r_squared)}, Adj. R-squared: {formatValue(regData.adj_r_squared)}, Annualized Alpha: {formatValue(regData.annualized_alpha)}
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                R-squared: {formatValue(regData.r_squared)}, Adj. R-squared: {formatValue(regData.adj_r_squared)}, Annualized Alpha: {formatValue(regData.annualized_alpha)}
               </Typography>
             </Box>
-         )
-         ))
+          )
+        ))
       )}
     </Box>
   );

@@ -1,27 +1,27 @@
-import { useState } from "react";
+import { LoadingButton } from "@mui/lab";
 import {
   Button,
-  TextField,
-  Paper,
-  Stack,
-  Typography,
-  FormControlLabel,
   Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
-  Select,
   MenuItem,
+  Paper,
+  Select,
+  Stack,
+  TextField,
+  Typography,
 } from "@mui/material";
 import axios from "axios";
 import dayjs from "dayjs";
-import { LoadingButton } from "@mui/lab";
+import { useState } from "react";
 
-import EtfListInput from "./EtfListInput";
 import AddIcon from "@mui/icons-material/Add";
+import EtfListInput from "./EtfListInput";
 
 export default function FormSection({ setResult }) {
 
-  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5000";
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
 
   const [form, setForm] = useState({
     short: false,
@@ -63,7 +63,7 @@ export default function FormSection({ setResult }) {
       setLoading(false);
     }
   };
-  
+
 
   return (
     <Paper elevation={3} sx={{ padding: 4 }}>
@@ -72,45 +72,45 @@ export default function FormSection({ setResult }) {
       </Typography>
       <Stack spacing={2}>
 
-      <Typography variant="subtitle1" gutterBottom>
-        ETF List
-      </Typography>
-      
-      <EtfListInput
-        etflist={form.etflist}
-        setEtflist={(newList) => setForm({ ...form, etflist: newList })}
-        size={4}
-      />
+        <Typography variant="subtitle1" gutterBottom>
+          ETF List
+        </Typography>
 
-      <Button
-        variant="outlined"
-        startIcon={<AddIcon />}
-        onClick={() => setForm({ ...form, etflist: [...form.etflist, ""] })}
-        sx={{ alignSelf: "flex-start" }}
-      >
-        Add ETF
-      </Button>
+        <EtfListInput
+          etflist={form.etflist}
+          setEtflist={(newList) => setForm({ ...form, etflist: newList })}
+          size={4}
+        />
+
+        <Button
+          variant="outlined"
+          startIcon={<AddIcon />}
+          onClick={() => setForm({ ...form, etflist: [...form.etflist, ""] })}
+          sx={{ alignSelf: "flex-start" }}
+        >
+          Add ETF
+        </Button>
 
         <Stack direction="row" spacing={2}>
-            <TextField
-                name="startdate"
-                label="Start Date"
-                type="date"
-                value={form.startdate}
-                onChange={handleChange}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-            />
-            <TextField
-                name="enddate"
-                label="End Date"
-                type="date"
-                value={form.enddate}
-                onChange={handleChange}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-            />
-            </Stack>
+          <TextField
+            name="startdate"
+            label="Start Date"
+            type="date"
+            value={form.startdate}
+            onChange={handleChange}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+          />
+          <TextField
+            name="enddate"
+            label="End Date"
+            type="date"
+            value={form.enddate}
+            onChange={handleChange}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+          />
+        </Stack>
 
 
         <FormControl fullWidth>
@@ -136,11 +136,11 @@ export default function FormSection({ setResult }) {
         )}
 
         <LoadingButton
-            variant="contained"
-            onClick={handleSubmit}
-            loading={loading}
-            >
-            Run Optimization
+          variant="contained"
+          onClick={handleSubmit}
+          loading={loading}
+        >
+          Run Optimization
         </LoadingButton>
 
       </Stack>

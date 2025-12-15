@@ -1,10 +1,20 @@
 Flask
 pandas
 matplotlib
-numpy==1.23.5
+#
+# remove explicit version reference for numpy
+#numpy==1.23.5
+numpy
+#
 cvxpy
 cvxopt
 tabulate
 flask-cors
 yfinance
 statsmodels
+#
+# for server hosting
+python-dotenv==1.0.1
+PyJWT==2.10.1
+cryptography==42.0.5
+gunicorn

@@ -1,0 +1,217 @@
+stages:
+  #- debug
+  - image
+  - refresh
+  - deploy
+
+variables:
+  DOCKER_HOST: tcp://docker:2375/
+  DOCKER_DRIVER: overlay2
+  DOCKER_VERSION: "27.3.1"
+  DOCKER_REGISTRY_PASSWORD: $DOCKER_REGISTRY_PASSWORD
+  DOCKER_REGISTRY_URL: $DOCKER_REGISTRY_URL
+  DOCKER_REGISTRY_USER: $DOCKER_REGISTRY_USER
+  IMAGE_TAG: "$CI_REGISTRY/$CI_PROJECT_PATH"
+  VERSION: "$CI_COMMIT_SHORT_SHA"
+  CI_DEBUG_TRACE: "false"
+  CONTAINER: "financial_analyzer"
+  PROXY: "http://ha-proxy.fuqua.duke.edu:3128"
+
+## this before_script section executes prior to every script section
+default:
+  before_script:
+    - apk update ; apk add --no-cache  openssh-client  bash curl
+    - curl --silent "https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer" | bash
+    - chmod 600 "$CI_PROJECT_DIR/.secure_files/id_devops"
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - ssh-keyscan  $DEPLOY_SERVER_DEV >> ~/.ssh/known_hosts 
+    - ssh-keyscan  $DEPLOY_SERVER_PROD >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - eval $(ssh-agent -s)
+    - ssh-add $CI_PROJECT_DIR/.secure_files/id_devops
+
+## re-usable script template (build Docker image for either dev or prod)
+.build_docker_image: &build_docker_image
+  - >
+    docker build  --no-cache  -f fa.Dockerfile 
+    --build-arg PORT=${PORT} 
+    --build-arg HOST=${HOST}
+    --build-arg AUTH_COOKIE_NAME=${AUTH_COOKIE_NAME} 
+    --build-arg ISSUER=${ISSUER}   
+    --build-arg JWKS_URI=${JWKS_URI}   
+    --build-arg ALGORITHM=${ALGORITHM}
+    --build-arg AUDIENCE=${AUDIENCE}
+    --build-arg FW_LOGIN_URL=${FW_LOGIN_URL} 
+    --build-arg HOME_PAGE_REDIRECT=${HOME_PAGE_REDIRECT}
+    --build-arg NPM_REGISTRY=${NPM_REGISTRY}
+    --build-arg APP_PREFIX=${APP_PREFIX}
+    --build-arg CONFIG_DIRECTORY=${CONFIG_DIRECTORY}
+    --build-arg DATA_DIRECTORY=${DATA_DIRECTORY}
+    --build-arg F_F_MOMENTUM_FACTOR=${F_F_MOMENTUM_FACTOR}
+    --build-arg F_F_RESEARCH_DATA_5_FACTORS_2BY3=${F_F_RESEARCH_DATA_5_FACTORS_2BY3}
+    --build-arg F_F_RESEARCH_DATA_FACTORS=${F_F_RESEARCH_DATA_FACTORS}
+    --build-arg STOCKER_ETF=${STOCKER_ETF}
+    --build-arg REACT_BUILD_DIR=${REACT_BUILD_DIR}
+    --build-arg STATIC_DIR=${STATIC_DIR}
+    --build-arg REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
+    --build-arg REACT_APP_AUTH_URL=${REACT_APP_AUTH_URL}
+    --build-arg REACT_APP_VALIDATE_URL=${REACT_APP_VALIDATE_URL}
+    --build-arg REACT_APP_BASENAME=${REACT_APP_BASENAME}
+    -t $IMAGE_TAG:$VERSION 
+    --push .
+  - docker tag $IMAGE_TAG:$VERSION $IMAGE_TAG:latest
+  - docker push $IMAGE_TAG:latest
+
+## re-usable script template (stop and remove running docker images on dev or prod)
+.stop_running_container: &stop_running_container
+  - >
+    ssh ${APP_USER}@${DEPLOY_SERVER} 
+    "
+    echo $CI_REGISTRY_PASSWORD | docker login   --username $CI_REGISTRY_USER   --password-stdin     $DOCKER_REGISTRY_URL;
+    docker stop ${CONTAINER}  2>/dev/null  ||  true;
+    docker rm ${CONTAINER};   2>/dev/null  ||  true;
+    "
+
+
+# re-usable job template (build the docker container for dev or prod)
+.dockerize-template:
+  stage: image
+  variables:
+    PORT: ${CONTAINER_PORT}
+    HOST: ${HOST}
+    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME}
+    ISSUER: ${ISSUER}
+    JWKS_URI: ${JWKS_URI}
+    FW_LOGIN_URL: ${FW_LOGIN_URL}
+    HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT}
+    REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL}
+    REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL}
+    REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL}
+    REACT_APP_BASENAME: ${REACT_APP_BASENAME}
+    
+  image: docker:$DOCKER_VERSION
+  services:
+    - docker:$DOCKER_VERSION-dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login   --username "$CI_REGISTRY_USER"   --password-stdin     $DOCKER_REGISTRY_URL
+
+  script:
+    - *build_docker_image
+
+# re-usable job template (stop the  financial analyzer container if it is running, on dev or prod)
+.stop-container-template:
+  stage: refresh
+  allow_failure: true
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER}
+  script:
+    - *stop_running_container
+
+# re-usable job template: pull down the docker image and deploy it, on dev or prod)
+.deploy-template:
+  stage: deploy
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER}
+    HOST_PORT: ${HOST_PORT}
+    CONTAINER_PORT: ${CONTAINER_PORT}
+  script:
+    - >
+      ssh ${APP_USER}@${DEPLOY_SERVER} 
+      "
+      echo $CI_REGISTRY_PASSWORD | docker login   --username $CI_REGISTRY_USER   --password-stdin     $DOCKER_REGISTRY_URL;
+      docker pull ${IMAGE_TAG}:latest;
+      docker run  --detach  \
+        --restart=unless-stopped \
+        --name=${CONTAINER}  \
+        -p ${HOST_PORT}:${CONTAINER_PORT} \
+        -v ${VOLUME_UPLOAD_DOWNLOAD}:/static \
+        -v ${VOLUME_CSV_INPUT}:/data \
+        $IMAGE_TAG; 
+      "
+
+#############################
+## BEGIN THE ACTUAL JOBS 
+#############################
+
+# DEV jobs
+# debug-env:
+#   stage: debug
+#   script:
+#     - echo "Listing all environment variables"
+#     - env | sort
+#     - echo "DONE 1"
+
+dockerize-dev:
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
+      when: on_success
+  extends: .dockerize-template
+  variables:
+    PORT: ${CONTAINER_PORT_DEV}
+    HOST: ${HOST_DEV}
+    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_DEV}
+    ISSUER: ${ISSUER_DEV}
+    JWKS_URI: ${JWKS_URI_DEV}
+    FW_LOGIN_URL: ${FW_LOGIN_URL_DEV}
+    HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_DEV}
+    REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL_DEV}
+    REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL_DEV}
+    REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL_DEV}
+
+stop-container-dev:
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
+      when: on_success
+  extends: .stop-container-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+
+deploy-dev:
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
+      when: on_success
+  extends: .deploy-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_DEV}
+    HOST_PORT: ${HOST_PORT_DEV}
+    CONTAINER_PORT: ${CONTAINER_PORT_DEV}
+
+    # PROD jobs
+dockerize-prod:
+  rules:
+    - if: '$CI_COMMIT_TAG != null'
+      when: on_success
+  extends: .dockerize-template
+  variables:
+    PORT: ${CONTAINER_PORT_PROD}
+    HOST: ${HOST_PROD}
+    AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME_PROD}
+    ISSUER: ${ISSUER_PROD}
+    JWKS_URI: ${JWKS_URI_PROD}
+    FW_LOGIN_URL: ${FW_LOGIN_URL_PROD}
+    HOME_PAGE_REDIRECT: ${HOME_PAGE_REDIRECT_PROD}
+    REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL_PROD}
+    REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL_PROD}
+    REACT_APP_VALIDATE_URL: ${REACT_APP_VALIDATE_URL_PROD}
+
+
+stop-container-prod:
+  rules:
+    - if: '$CI_COMMIT_TAG != null'
+      when: on_success
+  extends: .stop-container-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_PROD}
+
+deploy-prod:
+  rules:
+    - if: '$CI_COMMIT_TAG != null'
+      when: on_success
+  extends: .deploy-template
+  variables:
+    DEPLOY_SERVER: ${DEPLOY_SERVER_PROD}
+    HOST_PORT: ${HOST_PORT_PROD}
+    CONTAINER_PORT: ${CONTAINER_PORT_PROD}
+
+
+

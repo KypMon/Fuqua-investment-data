@@ -1,15 +1,26 @@
-import { useState } from "react";
-import { AppBar, Tabs, Tab, Toolbar, Typography, Box, Container } from "@mui/material";
-import FormSection from "./components/FormSection";
-import ResultSection from "./components/ResultSection";
+import { AppBar, Container, Tab, Tabs, Toolbar, Typography } from "@mui/material";
+//import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import BacktestForm from "./components/BacktestForm";
 import BacktestResult from "./components/BacktestResult";
-import RegressionPage from "./components/RegressionPage";
-import MatrixPage from "./components/MatrixPage";
+import FormSection from "./components/FormSection";
 import LifeCycleSimulationPage from "./components/LifeCycleSimulationPage";
-import { useNavigate, useLocation, Routes, Route, Navigate, NavLink  } from "react-router-dom";
+import MatrixPage from "./components/MatrixPage";
+import RegressionPage from "./components/RegressionPage";
+import ResultSection from "./components/ResultSection";
 
 function App() {
+  // user authentication
+  const fwAuthRef = useRef(null);
+  useEffect(() => {
+    const authElement = fwAuthRef.current;
+    if (authElement) {
+      authElement.setAttribute('url', `${process.env.REACT_APP_AUTH_URL}`);
+      authElement.setAttribute('validateUrl', `${process.env.REACT_APP_VALIDATE_URL}`);
+    }
+  }, []);
+
   const [result, setResult] = useState(null);
   const [backtestResult, setBacktestResult] = useState(null);
 
@@ -18,22 +29,42 @@ function App() {
 
   // Match the current path to tab value
   const currentPath = location.pathname;
+  // const tabValue = currentPath.startsWith("/matrix")
+  //   ? "matrix"
+  //   : currentPath.startsWith("/backtest")
+  //     ? "backtest"
+  //     : currentPath.startsWith("/regression")
+  //       ? "regression"
+  //       : currentPath.startsWith("/life-cycle")
+  //         ? "life-cycle"
+  //         : "mv";
+
   const tabValue = currentPath.startsWith("/matrix")
     ? "matrix"
     : currentPath.startsWith("/backtest")
-    ? "backtest"
-    : currentPath.startsWith("/regression")
-    ? "regression"
-    : currentPath.startsWith("/life-cycle")
-    ? "life-cycle"
-    : "mv";
-    
+      ? "backtest"
+      : currentPath.startsWith("/regression")
+        ? "regression"
+        : currentPath.startsWith("/life-cycle")
+          ? "life-cycle"
+          : currentPath === "/" || currentPath.startsWith("/mv")
+            ? "mv"
+            : "";
+
+
   const handleTabChange = (event, newValue) => {
     navigate(`/${newValue}`);
   };
 
+  const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "";
+  const isLocalhost = apiBaseUrl.includes("localhost");
+  //console.log(`${apiBaseUrl}`);
+
   return (
     <>
+      {/* Conditionally render fw-auth only if NOT localhost */}
+      {!isLocalhost && <fw-auth auto></fw-auth>}
+
       <AppBar position="static" color="primary">
         <Toolbar>
           <Typography
@@ -61,7 +92,7 @@ function App() {
 
       <Container maxWidth="lg" sx={{ paddingY: 4 }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/mv" replace />} />
+          {/* <Route path="/" element={<Navigate to="/mv" replace />} /> */}
           <Route
             path="/mv"
             element={
@@ -81,7 +112,7 @@ function App() {
               <BacktestForm setBacktestResult={setBacktestResult} />
               <BacktestResult result={backtestResult} />
             </>
-          }/>
+          } />
           <Route
             path="/regression"
             element={
@@ -90,6 +121,7 @@ function App() {
               </>
             }
           />
+          <Route path="*" element={<Navigate to="/mv" replace />} />
         </Routes>
       </Container>
     </>

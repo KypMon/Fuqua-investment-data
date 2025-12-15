@@ -1,0 +1,79 @@
+When developing the fa.Dockerfile content:
+
+Reference: engage_sync / dev_tools / go_docker.sh
+
+To fix Windows-style line endings (CRLF) to Linux-style (LF) in shell scripts:
+
+sed -i 's/\r$//' deploy.sh
+
+When the container won't start because of errors, can enter it this way, for debugging:
+
+docker run -it --rm --name fa_debug financial_analyzer_image /bin/sh
+docker run -it --rm --name node-build  node-build-image /bin/sh
+
+
+To build the docker image "financial_analyzer_image":
+
+docker build  \
+-f fa.Dockerfile \
+--build-arg http_proxy=$HTTP_PROXY \
+--build-arg https_proxy=$HTTPS_PROXY \
+--build-arg NPM_REGISTRY="https://beergame.vm.duke.edu:4873/" \
+-t financial_analyzer_image \
+.
+
+Note: $HTTP_PROXY and $HTTPS_PROXY are already set in the server environment.
+
+To enter an interactive shell for an image container:
+
+docker run -it --entrypoint /bin/sh financial_analyzer_image
+
+
+
+
+
+To start a running container from the image:
+
+docker run \
+--restart=unless-stopped
+--detach  \
+-v $VOLUME_NAME:/data   ---- will circle back to this
+--name=financial_analyzer_container \
+financial_analyzer_image \
+
+
+!! !!
+To clean up before another run:
+
+docker volume rm $VOLUME_NAME
+docker volume create --driver local $VOLUME_NAME
+
+DIR=/data
+echo "Initializing volume subdirectories: " $VOLUME_NAME
+docker run --rm \
+-v $VOLUME_NAME:$DIR \
+alpine mkdir -p $DIR/files/input $DIR/files/output $DIR/files/logs
+
+
+docker image rmi -f $IMAGE
+
+... then re-run the 'docker build'
+... then re-run the 'docker run'
+
+
+
+
+See: deploy_csv_volume.sh
+How to handle the 4 input csv files.
+Put them on their own volume.
+The problem is: the 4 csv files are not included in gitlab (nor should they be).
+So we need a mechanism for storing these files.
+
+When there are changes to the files, it will be necessary to recreate the csv volume
+and re-attach it to the application container.  
+
+
+See: deploy_upload_download_volume.sh
+How to handle the user uploads and downloads (in localhost environment, these are the files that go to the static folder).
+These files are not stored in gitlab, so we'll need to use a separate volume.
+Ask professors how long these files should be kept.  A term?  For course duration?
