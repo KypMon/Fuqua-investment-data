@@ -20,7 +20,7 @@ When running under ```gunicorn```, the application entry point is ```wsgi.py``` 
 
 #### Backend project changes required to support non-localhost access:
 
-1. ```app.py``` no longer contains the API endpoint definitions.  It's new purpose is to provide backend initialization depending on in which mode the app is running (localhost/Flask vs. non-localhost/gunicorn).  
+1. ```app.py``` no longer contains the API endpoint definitions.  Its new purpose is to provide backend initialization depending on in which mode the app is running (localhost/Flask vs. non-localhost/gunicorn).  
 
 There is a new folder, ```src/routes```.  This is the location for all of the API endpoint code that was previously in ```app.py```.
 
@@ -78,7 +78,7 @@ Important!  If doing local develpment and it is not desired to re-deploy the app
 
 ```
 git add .
-git commit -m ```[ci skip]```
+git commit -m [ci skip]
 git push
 ```
 
