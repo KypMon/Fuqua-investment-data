@@ -18,6 +18,8 @@ The backend API routes are served by ```gunicorn```, which is a Python WSGI HTTP
 
 When running under ```gunicorn```, the application entry point is ```wsgi.py``` instead of ```app.py```.
 
+In non-localhost mode, the frontend and backend code is combined into a single unit (served under a single port, 5002) instead of 2 ports (3000, 5000).
+
 #### Backend project changes required to support non-localhost access:
 
 1. ```app.py``` no longer contains the API endpoint definitions.  Its new purpose is to provide backend initialization depending on in which mode the app is running (localhost/Flask vs. non-localhost/gunicorn).  
@@ -28,7 +30,9 @@ The ```src/routes/api_routes.py``` code contains the endpoints for launching the
 
 The ```src/routes/backtest.py``` code contains all endpoints related to backtest.  Similarly for lifecycle, matrix, and regression.
 
-All of the API routes have been adapted to use the Flask blueprint framework.  The reason for this choice was that with blueprints (a blueprint equals a collection of 1 or more API endpoints), it is possible to designate a static folder that is visible only to the specific blueprint.  For example, the definition for the lifecycle blueprint:
+All of the API routes have been adapted to use the Flask blueprint framework.  The reason for this choice was that with blueprints (a blueprint equals a collection of 1 or more API endpoints), it is possible to designate a static folder that is visible only to the specific blueprint.  (In non-localhost mode, the React frontend resources are served from  ```backend/static```.  To avoid difficulties with the server deployment process, uploaded/downloaded files do not go to ```backend/static``` , but to ```lifecycle/static```, ```matrix/static```, and so on).
+
+For example, the definition for the lifecycle blueprint:
 
 ```
         self.blueprint = Blueprint(
