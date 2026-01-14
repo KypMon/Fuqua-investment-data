@@ -163,7 +163,7 @@ export default function MatrixPage() {
   const [matErCovrLoading, setMatErCovrLoading] = useState(false);
   const [matErCovrUploadLoading, setMatErCovrUploadLoading] = useState(false);
 
-  const [riskFree, setRiskFree] = useState("0.03");
+  const [riskFree, setRiskFree] = useState("0.0025");
 
   const [portfolioState, setPortfolioState] = useState(null);
   const [portfolioError, setPortfolioError] = useState(null);
@@ -532,7 +532,7 @@ export default function MatrixPage() {
               label="Risk-free rate"
               value={riskFree}
               onChange={(event) => setRiskFree(event.target.value)}
-              helperText="Use decimal (e.g., 0.03)"
+              helperText="Use decimal (e.g., 0.0025)"
             />
             <LoadingButton
               variant="contained"
