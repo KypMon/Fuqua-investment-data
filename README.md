@@ -78,7 +78,6 @@ git push
 
 automatically triggers the build job defined in ```.gitlab-ci.yml```.  The job will stop the running docker container instance on the server, build a new docker image based on the master branch content, push it onto the server and start the new container running.
 
-
 Important!  If doing local development and it is not desired to re-deploy the app on a server, add the message ```[ci skip]```, like this:
 
 ```
