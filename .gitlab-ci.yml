@@ -161,7 +161,6 @@ dockerize-dev:
 
 stop-container-dev:
   rules:
-    #- if: '$CI_COMMIT_TAG == null'
     - if: '$CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "master"'
       when: on_success
   extends: .stop-container-template
@@ -170,7 +169,6 @@ stop-container-dev:
 
 deploy-dev:
   rules:
-    #- if: '$CI_COMMIT_TAG == null'
     - if: '$CI_COMMIT_BRANCH == "dev" || $CI_COMMIT_BRANCH == "master"'
       when: on_success
   extends: .deploy-template
@@ -182,7 +180,6 @@ deploy-dev:
     # PROD jobs
 dockerize-prod:
   rules:
-    #- if: '$CI_COMMIT_TAG != null'
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
   extends: .dockerize-template
@@ -201,7 +198,6 @@ dockerize-prod:
 
 stop-container-prod:
   rules:
-    #- if: '$CI_COMMIT_TAG != null'
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
   extends: .stop-container-template
@@ -210,7 +206,6 @@ stop-container-prod:
 
 deploy-prod:
   rules:
-    #- if: '$CI_COMMIT_TAG != null'
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: on_success
   extends: .deploy-template
