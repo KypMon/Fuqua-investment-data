@@ -336,6 +336,42 @@ class MatrixService(object):
             return None
         return np.array(sol["x"]).flatten()
 
+    def _solve_tangency_short(self, cov: np.ndarray, means: np.ndarray, rf: float) -> Optional[np.ndarray]:
+        u = means - rf
+        if np.allclose(u, 0):
+            return None
+        try:
+            wts = np.linalg.solve(cov, u)
+        except np.linalg.LinAlgError:
+            return None
+        denom = np.sum(wts)
+        if np.isclose(denom, 0):
+            return None
+        return wts / denom
+
+    def _solve_tangency_long(self, cov: np.ndarray, means: np.ndarray, rf: float) -> Optional[np.ndarray]:
+        u = means - rf
+        if np.allclose(u, 0):
+            return None
+        n = cov.shape[0]
+        P = matrix(cov)
+        q = matrix(np.zeros(n))
+        G = matrix(-np.eye(n))
+        h = matrix(0.0, (n, 1))
+        A = matrix(u.reshape(1, -1))
+        b = matrix([1.0])
+        try:
+            sol = solvers.qp(P, q, G, h, A, b)
+        except Exception:
+            return None
+        if sol is None or sol["status"] not in {"optimal", "optimal_inaccurate"}:
+            return None
+        weights = np.array(sol["x"]).flatten()
+        denom = np.sum(weights)
+        if np.isclose(denom, 0):
+            return None
+        return weights / denom
+
 
     def compute_portfolios(
         self,
@@ -391,6 +427,18 @@ class MatrixService(object):
             tangency_weights = frontier_weights[max_idx]
             tangency_ret = float(tangency_weights @ means)
             tangency_std = float(np.sqrt(tangency_weights @ cov @ tangency_weights))
+            tangency_sharpe = ((tangency_ret - resolved_rf) / tangency_std) if tangency_std > 0 else None
+
+            if allow_short:
+                updated_weights = self._solve_tangency_short(cov, means, resolved_rf)
+            else:
+                updated_weights = self._solve_tangency_long(cov, means, resolved_rf)
+
+            if updated_weights is not None:
+                tangency_weights = updated_weights
+                tangency_ret = float(tangency_weights @ means)
+                tangency_std = float(np.sqrt(tangency_weights @ cov @ tangency_weights))
+                tangency_sharpe = ((tangency_ret - resolved_rf) / tangency_std) if tangency_std > 0 else None
 
             def to_weight_map(weights: np.ndarray) -> Dict[str, float]:
                 return {asset: float(weight) for asset, weight in zip(assets, weights)}
@@ -411,7 +459,7 @@ class MatrixService(object):
                     "sigma": tangency_std,
                     "mean": tangency_ret,
                     "weights": to_weight_map(tangency_weights),
-                    "sharpe": ((tangency_ret - resolved_rf) / tangency_std) if tangency_std > 0 else None,
+                    "sharpe": tangency_sharpe,
                 },
             }
 
@@ -427,4 +475,3 @@ class MatrixService(object):
         buffer = io.StringIO()
         df.to_csv(buffer, index=False)
         return buffer.getvalue().encode("utf-8")
-
