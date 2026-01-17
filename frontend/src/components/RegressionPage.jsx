@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { Box, Typography, CircularProgress, Alert } from "@mui/material";
+import { Alert, Box, CircularProgress, Typography } from "@mui/material";
 import axios from "axios";
+import dayjs from "dayjs";
+import { useState } from "react";
 import RegressionForm from "./RegressionForm";
 import RegressionResult from "./RegressionResult";
-import dayjs from "dayjs";
 
 export default function RegressionPage() {
   const [form, setForm] = useState({
@@ -63,8 +63,14 @@ export default function RegressionPage() {
     try {
       const { etflist, ...rest } = form;
       const payload = { ...rest, ticker: etflist[0] };
+
+      // const res = await axios.post(
+      //   `${process.env.REACT_APP_API_BASE_URL}/regression`,
+      //   payload
+      // );
+      const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
       const res = await axios.post(
-        `${process.env.REACT_APP_API_BASE_URL}/regression`,
+        `${apiBaseUrl}/regression/run`,
         payload
       );
       setResult(res.data);

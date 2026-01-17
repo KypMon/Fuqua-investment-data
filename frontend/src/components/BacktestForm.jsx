@@ -1,10 +1,10 @@
 // src/components/BacktestForm.jsx
-import React, { useState } from "react";
-import { Button, Stack, TextField, Grid, MenuItem, Typography, Alert } from "@mui/material";
-import EtfListInput from "./EtfListInput";
 import AddIcon from "@mui/icons-material/Add";
-import dayjs from "dayjs";
+import { Alert, Button, Grid, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import axios from "axios";
+import dayjs from "dayjs";
+import { useState } from "react";
+import EtfListInput from "./EtfListInput";
 
 const benchmarkOptions = ["CRSPVW", "None"];
 const rebalancingOptions = [
@@ -123,7 +123,7 @@ export default function BacktestForm({ setBacktestResult }) {
         start_balance: form.start_balance,
       };
 
-      const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/backtest`, payload);
+      const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/backtest/run`, payload);
       setBacktestResult(res.data);
       setErrors([]);
     } catch (err) {
@@ -148,11 +148,11 @@ export default function BacktestForm({ setBacktestResult }) {
         ETF List
       </Typography>
       <Grid container spacing={0.5}>
-          <EtfListInput
-            etflist={form.etflist}
-            setEtflist={(list) => setForm({ ...form, etflist: list })}
-            size={2.3}
-          />
+        <EtfListInput
+          etflist={form.etflist}
+          setEtflist={(list) => setForm({ ...form, etflist: list })}
+          size={2.3}
+        />
       </Grid>
 
 

@@ -1,0 +1,41 @@
+We combine the frontend and backend.
+
+We no longer reference localhost:3000 for the home page.
+
+Instead: we reference localhost.fuqua.duke.edu:5002 for the home page.
+
+
+
+To build the project:
+
+From the frontend folder:
+npm run build
+
+Rename the build folder to 'react_build', copy it in at the project_home level in the backend folder
+
+Only port 5002 is referenced now.
+
+http://localhost.fuqua.duke.edu:5002
+
+
+
+
+If on Windows system, must edit this file:
+C:\Windows\System32\drivers\etc\hosts
+
+Add this entry at the end of the file:
+
+127.0.0.1           localhost.fuqua.duke.edu
+
+
+If on Windows system:
+Need npm installed.
+In your home directory (C:\Users\you): add this file, called ".npmrc".
+Include this content:
+
+registry=https://beergame.vm.duke.edu:4873/
+access=public
+max_body_size=100mb
+strict-ssl=false
+scope=@fuquaschoolofbusiness
+@fuquaschoolofbusiness:registry=https://beergame.vm.duke.edu:4873/
