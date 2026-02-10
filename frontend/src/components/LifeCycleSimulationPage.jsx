@@ -43,10 +43,12 @@ export default function LifeCycleSimulationPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [fileInputVersion, setFileInputVersion] = useState(0);
 
   const handleFileChange = (setter) => (event) => {
     const file = event.target.files?.[0] ?? null;
     setter(file);
+    setError(null);
   };
 
   const handleSubmit = async (event) => {
@@ -306,6 +308,7 @@ export default function LifeCycleSimulationPage() {
     setNsim("1000");
     setResult(null);
     setError(null);
+    setFileInputVersion((current) => current + 1);
   };
 
   return (
@@ -334,7 +337,13 @@ export default function LifeCycleSimulationPage() {
               fullWidth
             >
               {returnsFile ? `Return file: ${returnsFile.name}` : "Upload Returns CSV"}
-              <input type="file" hidden accept=".csv" onChange={handleFileChange(setReturnsFile)} />
+              <input
+                key={`returns-${fileInputVersion}`}
+                type="file"
+                hidden
+                accept=".csv"
+                onChange={handleFileChange(setReturnsFile)}
+              />
             </Button>
           </Grid>
           <Grid item xs={12} md={6}>
@@ -345,7 +354,13 @@ export default function LifeCycleSimulationPage() {
               fullWidth
             >
               {cashflowsFile ? `Cash flow file: ${cashflowsFile.name}` : "Upload Cash Flow CSV"}
-              <input type="file" hidden accept=".csv" onChange={handleFileChange(setCashflowsFile)} />
+              <input
+                key={`cashflows-${fileInputVersion}`}
+                type="file"
+                hidden
+                accept=".csv"
+                onChange={handleFileChange(setCashflowsFile)}
+              />
             </Button>
           </Grid>
         </Grid>
@@ -490,4 +505,3 @@ export default function LifeCycleSimulationPage() {
     </Box>
   );
 }
-
